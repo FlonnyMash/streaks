@@ -7,7 +7,6 @@ import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DaySummaryModal } from '@/components/timesheet/DaySummaryModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { Spinner } from '@/components/ui/Spinner'
-import { ComingSoonSection } from '@/components/layout/ComingSoonSection'
 
 const SUMMARY_ACCENT = '#0a84ff'
 
@@ -55,11 +54,20 @@ export function TimesheetPage() {
       {workspacesLoading && <Spinner />}
 
       {!workspacesLoading && workspaces?.length === 0 && (
-        <ComingSoonSection
-          icon={Sparkles}
-          title="No workspaces yet"
-          description="Create a workspace for each project, client, or job you want to track time for."
-        />
+        <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
+          <Sparkles className="size-8 text-accent-orange" />
+          <h2 className="font-semibold text-lg">No workspaces yet</h2>
+          <p className="text-black/50 dark:text-white/50 text-[15px] max-w-xs">
+            Create a workspace for each project, client, or job you want to track time for.
+          </p>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
+          >
+            <Plus className="size-4" />
+            Create a workspace
+          </button>
+        </div>
       )}
 
       {!workspacesLoading && workspaces && workspaces.length > 0 && (

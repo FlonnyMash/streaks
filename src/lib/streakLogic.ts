@@ -284,27 +284,6 @@ function periodGoalCounts(
   return { scheduled, completed }
 }
 
-/** Counts elapsed calendar weeks since creation and how many met the times-per-week target. */
-function timesPerWeekCounts(
-  streak: Streak,
-  completed: Set<string>,
-  createdAt: Date,
-  today: Date,
-): { scheduled: number; completed: number } {
-  const target = streak.target_count ?? 1
-  const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 })
-  let cursor = startOfWeek(createdAt, { weekStartsOn: 1 })
-  let scheduled = 0
-  let completedWeeks = 0
-
-  while (cursor <= thisWeekStart && scheduled < MAX_LOOKBACK_WEEKS) {
-    scheduled++
-    if (weekCompletionCount(cursor, completed) >= target) completedWeeks++
-    cursor = addDays(cursor, 7)
-  }
-  return { scheduled, completed: completedWeeks }
-}
-
 export function computeStreakStats(streak: Streak, entries: StreakEntry[]): StreakStats {
   const completed = completedDateSet(entries)
   const minutes = minutesByDate(entries)
@@ -338,9 +317,11 @@ export function computeStreakStats(streak: Streak, entries: StreakEntry[]): Stre
     scheduledCount = counts.scheduled
     completedCount = counts.completed
   } else if (streak.frequency_type === 'times_per_week') {
-    const counts = timesPerWeekCounts(streak, completed, createdAt, today)
-    scheduledCount = counts.scheduled
-    completedCount = counts.completed
+    // Success % = day-slots filled / day-slots required (weeks × target), not weeks-met/weeks.
+    // That keeps partial weekly progress visible and matches the historical metric.
+    const weeks = Math.max(1, Math.ceil((today.getTime() - createdAt.getTime()) / (7 * 86400000)) + 1)
+    scheduledCount = weeks * (streak.target_count ?? 1)
+    completedCount = totalCompletions
   } else {
     scheduledCount = 0
     let cursor = createdAt

@@ -60,6 +60,7 @@ export function DayDetailModal({
   const [showBurst, setShowBurst] = useState(false)
   const initial = useRef<{ note: string; mood: Mood | null }>({ note: '', mood: null })
   const prevDayGoalMet = useRef(false)
+  const wasOpen = useRef(false)
 
   // Day goals auto-complete from minutes. Period goals never mark individual days complete —
   // only the week/month total matters for streak math. Optional track_time keeps the checkbox.
@@ -77,11 +78,24 @@ export function DayDetailModal({
     setMinutes(nextMinutes)
     initial.current = { note: nextNote, mood: nextMood }
     prevDayGoalMet.current = dayGoal ? nextMinutes >= goalMinutes : (entry?.completed ?? false)
-    // Intentionally omits `entry` so completing/uncompleting mid-edit doesn't clobber the draft.
-    // dayGoal / goalMinutes are included so a streak edit that changes the goal while this sheet
-    // is open still refreshes haptic baseline state.
+    // Intentionally re-syncs only when the sheet opens for a (possibly new) day, not on every
+    // entry mutation — otherwise completing/uncompleting mid-edit would clobber the draft.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dateKey, dayGoal, goalMinutes])
+  }, [open, dateKey])
+
+  // If the day goal changes while this sheet is already open, refresh haptic baseline from the
+  // live minutes draft without resetting note/mood/minutes.
+  useEffect(() => {
+    if (!open) {
+      wasOpen.current = false
+      return
+    }
+    const justOpened = !wasOpen.current
+    wasOpen.current = true
+    if (justOpened) return
+    prevDayGoalMet.current = dayGoal ? minutes >= goalMinutes : (entry?.completed ?? false)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dayGoal, goalMinutes])
 
   if (!dateKey) return null
 

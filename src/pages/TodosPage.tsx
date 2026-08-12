@@ -3,7 +3,6 @@ import { AnimatePresence } from 'framer-motion'
 import { ChevronDown, ListTodo, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { ComingSoonSection } from '@/components/layout/ComingSoonSection'
 import { TodoItem } from '@/components/todos/TodoItem'
 import { CreateTodoModal } from '@/components/todos/CreateTodoModal'
 import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useToggleTodo, useTodos } from '@/hooks/useTodos'
@@ -28,6 +27,11 @@ export function TodosPage() {
   const grouped = useMemo(() => groupActiveTodos(active), [active])
   const visibleBuckets = BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
   const isEmpty = !isLoading && active.length === 0 && completed.length === 0
+
+  function openCreate() {
+    setEditingTodo(null)
+    setModalOpen(true)
+  }
 
   function openEditor(todo: Todo) {
     setEditingTodo(todo)
@@ -83,11 +87,20 @@ export function TodosPage() {
       {isLoading && <Spinner />}
 
       {isEmpty && (
-        <ComingSoonSection
-          icon={ListTodo}
-          title="No tasks yet"
-          description="Add your first task above to start your checklist."
-        />
+        <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
+          <ListTodo className="size-8 text-accent-orange" />
+          <h2 className="font-semibold text-lg">No tasks yet</h2>
+          <p className="text-black/50 dark:text-white/50 text-[15px] max-w-xs">
+            Add your first task to start your checklist.
+          </p>
+          <button
+            onClick={openCreate}
+            className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
+          >
+            <Plus className="size-4" />
+            Create a task
+          </button>
+        </div>
       )}
 
       {!isLoading && !isEmpty && (

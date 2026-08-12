@@ -16,7 +16,7 @@ export function GlassNavbar() {
         <div className="glass-surface rounded-2xl px-4 h-16 flex items-center justify-between shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px]">
             <Flame className="size-5 text-accent-orange" fill="currentColor" fillOpacity={0.15} />
-            Mashed Dashboard
+            Mashed Personal Dashboard
           </div>
           <nav className="flex items-center gap-1">
             {links.map(({ to, label, icon: Icon, end }) => (
