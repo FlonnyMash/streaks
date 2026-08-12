@@ -14,15 +14,17 @@ export function StreakHighlightsWidget() {
 
   if (isLoading) {
     return (
-      <div className="glass-panel rounded-[24px] p-5">
-        <Spinner className="size-5" />
+      <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
+        <div className="flex-1 min-h-0">
+          <Spinner className="size-5" />
+        </div>
       </div>
     )
   }
 
   if (!streaks || streaks.length === 0) {
     return (
-      <div className="glass-panel rounded-[24px] p-5">
+      <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="size-4 text-accent-blue" />
           <h2 className="font-semibold text-[15px]">Streak Highlights</h2>
@@ -44,7 +46,7 @@ export function StreakHighlightsWidget() {
   const bestAccent = ACCENT_COLOR_MAP[best.streak.color]
 
   return (
-    <div className="glass-panel rounded-[24px] p-5">
+    <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="size-4 text-accent-blue" />
         <h2 className="font-semibold text-[15px]">Streak Highlights</h2>

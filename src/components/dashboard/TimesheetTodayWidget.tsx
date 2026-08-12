@@ -28,16 +28,20 @@ export function TimesheetTodayWidget() {
     .sort((a, b) => b.minutes - a.minutes)
 
   return (
-    <div className="glass-panel rounded-[24px] p-5">
+    <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 mb-4">
         <CalendarClock className="size-4 text-accent-teal" />
         <h2 className="font-semibold text-[15px]">Timesheet</h2>
       </div>
 
-      {isLoading && <Spinner className="size-5" />}
+      {isLoading && (
+        <div className="flex-1 min-h-0">
+          <Spinner className="size-5" />
+        </div>
+      )}
 
       {!isLoading && (
-        <>
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] p-3">
               <p className="text-[11px] text-black/45 dark:text-white/45 uppercase tracking-wide mb-1">Today</p>
@@ -70,12 +74,12 @@ export function TimesheetTodayWidget() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center text-center gap-2 py-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
               <Clock className="size-6 text-accent-teal/70" />
               <p className="text-[13px] text-black/45 dark:text-white/45">No time logged yet today.</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       <Link

@@ -59,7 +59,7 @@ export function TodayStreaksWidget() {
   const doneCount = scheduledToday.filter((s) => completedTodayIds.has(s.id)).length
 
   return (
-    <div className="glass-panel rounded-[24px] p-5">
+    <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Flame className="size-4 text-accent-orange" />
@@ -72,17 +72,21 @@ export function TodayStreaksWidget() {
         )}
       </div>
 
-      {isLoading && <Spinner className="size-5" />}
+      {isLoading && (
+        <div className="flex-1 min-h-0">
+          <Spinner className="size-5" />
+        </div>
+      )}
 
       {!isLoading && scheduledToday.length === 0 && (
-        <div className="flex flex-col items-center text-center gap-2 py-6">
+        <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
           <Sparkles className="size-6 text-accent-orange/70" />
           <p className="text-[13px] text-black/45 dark:text-white/45">Nothing scheduled today. Enjoy the day off!</p>
         </div>
       )}
 
       {!isLoading && scheduledToday.length > 0 && (
-        <div className="flex flex-col gap-0.5">
+        <div className="flex-1 flex flex-col gap-0.5">
           {scheduledToday.map((streak) => (
             <TodayStreakRow key={streak.id} streak={streak} completedToday={completedTodayIds.has(streak.id)} />
           ))}
