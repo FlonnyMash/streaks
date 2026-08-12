@@ -1,16 +1,25 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   Check,
+  ChevronDown,
   ChevronRight,
-  MoreVertical,
+  MoreHorizontal,
   PlusSquare,
   Share,
   Smartphone,
   X,
 } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
+import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { getInstallPlatform, isStandaloneDisplay, type InstallPlatform } from '@/lib/pwa'
+import {
+  canPromptInstall,
+  getInstallPlatform,
+  isStandaloneDisplay,
+  promptPwaInstall,
+  subscribeInstallPrompt,
+  type InstallPlatform,
+} from '@/lib/pwa'
 
 const TIP_DISMISSED_KEY = 'add-to-home-screen-tip-dismissed'
 
@@ -42,22 +51,69 @@ function PhoneFrame({ children, className }: { children: ReactNode; className?: 
   )
 }
 
-function SafariShareDiagram() {
+/** Safari address-bar ••• menu */
+function SafariMoreDiagram() {
   return (
     <PhoneFrame>
-      <div className="h-8 flex items-center justify-center gap-1.5 px-3 border-b border-black/5 dark:border-white/8">
+      <div className="h-9 flex items-center gap-2 px-3 border-b border-black/5 dark:border-white/8">
         <div className="h-4 flex-1 rounded-full bg-black/8 dark:bg-white/10" />
-      </div>
-      <div className="h-20 flex items-center justify-center">
-        <div className="size-8 rounded-xl bg-black/8 dark:bg-white/10" />
-      </div>
-      <div className="relative h-12 flex items-end justify-center gap-8 px-4 pb-2.5 border-t border-black/5 dark:border-white/8">
-        <span className="size-5 rounded-md bg-black/10 dark:bg-white/12" />
-        <span className="relative flex items-center justify-center size-7">
-          <Share className="size-5 text-accent-blue" strokeWidth={2.25} />
+        <span className="relative flex items-center justify-center size-7 shrink-0">
+          <MoreHorizontal className="size-5 text-accent-blue" strokeWidth={2.25} />
           <TapRing />
         </span>
-        <span className="size-5 rounded-md bg-black/10 dark:bg-white/12" />
+      </div>
+      <div className="h-24 flex items-center justify-center">
+        <div className="size-8 rounded-xl bg-black/8 dark:bg-white/10" />
+      </div>
+    </PhoneFrame>
+  )
+}
+
+/** Share row inside the Safari ••• menu */
+function SafariShareFromMenuDiagram() {
+  return (
+    <PhoneFrame>
+      <div className="px-3 pt-3 pb-2">
+        <div className="rounded-2xl bg-white dark:bg-white/10 shadow-sm overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+          <div className="px-3 py-2.5 flex items-center gap-2.5 border-b border-black/5 dark:border-white/8 opacity-40">
+            <span className="size-4 rounded bg-black/10 dark:bg-white/15" />
+            <span className="h-2.5 w-16 rounded bg-black/10 dark:bg-white/15" />
+          </div>
+          <div className="relative px-3 py-2.5 flex items-center gap-2.5 bg-accent-blue/10">
+            <Share className="size-4 text-accent-blue shrink-0" strokeWidth={2.25} />
+            <span className="text-[12px] font-semibold text-accent-blue">Share…</span>
+            <TapRing className="left-auto right-3 translate-x-0" />
+          </div>
+          <div className="px-3 py-2.5 flex items-center gap-2.5 border-t border-black/5 dark:border-white/8 opacity-40">
+            <span className="size-4 rounded bg-black/10 dark:bg-white/15" />
+            <span className="h-2.5 w-20 rounded bg-black/10 dark:bg-white/15" />
+          </div>
+        </div>
+      </div>
+    </PhoneFrame>
+  )
+}
+
+/** Show More in the share sheet */
+function SafariShowMoreDiagram() {
+  return (
+    <PhoneFrame>
+      <div className="px-3 pt-3 pb-2">
+        <div className="rounded-2xl bg-white dark:bg-white/10 shadow-sm overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+          <div className="px-3 py-2 flex gap-2 opacity-35">
+            <span className="size-9 rounded-xl bg-black/10 dark:bg-white/15" />
+            <span className="size-9 rounded-xl bg-black/10 dark:bg-white/15" />
+            <span className="size-9 rounded-xl bg-black/10 dark:bg-white/15" />
+          </div>
+          <div className="px-3 py-2 border-t border-black/5 dark:border-white/8 opacity-40">
+            <div className="h-2.5 w-24 rounded bg-black/10 dark:bg-white/15" />
+          </div>
+          <div className="relative px-3 py-2.5 flex items-center gap-2.5 bg-accent-blue/10 border-t border-black/5 dark:border-white/8">
+            <ChevronDown className="size-4 text-accent-blue shrink-0" strokeWidth={2.25} />
+            <span className="text-[12px] font-semibold text-accent-blue">Show More</span>
+            <TapRing className="left-auto right-3 translate-x-0" />
+          </div>
+        </div>
       </div>
     </PhoneFrame>
   )
@@ -87,26 +143,6 @@ function SafariAddToHomeDiagram() {
   )
 }
 
-function SafariConfirmDiagram() {
-  return (
-    <PhoneFrame>
-      <div className="px-3 py-4 flex flex-col items-center gap-3">
-        <div className="flex w-full items-center justify-between text-[12px] font-medium">
-          <span className="text-black/40 dark:text-white/40">Cancel</span>
-          <span className="relative text-accent-blue font-semibold px-2 py-1">
-            Add
-            <TapRing />
-          </span>
-        </div>
-        <div className="size-14 rounded-[14px] bg-black/8 dark:bg-white/10 flex items-center justify-center">
-          <Smartphone className="size-6 text-black/35 dark:text-white/40" />
-        </div>
-        <div className="h-3 w-24 rounded-full bg-black/10 dark:bg-white/12" />
-      </div>
-    </PhoneFrame>
-  )
-}
-
 function ChromeMenuDiagram() {
   return (
     <PhoneFrame>
@@ -114,7 +150,7 @@ function ChromeMenuDiagram() {
         <span className="size-4 rounded-full bg-black/10 dark:bg-white/12" />
         <div className="h-4 w-[55%] rounded-full bg-black/8 dark:bg-white/10" />
         <span className="relative flex items-center justify-center size-7">
-          <MoreVertical className="size-5 text-accent-blue" strokeWidth={2.25} />
+          <MoreHorizontal className="size-5 text-accent-blue rotate-90" strokeWidth={2.25} />
           <TapRing />
         </span>
       </div>
@@ -173,7 +209,7 @@ function GenericMenuDiagram() {
         <Share className="size-4 text-black/30 dark:text-white/30" />
         <div className="h-4 w-[50%] rounded-full bg-black/8 dark:bg-white/10" />
         <span className="relative flex items-center justify-center size-7">
-          <MoreVertical className="size-5 text-accent-blue" strokeWidth={2.25} />
+          <MoreHorizontal className="size-5 text-accent-blue" strokeWidth={2.25} />
           <TapRing />
         </span>
       </div>
@@ -194,19 +230,24 @@ function guideSteps(platform: InstallPlatform): GuideStep[] {
   if (platform === 'ios') {
     return [
       {
+        title: 'Tap •••',
+        body: 'In Safari, tap the three dots (•••) next to the address bar.',
+        diagram: <SafariMoreDiagram />,
+      },
+      {
         title: 'Tap Share',
-        body: 'In Safari, tap the Share button at the bottom (square with an upward arrow).',
-        diagram: <SafariShareDiagram />,
+        body: 'In the menu, tap Share…',
+        diagram: <SafariShareFromMenuDiagram />,
+      },
+      {
+        title: 'Show More',
+        body: 'In the share sheet, tap Show More if you don’t see Add to Home Screen yet.',
+        diagram: <SafariShowMoreDiagram />,
       },
       {
         title: 'Add to Home Screen',
-        body: 'Scroll the sheet and tap “Add to Home Screen”.',
+        body: 'Tap Add to Home Screen, then tap Add to confirm.',
         diagram: <SafariAddToHomeDiagram />,
-      },
-      {
-        title: 'Confirm',
-        body: 'Tap “Add” in the top-right. Mashed appears on your home screen.',
-        diagram: <SafariConfirmDiagram />,
       },
     ]
   }
@@ -234,7 +275,7 @@ function guideSteps(platform: InstallPlatform): GuideStep[] {
   return [
     {
       title: 'Open the menu',
-      body: 'Tap Share or the ⋮ menu in your browser.',
+      body: 'Tap Share or the ••• / ⋮ menu in your browser.',
       diagram: <GenericMenuDiagram />,
     },
     {
@@ -250,6 +291,24 @@ function guideSteps(platform: InstallPlatform): GuideStep[] {
   ]
 }
 
+function useNativeInstallPrompt() {
+  const [available, setAvailable] = useState(() => canPromptInstall())
+  const [installing, setInstalling] = useState(false)
+
+  useEffect(() => subscribeInstallPrompt(setAvailable), [])
+
+  async function install() {
+    setInstalling(true)
+    try {
+      return await promptPwaInstall()
+    } finally {
+      setInstalling(false)
+    }
+  }
+
+  return { available, installing, install }
+}
+
 function AddToHomeScreenModal({
   open,
   onClose,
@@ -260,6 +319,9 @@ function AddToHomeScreenModal({
   platform: InstallPlatform
 }) {
   const steps = guideSteps(platform)
+  const { available, installing, install } = useNativeInstallPrompt()
+  const canAutoInstall = available && platform !== 'ios'
+
   const subtitle =
     platform === 'ios'
       ? 'Use Safari on iPhone or iPad'
@@ -267,12 +329,35 @@ function AddToHomeScreenModal({
         ? 'Use Chrome on Android'
         : 'On your phone’s browser'
 
+  async function handleInstall() {
+    const outcome = await install()
+    if (outcome === 'accepted') onClose()
+  }
+
   return (
     <GlassModal open={open} onClose={onClose} title="Add to Home Screen">
       <div className="flex flex-col gap-4">
-        <p className="text-[15px] leading-relaxed text-black/70 dark:text-white/70">
-          Follow the highlighted taps below — no App Store needed.
-        </p>
+        {canAutoInstall ? (
+          <>
+            <p className="text-[15px] leading-relaxed text-black/70 dark:text-white/70">
+              Your browser can install Mashed in one tap — no App Store needed.
+            </p>
+            <Button loading={installing} onClick={handleInstall} className="w-full">
+              <Smartphone className="size-4" />
+              Install Mashed
+            </Button>
+            <p className="text-[13px] text-black/45 dark:text-white/45 text-center">
+              Or follow the steps below if the button doesn’t work.
+            </p>
+          </>
+        ) : (
+          <p className="text-[15px] leading-relaxed text-black/70 dark:text-white/70">
+            {platform === 'ios'
+              ? 'Safari can’t install automatically — follow the highlighted taps below.'
+              : 'Follow the highlighted taps below — no App Store needed.'}
+          </p>
+        )}
+
         <p className="text-[13px] font-semibold uppercase tracking-wide text-black/45 dark:text-white/45 -mb-1">
           {subtitle}
         </p>
@@ -322,6 +407,7 @@ function useInstallPromptVisibility() {
 /** Dismissible tip on the home dashboard for mobile browser users. */
 export function AddToHomeScreenTip() {
   const { visible: canInstall, platform } = useInstallPromptVisibility()
+  const { available: nativeInstall } = useNativeInstallPrompt()
   const [dismissed, setDismissed] = useState(true)
   const [open, setOpen] = useState(false)
 
@@ -349,7 +435,9 @@ export function AddToHomeScreenTip() {
         <div className="min-w-0 flex-1">
           <p className="font-medium text-[15px]">Add to Home Screen</p>
           <p className="text-[13px] text-black/45 dark:text-white/45">
-            Install Mashed for one-tap access
+            {nativeInstall && platform !== 'ios'
+              ? 'Tap to install Mashed in one step'
+              : 'Install Mashed for one-tap access'}
           </p>
         </div>
       </button>
@@ -369,6 +457,7 @@ export function AddToHomeScreenTip() {
 /** Mobile-only settings row with install instructions. Hidden when already installed. */
 export function AddToHomeScreenSettings() {
   const { visible, platform } = useInstallPromptVisibility()
+  const { available: nativeInstall } = useNativeInstallPrompt()
   const [open, setOpen] = useState(false)
 
   if (!visible) return null
@@ -389,7 +478,9 @@ export function AddToHomeScreenSettings() {
         <div className="min-w-0 flex-1">
           <p className="font-medium">Add to Home Screen</p>
           <p className="text-[13px] text-black/45 dark:text-white/45">
-            Install Mashed for quick access
+            {nativeInstall && platform !== 'ios'
+              ? 'Install Mashed with one tap'
+              : 'Install Mashed for quick access'}
           </p>
         </div>
         <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />

@@ -6,6 +6,9 @@ import './index.css'
 import { App } from './App.tsx'
 import { AuthProvider } from '@/hooks/useAuth'
 import { ThemeProvider } from '@/hooks/useTheme'
+import { initPwaInstallCapture } from '@/lib/pwa'
+
+initPwaInstallCapture()
 
 const queryClient = new QueryClient({
   defaultOptions: {
