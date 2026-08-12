@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { CalendarClock, Flame, ListTodo, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStableMobileViewport } from '@/hooks/useStableMobileViewport'
@@ -68,29 +69,33 @@ export function GlassTabBar() {
     <nav ref={navRef} className="sm:hidden fixed inset-x-0 z-40 px-3 tabbar-bottom" aria-label="Primary">
       <div
         data-tabbar-surface
-        className="glass-surface rounded-[26px] h-[64px] flex items-center justify-around shadow-[0_8px_30px_-8px_rgba(0,0,0,0.3)]"
+        className="glass-surface rounded-full h-[64px] flex items-center justify-around shadow-[0_8px_30px_-8px_rgba(0,0,0,0.3)]"
       >
         {links.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full"
-          >
+          <NavLink key={to} to={to} end={end} className="relative flex-1 h-full flex items-center justify-center">
             {({ isActive }) => (
               <>
-                <Icon
-                  className={cn('size-[22px]', isActive ? 'text-accent-blue' : 'text-black/45 dark:text-white/45')}
-                  fill={isActive ? 'currentColor' : 'none'}
-                  fillOpacity={isActive ? 0.15 : 0}
-                />
-                <span
-                  className={cn(
-                    'text-[11px] font-medium',
-                    isActive ? 'text-accent-blue' : 'text-black/45 dark:text-white/45',
-                  )}
-                >
-                  {label}
+                {isActive && (
+                  <motion.span
+                    layoutId="mobileTabIndicator"
+                    className="absolute inset-y-2 inset-x-1.5 rounded-full bg-black/6 dark:bg-white/12"
+                    transition={{ type: 'spring', stiffness: 500, damping: 34, mass: 0.9 }}
+                  />
+                )}
+                <span className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+                  <Icon
+                    className={cn('size-[22px]', isActive ? 'text-accent-blue' : 'text-black/45 dark:text-white/45')}
+                    fill={isActive ? 'currentColor' : 'none'}
+                    fillOpacity={isActive ? 0.15 : 0}
+                  />
+                  <span
+                    className={cn(
+                      'text-[11px] font-medium',
+                      isActive ? 'text-accent-blue' : 'text-black/45 dark:text-white/45',
+                    )}
+                  >
+                    {label}
+                  </span>
                 </span>
               </>
             )}
