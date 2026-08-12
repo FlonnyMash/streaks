@@ -12,7 +12,7 @@ const links = [
 export function GlassTabBar() {
   return (
     <nav
-      className="sm:hidden shrink-0 z-40 px-3 pt-1 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))]"
+      className="sm:hidden fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
       aria-label="Primary"
     >
       <div className="glass-surface rounded-[26px] h-[64px] flex items-center justify-around shadow-[0_8px_30px_-8px_rgba(0,0,0,0.3)]">
