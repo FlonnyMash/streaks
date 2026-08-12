@@ -1,12 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useStreaks, useDeleteStreak } from '@/hooks/useStreaks'
-import { useStreakEntries, useToggleStreakEntry } from '@/hooks/useStreakEntries'
+import { useStreakEntries, useToggleStreakEntry, useUpdateEntryDetails } from '@/hooks/useStreakEntries'
 import { StreakCalendar } from '@/components/streaks/StreakCalendar'
 import { StreakStats } from '@/components/streaks/StreakStats'
+import { DayDetailModal } from '@/components/streaks/DayDetailModal'
+import { CelebrationOverlay } from '@/components/streaks/CelebrationOverlay'
 import { CreateStreakModal } from '@/components/streaks/CreateStreakModal'
 import { Spinner } from '@/components/ui/Spinner'
+import { computeStreakStats, isScheduledDay } from '@/lib/streakLogic'
+import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import { fromDateKey } from '@/lib/utils'
+import { hapticMilestone } from '@/lib/haptics'
+import type { Mood } from '@/lib/types'
+
+const MILESTONES = [7, 14, 30, 50, 100, 365]
 
 export function StreakDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +24,7 @@ export function StreakDetailPage() {
   const streak = useMemo(() => streaks?.find((s) => s.id === id), [streaks, id])
   const { data: entries, isLoading: entriesLoading } = useStreakEntries(id)
   const toggleEntry = useToggleStreakEntry(id ?? '')
+  const updateDetails = useUpdateEntryDetails(id ?? '')
   const deleteStreak = useDeleteStreak()
 
   const now = new Date()
@@ -22,13 +32,43 @@ export function StreakDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
+  const [celebration, setCelebration] = useState<number | null>(null)
+  const prevStreakRef = useRef<number | null>(null)
+
+  const stats = useMemo(
+    () => (streak ? computeStreakStats(streak, entries ?? []) : null),
+    [streak, entries],
+  )
+
+  useEffect(() => {
+    if (!stats) return
+    const prev = prevStreakRef.current
+    if (prev !== null && stats.currentStreak > prev && MILESTONES.includes(stats.currentStreak)) {
+      setCelebration(stats.currentStreak)
+      hapticMilestone()
+    }
+    prevStreakRef.current = stats.currentStreak
+  }, [stats])
 
   if (streaksLoading || entriesLoading || !streak) {
     return <Spinner />
   }
 
+  const accent = ACCENT_COLOR_MAP[streak.color]
+  const selectedEntry = entries?.find((e) => e.entry_date === selectedDayKey)
+  const selectedDate = selectedDayKey ? fromDateKey(selectedDayKey) : null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const isSelectedFuture = selectedDate ? selectedDate > today : false
+  const isSelectedScheduled = selectedDate ? isScheduledDay(streak, selectedDate) : true
+
   function handleToggle(dateKey: string, completed: boolean) {
     toggleEntry.mutate({ dateKey, completed })
+  }
+
+  function handleSaveDetails(dateKey: string, note: string | null, mood: Mood | null) {
+    updateDetails.mutate({ dateKey, note, mood })
   }
 
   async function handleDelete() {
@@ -99,13 +139,33 @@ export function StreakDetailPage() {
         year={view.year}
         month={view.month}
         onMonthChange={(year, month) => setView({ year, month })}
-        onToggleDay={handleToggle}
-        pendingKey={toggleEntry.isPending ? (toggleEntry.variables?.dateKey ?? null) : null}
+        onSelectDay={setSelectedDayKey}
       />
 
       <p className="text-center text-[13px] text-black/40 dark:text-white/40 mt-4">
-        Tap a day to mark it {streak.frequency_type === 'weekdays' ? '(scheduled days only)' : 'complete'}. Future days are locked.
+        Tap a day to open it. Future days are locked.
       </p>
+
+      <DayDetailModal
+        open={selectedDayKey !== null}
+        onClose={() => setSelectedDayKey(null)}
+        streak={streak}
+        dateKey={selectedDayKey}
+        entry={selectedEntry}
+        isFuture={isSelectedFuture}
+        isScheduled={isSelectedScheduled}
+        accentHex={accent.hex}
+        isToggling={toggleEntry.isPending}
+        onToggle={handleToggle}
+        onSaveDetails={handleSaveDetails}
+      />
+
+      <CelebrationOverlay
+        open={celebration !== null}
+        milestone={celebration ?? 0}
+        color={accent.hex}
+        onDismiss={() => setCelebration(null)}
+      />
 
       <CreateStreakModal open={editOpen} onClose={() => setEditOpen(false)} editingStreak={streak} />
 

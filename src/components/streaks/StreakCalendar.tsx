@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { buildMonthGrid, WEEKDAY_LABELS } from '@/lib/streakLogic'
 import type { Streak, StreakEntry } from '@/lib/types'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
@@ -10,8 +11,7 @@ interface StreakCalendarProps {
   year: number
   month: number
   onMonthChange: (year: number, month: number) => void
-  onToggleDay: (dateKey: string, completed: boolean) => void
-  pendingKey?: string | null
+  onSelectDay: (dateKey: string) => void
 }
 
 const MONTH_NAMES = [
@@ -25,8 +25,7 @@ export function StreakCalendar({
   year,
   month,
   onMonthChange,
-  onToggleDay,
-  pendingKey,
+  onSelectDay,
 }: StreakCalendarProps) {
   const days = buildMonthGrid(year, month, streak, entries)
   const accent = ACCENT_COLOR_MAP[streak.color]
@@ -73,12 +72,11 @@ export function StreakCalendar({
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const disabled = day.isFuture || (!day.isScheduled && !day.completed)
-          const isPending = pendingKey === day.key
           return (
             <button
               key={day.key}
-              disabled={disabled || isPending}
-              onClick={() => onToggleDay(day.key, !day.completed)}
+              disabled={disabled}
+              onClick={() => onSelectDay(day.key)}
               className={cn(
                 'relative aspect-square rounded-xl flex items-center justify-center text-[13px] font-medium transition-all',
                 'active:scale-90',
@@ -91,7 +89,29 @@ export function StreakCalendar({
                 color: day.completed ? 'white' : undefined,
               }}
             >
-              {day.completed ? <Check className="size-4" strokeWidth={3} /> : day.date.getDate()}
+              <AnimatePresence mode="wait" initial={false}>
+                {day.completed ? (
+                  <motion.div
+                    key="check"
+                    initial={{ scale: 0.3, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.3, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                  >
+                    <Check className="size-4" strokeWidth={3} />
+                  </motion.div>
+                ) : (
+                  <motion.span key="date" initial={false} animate={{ opacity: 1 }}>
+                    {day.date.getDate()}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {day.hasNote && (
+                <span
+                  className="absolute bottom-1 right-1 size-1.5 rounded-full"
+                  style={{ backgroundColor: day.completed ? 'white' : accent.hex }}
+                />
+              )}
             </button>
           )
         })}

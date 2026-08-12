@@ -25,6 +25,10 @@ Follow the steps below in order.
 
 You can re-run this file safely; it uses `if not exists` / `drop policy if exists` guards.
 
+If you set up your project before per-day notes/moods were added, also run
+[`supabase/migrations/0004_entry_note_mood.sql`](supabase/migrations/0004_entry_note_mood.sql)
+to add the `note` and `mood` columns to `streak_entries`.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:

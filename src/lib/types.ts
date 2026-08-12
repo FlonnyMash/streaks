@@ -35,12 +35,16 @@ export interface StreakInput {
   target_count: number | null
 }
 
+export type Mood = 1 | 2 | 3
+
 export interface StreakEntry {
   id: string
   streak_id: string
   user_id: string
   entry_date: string
   completed: boolean
+  note: string | null
+  mood: Mood | null
   created_at: string
 }
 

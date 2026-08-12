@@ -186,6 +186,7 @@ export interface CalendarDay {
   isToday: boolean
   isScheduled: boolean
   completed: boolean
+  hasNote: boolean
 }
 
 export function buildMonthGrid(
@@ -195,6 +196,7 @@ export function buildMonthGrid(
   entries: StreakEntry[],
 ): CalendarDay[] {
   const completed = completedDateSet(entries)
+  const notedDates = new Set(entries.filter((e) => e.completed && e.note).map((e) => e.entry_date))
   const monthStart = startOfMonth(new Date(year, month, 1))
   const monthEnd = endOfMonth(monthStart)
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 })
@@ -211,6 +213,7 @@ export function buildMonthGrid(
       isToday: isToday(date),
       isScheduled: isScheduledDay(streak, date),
       completed: completed.has(key),
+      hasNote: notedDates.has(key),
     }
   })
 }
