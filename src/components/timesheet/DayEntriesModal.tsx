@@ -288,6 +288,8 @@ export function DayEntriesModal({
                   max={24}
                   value={hoursText}
                   onChange={(e) => setHoursText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onMouseUp={(e) => e.preventDefault()}
                   onBlur={() => commitHours(hoursText)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -306,6 +308,8 @@ export function DayEntriesModal({
                   max={59}
                   value={minutesText}
                   onChange={(e) => setMinutesText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onMouseUp={(e) => e.preventDefault()}
                   onBlur={() => commitMinutesPart(minutesText)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {

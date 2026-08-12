@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { ACCENT_COLORS, type AccentColor, type TimesheetWorkspace } from '@/lib/types'
 import { useCreateTimesheetWorkspace, useUpdateTimesheetWorkspace } from '@/hooks/useTimesheetWorkspaces'
@@ -117,26 +118,11 @@ export function CreateWorkspaceModal({ open, onClose, editingWorkspace }: Create
           autoFocus
         />
 
-        <div>
-          <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Icon</span>
-          <div className="grid grid-cols-8 gap-1.5 mt-1.5">
-            {WORKSPACE_EMOJI_OPTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => setState((s) => ({ ...s, emoji }))}
-                className={cn(
-                  'aspect-square rounded-xl flex items-center justify-center text-lg transition-all',
-                  state.emoji === emoji
-                    ? 'bg-accent-blue/15 ring-2 ring-accent-blue scale-105'
-                    : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                )}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
+        <EmojiPicker
+          value={state.emoji}
+          options={WORKSPACE_EMOJI_OPTIONS}
+          onChange={(emoji) => setState((s) => ({ ...s, emoji }))}
+        />
 
         <div>
           <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Color</span>
@@ -192,6 +178,8 @@ export function CreateWorkspaceModal({ open, onClose, editingWorkspace }: Create
               max={24}
               value={state.newHours}
               onChange={(e) => setState((s) => ({ ...s, newHours: e.target.value.replace(/[^\d]/g, '').slice(0, 2) }))}
+              onFocus={(e) => e.currentTarget.select()}
+              onMouseUp={(e) => e.preventDefault()}
               aria-label="Preset hours"
               className="w-12 h-10 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-center text-[15px] font-semibold tabular-nums outline-none focus:border-accent-blue focus:ring-4 focus:ring-accent-blue/15 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
@@ -203,6 +191,8 @@ export function CreateWorkspaceModal({ open, onClose, editingWorkspace }: Create
               max={59}
               value={state.newMinutes}
               onChange={(e) => setState((s) => ({ ...s, newMinutes: e.target.value.replace(/[^\d]/g, '').slice(0, 2) }))}
+              onFocus={(e) => e.currentTarget.select()}
+              onMouseUp={(e) => e.preventDefault()}
               aria-label="Preset minutes"
               className="w-12 h-10 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-center text-[15px] font-semibold tabular-nums outline-none focus:border-accent-blue focus:ring-4 focus:ring-accent-blue/15 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />

@@ -15,9 +15,15 @@ export function GreetingHeader() {
 
   const name = profile?.first_name?.trim()
   const birthday = isBirthdayToday(profile?.date_of_birth, now)
+  const todayLabel = now.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
 
   return (
     <div className="mb-6">
+      <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">{todayLabel}</p>
       {birthday ? (
         <div className="flex items-center gap-2">
           <Cake className="size-7 text-accent-pink shrink-0" />

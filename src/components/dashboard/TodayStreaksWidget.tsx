@@ -43,9 +43,11 @@ function TodayStreakRow({ streak, completedToday }: TodayStreakRowProps) {
 }
 
 export function TodayStreaksWidget() {
-  const { data: streaks, isLoading } = useStreaks()
+  const { data: streaks, isLoading: streaksLoading } = useStreaks()
   const streakIds = streaks?.map((s) => s.id) ?? []
-  const { data: entries } = useAllStreakEntries(streakIds)
+  const { data: entries, isLoading: entriesLoading } = useAllStreakEntries(streakIds)
+  // Wait for entries whenever there are streaks — otherwise `entries ?? []` briefly shows 0/N done.
+  const isLoading = streaksLoading || (streakIds.length > 0 && entriesLoading)
 
   const today = new Date()
   const todayKey = toDateKey(today)
@@ -63,7 +65,7 @@ export function TodayStreaksWidget() {
           <Flame className="size-4 text-accent-orange" />
           <h2 className="font-semibold text-[15px]">Today's Streaks</h2>
         </div>
-        {scheduledToday.length > 0 && (
+        {!isLoading && scheduledToday.length > 0 && (
           <span className="text-[13px] font-medium text-black/45 dark:text-white/45 tabular-nums">
             {doneCount}/{scheduledToday.length}
           </span>

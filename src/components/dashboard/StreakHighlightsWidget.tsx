@@ -6,9 +6,11 @@ import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { Spinner } from '@/components/ui/Spinner'
 
 export function StreakHighlightsWidget() {
-  const { data: streaks, isLoading } = useStreaks()
+  const { data: streaks, isLoading: streaksLoading } = useStreaks()
   const streakIds = streaks?.map((s) => s.id) ?? []
-  const { data: entries } = useAllStreakEntries(streakIds)
+  const { data: entries, isLoading: entriesLoading } = useAllStreakEntries(streakIds)
+  // Wait for entries whenever there are streaks — otherwise stats briefly compute against [].
+  const isLoading = streaksLoading || (streakIds.length > 0 && entriesLoading)
 
   if (isLoading) {
     return (

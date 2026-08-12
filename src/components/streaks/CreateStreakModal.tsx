@@ -3,6 +3,7 @@ import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Switch } from '@/components/ui/Switch'
+import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { ACCENT_COLOR_MAP, EMOJI_OPTIONS } from '@/lib/accentColors'
 import { ACCENT_COLORS, type AccentColor, type FrequencyType, type Streak, type TimeGoalPeriod } from '@/lib/types'
 import { WEEKDAY_LABELS, jsDayToWeekdayIndex, weekdayIndexToJsDay } from '@/lib/streakLogic'
@@ -196,26 +197,11 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
           autoFocus
         />
 
-        <div>
-          <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Icon</span>
-          <div className="grid grid-cols-8 gap-1.5 mt-1.5">
-            {EMOJI_OPTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => setState((s) => ({ ...s, emoji }))}
-                className={cn(
-                  'aspect-square rounded-xl flex items-center justify-center text-lg transition-all',
-                  state.emoji === emoji
-                    ? 'bg-accent-blue/15 ring-2 ring-accent-blue scale-105'
-                    : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                )}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
+        <EmojiPicker
+          value={state.emoji}
+          options={EMOJI_OPTIONS}
+          onChange={(emoji) => setState((s) => ({ ...s, emoji }))}
+        />
 
         <div>
           <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Color</span>
@@ -358,6 +344,8 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
                         max={24}
                         value={hoursText}
                         onChange={(e) => setHoursText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onMouseUp={(e) => e.preventDefault()}
                         onBlur={() => syncGoalMinutes(resolveGoalFromInputs())}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -376,6 +364,8 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
                         max={59}
                         value={minutesText}
                         onChange={(e) => setMinutesText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onMouseUp={(e) => e.preventDefault()}
                         onBlur={() => syncGoalMinutes(resolveGoalFromInputs())}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {

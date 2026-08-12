@@ -8,9 +8,11 @@ import { formatMinutes, toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
 
 export function TimesheetTodayWidget() {
-  const { data: workspaces, isLoading } = useTimesheetWorkspaces()
+  const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
-  const { data: entries } = useAllTimesheetEntries(workspaceIds)
+  const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
+  // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
+  const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
 
   const totals = todayWeekMonthTotals(entries ?? [])
   const todayKey = toDateKey(new Date())
