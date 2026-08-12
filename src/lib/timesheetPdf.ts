@@ -1,8 +1,10 @@
 import type { jsPDF as JsPDFType } from 'jspdf'
 import { format } from 'date-fns'
+import brandIconWhite from '@/assets/brand-icon-white.png'
 import type { TimesheetEntry } from './types'
 import { buildExportStats, formatClockTime, formatExportRangeLabel, type ExportRange } from './timesheetLogic'
 import { formatMinutes, fromDateKey, toDateKey } from './utils'
+import { LEGAL } from './legalInfo'
 
 export interface TimesheetPdfWorkspace {
   id: string
@@ -28,7 +30,8 @@ interface JsPDFWithAutoTable extends JsPDFType {
 }
 
 const PAGE_MARGIN = 40
-const BRAND = 'Streaks · Timesheet Report'
+const BRAND = `Created with ${LEGAL.appName}`
+const BRAND_SHORT = 'Mashed'
 
 /** Blends a hex color towards white — `amount` 1 = full color, 0 = white. */
 function tint(hex: string, amount: number): string {
@@ -48,13 +51,25 @@ function sanitizeFilenamePart(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+/** Loads a Vite-bundled image URL into a data URL jsPDF can embed. */
+async function imageUrlToDataUrl(src: string): Promise<string> {
+  const response = await fetch(src)
+  const blob = await response.blob()
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
 /** Generates a styled PDF timesheet report for the given range and triggers a browser download. */
 export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions): Promise<void> {
   // Loaded lazily — jsPDF pulls in a sizeable HTML-rendering dependency chain we don't need
   // for the rest of the app, so keep it out of the main bundle until an export is requested.
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
 
-  const { title, titleEmoji, accentHex, workspaces, entries, range } = options
+  const { title, accentHex, workspaces, entries, range } = options
   const workspaceMap = new Map(workspaces.map((w) => [w.id, w]))
   const showWorkspaceColumn = workspaces.length > 1
   const stats = buildExportStats(entries)
@@ -63,6 +78,13 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const contentWidth = pageWidth - PAGE_MARGIN * 2
+
+  let brandIconDataUrl: string | null = null
+  try {
+    brandIconDataUrl = await imageUrlToDataUrl(brandIconWhite)
+  } catch {
+    brandIconDataUrl = null
+  }
 
   function ensureSpace(y: number, needed: number): number {
     if (y + needed <= pageHeight - PAGE_MARGIN - 24) return y
@@ -105,18 +127,31 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
     return (doc.lastAutoTable?.finalY ?? startY) + 26
   }
 
-  // Header
+  // Header — brand mark + workspace title (no emoji: Helvetica can't render them)
   const headerHeight = 96
   doc.setFillColor(accentHex)
   doc.rect(0, 0, pageWidth, headerHeight, 'F')
 
+  const iconSize = 16
+  if (brandIconDataUrl) {
+    try {
+      doc.addImage(brandIconDataUrl, 'PNG', PAGE_MARGIN, 18, iconSize, iconSize)
+    } catch {
+      brandIconDataUrl = null
+    }
+  }
+
   doc.setTextColor('#ffffff')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
-  doc.text('STREAKS  ·  TIMESHEET REPORT', PAGE_MARGIN, 30)
+  doc.text(
+    `${BRAND_SHORT.toUpperCase()}  ·  TIMESHEET REPORT`,
+    PAGE_MARGIN + (brandIconDataUrl ? iconSize + 8 : 0),
+    30,
+  )
 
   doc.setFontSize(21)
-  doc.text(`${titleEmoji}  ${title}`, PAGE_MARGIN, 58)
+  doc.text(title, PAGE_MARGIN, 58)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11.5)
@@ -170,7 +205,7 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
       stats.byWorkspace.map((w) => {
         const ws = workspaceMap.get(w.workspaceId)
         const pct = stats.totalMinutes > 0 ? Math.round((w.minutes / stats.totalMinutes) * 100) : 0
-        return [`${ws?.emoji ?? '•'}  ${ws?.name ?? 'Unknown'}`, formatMinutes(w.minutes), `${pct}%`]
+        return [ws?.name ?? 'Unknown', formatMinutes(w.minutes), `${pct}%`]
       }),
       { 1: { halign: 'right' }, 2: { halign: 'right' } },
     )
@@ -191,41 +226,41 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
     )
   }
 
-  // Daily totals
-  y = sectionTitle('Daily totals', y)
-  y = table(
-    y,
-    ['Date', 'Day', 'Time'],
-    stats.byDay.map((d) => {
-      const date = fromDateKey(d.dateKey)
-      return [format(date, 'MMM d, yyyy'), format(date, 'EEEE'), formatMinutes(d.minutes)]
-    }),
-    { 2: { halign: 'right' } },
-  )
-
-  // Detailed entries
+  // Single chronological log — date, weekday, range, duration, topic, note
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.entry_date !== b.entry_date) return a.entry_date.localeCompare(b.entry_date)
     return (a.start_time ?? '').localeCompare(b.start_time ?? '')
   })
-  y = sectionTitle('Detailed entries', y)
+  y = sectionTitle('Entries', y)
+  const durationCol = showWorkspaceColumn ? 4 : 3
   table(
     y,
-    ['Date', ...(showWorkspaceColumn ? ['Workspace'] : []), 'Time range', 'Duration', 'Topic', 'Note'],
+    [
+      'Date',
+      'Weekday',
+      ...(showWorkspaceColumn ? ['Workspace'] : []),
+      'Time range',
+      'Duration',
+      'Topic',
+      'Note',
+    ],
     sortedEntries.map((entry) => {
       const ws = workspaceMap.get(entry.workspace_id)
+      const date = fromDateKey(entry.entry_date)
       const startLabel = formatClockTime(entry.start_time)
       const endLabel = formatClockTime(entry.end_time)
       const timeRange = startLabel && endLabel ? `${startLabel} – ${endLabel}` : '—'
       return [
-        format(fromDateKey(entry.entry_date), 'MMM d, yyyy'),
-        ...(showWorkspaceColumn ? [`${ws?.emoji ?? '•'}  ${ws?.name ?? 'Unknown'}`] : []),
+        format(date, 'MMM d, yyyy'),
+        format(date, 'EEEE'),
+        ...(showWorkspaceColumn ? [ws?.name ?? 'Unknown'] : []),
         timeRange,
         formatMinutes(entry.minutes),
         entry.topic || '—',
         entry.note || '—',
       ]
     }),
+    { [durationCol]: { halign: 'right' } },
   )
 
   // Footer on every page

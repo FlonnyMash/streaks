@@ -119,9 +119,9 @@ body {
 @layer components {
   .glass-surface,
   .glass-panel {
-    --glass-bg: light-dark(rgba(255, 255, 255, 0.2), rgba(28, 28, 30, 0.25));
-    --glass-border: rgba(255, 255, 255, 0.3);
-    --glass-blur: 20px;
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.55), rgba(44, 44, 46, 0.55));
+    --glass-border: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.18));
+    --glass-blur: 24px;
     --glass-shadow: light-dark(0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 24px rgba(0, 0, 0, 0.35));
 
     background: var(--glass-bg);
