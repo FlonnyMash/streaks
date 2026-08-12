@@ -70,6 +70,8 @@ export function useCreateTimesheetEntry(workspaceId: string) {
         user_id: user.id,
         entry_date: input.entry_date,
         minutes: input.minutes,
+        start_time: input.start_time,
+        end_time: input.end_time,
         topic: input.topic,
         note: input.note,
         created_at: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { ChevronDown, ListTodo, Plus } from 'lucide-react'
+import { ChevronDown, ListTodo, Plus, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TodoItem } from '@/components/todos/TodoItem'
@@ -20,6 +20,7 @@ export function TodosPage() {
   const [quickTitle, setQuickTitle] = useState('')
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalInitialTitle, setModalInitialTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
 
   const active = useMemo(() => (todos ?? []).filter((t) => !t.done), [todos])
@@ -28,19 +29,22 @@ export function TodosPage() {
   const visibleBuckets = BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
   const isEmpty = !isLoading && active.length === 0 && completed.length === 0
 
-  function openCreate() {
+  function openCreate(prefillTitle = '') {
     setEditingTodo(null)
+    setModalInitialTitle(prefillTitle)
     setModalOpen(true)
   }
 
   function openEditor(todo: Todo) {
     setEditingTodo(todo)
+    setModalInitialTitle('')
     setModalOpen(true)
   }
 
   function closeEditor() {
     setModalOpen(false)
     setEditingTodo(null)
+    setModalInitialTitle('')
   }
 
   async function handleQuickAdd(e: FormEvent) {
@@ -48,7 +52,13 @@ export function TodosPage() {
     const title = quickTitle.trim()
     if (!title) return
     setQuickTitle('')
-    await createTodo.mutateAsync({ title, notes: null, due_date: null })
+    await createTodo.mutateAsync({ title, notes: null, due_date: null, importance: 2 })
+  }
+
+  function handleOpenDetails() {
+    const title = quickTitle.trim()
+    setQuickTitle('')
+    openCreate(title)
   }
 
   function handleMove(bucketTodos: Todo[], index: number, direction: -1 | 1) {
@@ -71,14 +81,25 @@ export function TodosPage() {
           placeholder="Add a task and hit enter…"
           maxLength={200}
           className={cn(
-            'flex-1 h-12 rounded-2xl px-4 text-[16px] outline-none transition-all',
+            'flex-1 min-w-0 h-12 rounded-2xl px-4 text-[16px] outline-none transition-all',
             'bg-black/[0.04] dark:bg-white/[0.06]',
             'border border-black/[0.06] dark:border-white/[0.08]',
             'placeholder:text-black/30 dark:placeholder:text-white/30',
             'focus:border-accent-blue focus:bg-white dark:focus:bg-white/[0.08] focus:ring-4 focus:ring-accent-blue/15',
           )}
         />
-        <Button type="submit" size="md" disabled={!quickTitle.trim()} loading={createTodo.isPending}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="md"
+          onClick={handleOpenDetails}
+          aria-label="Add with details"
+          title="Add with details"
+          className="shrink-0 px-3"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
+        <Button type="submit" size="md" disabled={!quickTitle.trim()} loading={createTodo.isPending} className="shrink-0">
           <Plus className="size-4" />
           <span className="hidden sm:inline">Add</span>
         </Button>
@@ -94,7 +115,7 @@ export function TodosPage() {
             Add your first task to start your checklist.
           </p>
           <button
-            onClick={openCreate}
+            onClick={() => openCreate()}
             className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
           >
             <Plus className="size-4" />
@@ -160,7 +181,12 @@ export function TodosPage() {
         </div>
       )}
 
-      <CreateTodoModal open={modalOpen} onClose={closeEditor} editingTodo={editingTodo ?? undefined} />
+      <CreateTodoModal
+        open={modalOpen}
+        onClose={closeEditor}
+        editingTodo={editingTodo ?? undefined}
+        initialTitle={modalInitialTitle}
+      />
     </div>
   )
 }

@@ -66,18 +66,15 @@ export function TimesheetCalendar({ entries, year, month, accentHex, onMonthChan
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const ratio = day.minutes / maxMinutes
-          const disabled = day.isFuture
           return (
             <motion.button
               key={day.key}
-              disabled={disabled}
               onClick={() => onSelectDay(day.key)}
               layout
               className={cn(
                 'relative aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all',
                 'active:scale-90',
                 !day.inCurrentMonth && 'opacity-30',
-                disabled && 'cursor-default opacity-40',
                 day.isToday && 'ring-2 ring-inset ring-accent-blue/50',
               )}
               style={{

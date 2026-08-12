@@ -57,6 +57,9 @@ export interface StreakEntry {
   created_at: string
 }
 
+/** 1 = low, 2 = medium, 3 = high */
+export type TodoImportance = 1 | 2 | 3
+
 export interface Todo {
   id: string
   user_id: string
@@ -64,6 +67,7 @@ export interface Todo {
   notes: string | null
   done: boolean
   due_date: string | null
+  importance: TodoImportance
   position: number
   archived: boolean
   completed_at: string | null
@@ -74,6 +78,7 @@ export interface TodoInput {
   title: string
   notes: string | null
   due_date: string | null
+  importance: TodoImportance
 }
 
 export interface TimesheetWorkspace {
@@ -82,6 +87,8 @@ export interface TimesheetWorkspace {
   name: string
   emoji: string
   color: AccentColor
+  /** Quick-select durations in minutes for the day logger. */
+  quick_presets: number[]
   archived: boolean
   created_at: string
 }
@@ -90,6 +97,7 @@ export interface TimesheetWorkspaceInput {
   name: string
   emoji: string
   color: AccentColor
+  quick_presets: number[]
 }
 
 export interface TimesheetEntry {
@@ -98,6 +106,10 @@ export interface TimesheetEntry {
   user_id: string
   entry_date: string
   minutes: number
+  /** Local clock time `HH:MM:SS` (or `HH:MM`) when the block started, if set. */
+  start_time: string | null
+  /** Local clock time `HH:MM:SS` (or `HH:MM`) when the block ended, if set. */
+  end_time: string | null
   topic: string | null
   note: string | null
   created_at: string
@@ -106,6 +118,8 @@ export interface TimesheetEntry {
 export interface TimesheetEntryInput {
   entry_date: string
   minutes: number
+  start_time: string | null
+  end_time: string | null
   topic: string | null
   note: string | null
 }

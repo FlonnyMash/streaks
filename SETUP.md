@@ -38,9 +38,21 @@ If you want the Todos section, also run
 [`supabase/migrations/0006_todos.sql`](supabase/migrations/0006_todos.sql) to create the `todos`
 table and its Row Level Security policies.
 
+If your todos table was created before importance levels were added, also run
+[`supabase/migrations/0008_todo_importance.sql`](supabase/migrations/0008_todo_importance.sql)
+to add the `importance` column (1=low, 2=medium, 3=high).
+
 If you want the Timesheet section, also run
 [`supabase/migrations/0007_timesheet.sql`](supabase/migrations/0007_timesheet.sql) to create the
 `timesheet_workspaces` and `timesheet_entries` tables and their Row Level Security policies.
+
+If your timesheet workspaces were created before custom quick-select times were added, also run
+[`supabase/migrations/0009_workspace_quick_presets.sql`](supabase/migrations/0009_workspace_quick_presets.sql)
+to add the `quick_presets` column (defaults to 15m, 30m, 1h, 2h, 4h, 8h).
+
+If your timesheet entries were created before clock ranges were added, also run
+[`supabase/migrations/0010_timesheet_entry_time_range.sql`](supabase/migrations/0010_timesheet_entry_time_range.sql)
+to add nullable `start_time` and `end_time` columns.
 
 ## 3. Configure Auth URLs
 

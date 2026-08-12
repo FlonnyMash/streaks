@@ -4,6 +4,7 @@ import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
+  useUpdateTimesheetWorkspace,
 } from '@/hooks/useTimesheetWorkspaces'
 import {
   useCreateTimesheetEntry,
@@ -27,6 +28,7 @@ export function TimesheetWorkspacePage() {
   const createEntry = useCreateTimesheetEntry(id ?? '')
   const deleteEntry = useDeleteTimesheetEntry(id ?? '')
   const deleteWorkspace = useDeleteTimesheetWorkspace()
+  const updateWorkspace = useUpdateTimesheetWorkspace()
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -137,6 +139,11 @@ export function TimesheetWorkspacePage() {
         entries={selectedDayEntries}
         accentHex={accent.hex}
         isSaving={createEntry.isPending}
+        quickPresets={workspace.quick_presets}
+        onPresetsChange={(quick_presets) => {
+          if (!id) return
+          updateWorkspace.mutate({ id, input: { quick_presets } })
+        }}
         onAdd={(input) => {
           if (!selectedDayKey) return
           createEntry.mutate({ entry_date: selectedDayKey, ...input })

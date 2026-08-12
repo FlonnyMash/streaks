@@ -19,7 +19,7 @@ export function bucketFor(todo: Pick<Todo, 'due_date'>, todayKey: string): TodoB
   return 'upcoming'
 }
 
-/** Groups active (not-done) todos into due-date buckets, each sorted by manual position. */
+/** Groups active (not-done) todos into due-date buckets, sorted by importance then position. */
 export function groupActiveTodos(todos: Todo[]): Record<TodoBucket, Todo[]> {
   const todayKey = toDateKey(new Date())
   const groups: Record<TodoBucket, Todo[]> = { overdue: [], today: [], upcoming: [], noDate: [] }
@@ -27,7 +27,13 @@ export function groupActiveTodos(todos: Todo[]): Record<TodoBucket, Todo[]> {
     groups[bucketFor(todo, todayKey)].push(todo)
   }
   for (const bucket of BUCKET_ORDER) {
-    groups[bucket].sort((a, b) => a.position - b.position || a.due_date?.localeCompare(b.due_date ?? '') || 0)
+    groups[bucket].sort(
+      (a, b) =>
+        b.importance - a.importance ||
+        a.position - b.position ||
+        a.due_date?.localeCompare(b.due_date ?? '') ||
+        0,
+    )
   }
   return groups
 }
