@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/hooks/useAuth'
+import { useProfile } from '@/hooks/useProfile'
 import {
   EXPORT_RANGE_KINDS,
   buildExportStats,
@@ -13,6 +15,7 @@ import {
   type ExportRangeKind,
 } from '@/lib/timesheetLogic'
 import { generateTimesheetPdf, type TimesheetPdfWorkspace } from '@/lib/timesheetPdf'
+import { guessFirstNameFromUser } from '@/lib/profile'
 import { cn, formatMinutes, fromDateKey, toDateKey } from '@/lib/utils'
 import type { TimesheetEntry } from '@/lib/types'
 
@@ -47,6 +50,9 @@ export function ExportTimesheetModal({
   workspaces,
   entries,
 }: ExportTimesheetModalProps) {
+  const { user } = useAuth()
+  const { data: profile } = useProfile()
+  const userName = profile?.first_name?.trim() || guessFirstNameFromUser(user)
   const [kind, setKind] = useState<ExportRangeKind>('month')
   const [anchor, setAnchor] = useState(() => new Date())
   const [customStart, setCustomStart] = useState(() => todayKey())
@@ -91,6 +97,7 @@ export function ExportTimesheetModal({
       await generateTimesheetPdf({
         title,
         titleEmoji,
+        userName,
         accentHex,
         workspaces,
         entries: filteredEntries,

@@ -14,47 +14,60 @@ const links = [
 
 export function GlassNavbar() {
   return (
-    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/80 dark:bg-black/75 backdrop-blur-xl border-b border-black/5 dark:border-white/8">
+    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/75 dark:bg-black/70 backdrop-blur-xl">
       <div className="mx-auto max-w-5xl px-6 py-3 flex items-center gap-3 min-w-0">
-        <div className="glass-surface rounded-full px-3 h-14 flex items-center gap-2 flex-1 min-w-0 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
-          <div className="flex items-center gap-2 font-semibold tracking-tight text-[15px] pl-1.5 min-w-0 shrink">
-            <BrandIcon className="size-6 shrink-0" />
-            <span className="truncate">Mashed Personal Dashboard</span>
+        {/* Backdrop on its own layer — backdrop-filter clips children to the pill radius otherwise. */}
+        <div className="relative flex-1 min-w-0 h-14">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 glass-surface rounded-full shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]"
+          />
+          <div className="relative z-10 h-full pl-4 pr-3 flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 font-semibold tracking-tight text-[15px] min-w-0 shrink">
+              <BrandIcon className="size-6 shrink-0" />
+              <span className="truncate">Mashed Personal Dashboard</span>
+            </div>
+            <nav className="flex items-center gap-0.5 shrink-0 ml-auto">
+              {links.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  title={label}
+                  className={cn(
+                    'relative flex items-center gap-1.5 h-9 px-2.5 lg:px-3 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
+                    'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10',
+                    '[&.active]:text-accent-blue [&.active]:hover:bg-transparent',
+                  )}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <motion.span
+                          layoutId="desktopNavIndicator"
+                          className="absolute inset-0 rounded-full bg-accent-blue/12"
+                          transition={{ type: 'spring', stiffness: 500, damping: 34, mass: 0.9 }}
+                        />
+                      )}
+                      <span className="relative z-10 flex items-center gap-1.5">
+                        <Icon className="size-4 shrink-0" />
+                        {label}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
           </div>
-          <nav className="flex items-center gap-0.5 shrink-0 ml-auto">
-            {links.map(({ to, label, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={label}
-                className={cn(
-                  'relative flex items-center gap-1.5 h-9 px-2.5 lg:px-3 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
-                  'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10',
-                  '[&.active]:text-accent-blue [&.active]:hover:bg-transparent',
-                )}
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <motion.span
-                        layoutId="desktopNavIndicator"
-                        className="absolute inset-0 rounded-full bg-accent-blue/12"
-                        transition={{ type: 'spring', stiffness: 500, damping: 34, mass: 0.9 }}
-                      />
-                    )}
-                    <span className="relative z-10 flex items-center gap-1.5">
-                      <Icon className="size-4 shrink-0" />
-                      {label}
-                    </span>
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
         </div>
-        <div className="glass-surface rounded-full size-14 flex items-center justify-center shrink-0 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
-          <ProfileAvatarButton size="md" />
+        <div className="relative size-14 shrink-0">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 glass-surface rounded-full shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]"
+          />
+          <div className="relative z-10 size-full flex items-center justify-center">
+            <ProfileAvatarButton size="md" />
+          </div>
         </div>
       </div>
     </header>

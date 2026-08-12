@@ -16,6 +16,8 @@ export interface GenerateTimesheetPdfOptions {
   /** Report title — a workspace name, or "All Workspaces" for the cross-workspace export. */
   title: string
   titleEmoji: string
+  /** Display name shown in the header (profile first name). */
+  userName: string
   /** Hex accent color used for the header bar and highlights. */
   accentHex: string
   /** Workspaces referenced by `entries.workspace_id`, used to label the breakdown/detail tables. */
@@ -31,7 +33,6 @@ interface JsPDFWithAutoTable extends JsPDFType {
 
 const PAGE_MARGIN = 40
 const BRAND = `Created with ${LEGAL.appName}`
-const BRAND_SHORT = 'Mashed'
 
 /** Blends a hex color towards white — `amount` 1 = full color, 0 = white. */
 function tint(hex: string, amount: number): string {
@@ -69,10 +70,13 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
   // for the rest of the app, so keep it out of the main bundle until an export is requested.
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
 
-  const { title, accentHex, workspaces, entries, range } = options
+  const { title, userName, accentHex, workspaces, entries, range } = options
   const workspaceMap = new Map(workspaces.map((w) => [w.id, w]))
   const showWorkspaceColumn = workspaces.length > 1
   const stats = buildExportStats(entries)
+  const headerLabel = userName.trim()
+    ? `${userName.trim()}  ·  Timesheet Report`
+    : 'Timesheet Report'
 
   const doc = new jsPDF({ unit: 'pt', format: 'a4' }) as JsPDFWithAutoTable
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -145,7 +149,7 @@ export async function generateTimesheetPdf(options: GenerateTimesheetPdfOptions)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text(
-    `${BRAND_SHORT.toUpperCase()}  ·  TIMESHEET REPORT`,
+    headerLabel,
     PAGE_MARGIN + (brandIconDataUrl ? iconSize + 8 : 0),
     30,
   )
