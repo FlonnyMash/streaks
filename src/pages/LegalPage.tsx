@@ -3,7 +3,7 @@ import { LEGAL } from '@/lib/legalInfo'
 
 export function LegalPage() {
   return (
-    <LegalPageShell title="Legal" otherHref="/privacy" otherLabel="Privacy Policy">
+    <LegalPageShell title="Imprint" otherHref="/privacy" otherLabel="Privacy Policy">
       <LegalSection title="Information according to § 5 DDG">
         <p>
           {LEGAL.name}

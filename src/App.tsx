@@ -35,9 +35,10 @@ export function App() {
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
-      <Route path="/legal" element={<LegalPage />} />
+      <Route path="/imprint" element={<LegalPage />} />
+      <Route path="/legal" element={<Navigate to="/imprint" replace />} />
       <Route path="/datenschutz" element={<Navigate to="/privacy" replace />} />
-      <Route path="/impressum" element={<Navigate to="/legal" replace />} />
+      <Route path="/impressum" element={<Navigate to="/imprint" replace />} />
 
       <Route path="/" element={<Navigate to="/streaks" replace />} />
 

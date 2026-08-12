@@ -4,7 +4,7 @@ import { GlassModal } from '@/components/ui/GlassModal'
 
 const LEGAL_ITEMS = [
   { to: '/privacy', label: 'Privacy Policy', hint: 'How we handle your data' },
-  { to: '/legal', label: 'Legal', hint: 'Imprint and contact details' },
+  { to: '/imprint', label: 'Imprint', hint: 'Provider and contact details' },
 ] as const
 
 export function LegalPickerModal({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -22,6 +22,14 @@ const MINUTES_STEP = 5
 const MIN_GOAL_MINUTES = 5
 const MAX_GOAL_MINUTES = 24 * 60
 
+const durationInputClass = cn(
+  'w-12 h-10 rounded-xl bg-black/[0.04] dark:bg-white/[0.06]',
+  'border border-black/[0.06] dark:border-white/[0.08]',
+  'text-center text-xl font-bold tabular-nums outline-none',
+  'focus:border-accent-blue focus:ring-4 focus:ring-accent-blue/15',
+  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+)
+
 interface CreateStreakModalProps {
   open: boolean
   onClose: () => void
@@ -49,8 +57,24 @@ function defaultState() {
   }
 }
 
+function clampGoalMinutes(value: number): number {
+  if (!Number.isFinite(value)) return MIN_GOAL_MINUTES
+  return Math.min(MAX_GOAL_MINUTES, Math.max(MIN_GOAL_MINUTES, Math.round(value)))
+}
+
+function durationParts(totalMinutes: number) {
+  const clamped = clampGoalMinutes(totalMinutes)
+  return {
+    minutes: clamped,
+    hoursText: String(Math.floor(clamped / 60)),
+    minutesText: String(clamped % 60),
+  }
+}
+
 export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreakModalProps) {
   const [state, setState] = useState(defaultState())
+  const [hoursText, setHoursText] = useState('0')
+  const [minutesText, setMinutesText] = useState('30')
   const [error, setError] = useState<string | null>(null)
   const createStreak = useCreateStreak()
   const updateStreak = useUpdateStreak()
@@ -58,9 +82,30 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
   const pending = createStreak.isPending || updateStreak.isPending
   const hasGoal = state.trackTime && state.hasTimeGoal
 
+  function syncGoalMinutes(totalMinutes: number) {
+    const next = durationParts(totalMinutes)
+    setHoursText(next.hoursText)
+    setMinutesText(next.minutesText)
+    setState((s) => ({ ...s, timeGoalMinutes: next.minutes }))
+    return next.minutes
+  }
+
+  /** Reads the live hour/minute fields so Save works even if the inputs never blurred. */
+  function resolveGoalFromInputs(hoursRaw = hoursText, minutesRaw = minutesText): number {
+    let hours = Math.max(0, Math.min(24, Number.parseInt(hoursRaw, 10) || 0))
+    let mins = Math.max(0, Math.min(59, Number.parseInt(minutesRaw, 10) || 0))
+    if (hours === 24) mins = 0
+    return clampGoalMinutes(hours * 60 + mins)
+  }
+
+  // Prefer the editable fields over state so +/- and presets stay correct before blur.
+  const liveGoalMinutes = resolveGoalFromInputs()
+
   useEffect(() => {
     if (!open) return
     if (editingStreak) {
+      const goalMinutes = editingStreak.time_goal_minutes ?? 30
+      const parts = durationParts(goalMinutes)
       setState({
         name: editingStreak.name,
         emoji: editingStreak.emoji,
@@ -71,10 +116,16 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
         trackTime: editingStreak.track_time,
         hasTimeGoal: editingStreak.time_goal_period != null,
         timeGoalPeriod: editingStreak.time_goal_period ?? 'day',
-        timeGoalMinutes: editingStreak.time_goal_minutes ?? 30,
+        timeGoalMinutes: parts.minutes,
       })
+      setHoursText(parts.hoursText)
+      setMinutesText(parts.minutesText)
     } else {
-      setState(defaultState())
+      const defaults = defaultState()
+      const parts = durationParts(defaults.timeGoalMinutes)
+      setState(defaults)
+      setHoursText(parts.hoursText)
+      setMinutesText(parts.minutesText)
     }
     setError(null)
   }, [open, editingStreak])
@@ -110,7 +161,7 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
         !hasGoal && state.frequency_type === 'weekdays' ? state.weekdayIndices.map(weekdayIndexToJsDay) : null,
       target_count: !hasGoal && state.frequency_type === 'times_per_week' ? state.targetCount : null,
       track_time: state.trackTime,
-      time_goal_minutes: hasGoal ? state.timeGoalMinutes : null,
+      time_goal_minutes: hasGoal ? resolveGoalFromInputs() : null,
       time_goal_period: hasGoal ? state.timeGoalPeriod : null,
     }
 
@@ -283,35 +334,62 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-center gap-4 glass-panel rounded-2xl py-3">
+                  <div className="flex items-center justify-center gap-3 glass-panel rounded-2xl py-3 px-3">
                     <button
                       type="button"
-                      onClick={() =>
-                        setState((s) => ({
-                          ...s,
-                          timeGoalMinutes: Math.max(MIN_GOAL_MINUTES, s.timeGoalMinutes - MINUTES_STEP),
-                        }))
-                      }
-                      className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                      onClick={() => syncGoalMinutes(liveGoalMinutes - MINUTES_STEP)}
+                      className="size-9 shrink-0 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                      aria-label="Decrease time goal"
                     >
                       <Minus className="size-4" />
                     </button>
-                    <span className="text-xl font-bold w-20 text-center tabular-nums">
-                      {formatMinutes(state.timeGoalMinutes)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={24}
+                        value={hoursText}
+                        onChange={(e) => setHoursText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                        onBlur={() => syncGoalMinutes(resolveGoalFromInputs())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            ;(e.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        aria-label="Goal hours"
+                        className={durationInputClass}
+                      />
+                      <span className="text-[13px] font-medium text-black/45 dark:text-white/45">h</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={59}
+                        value={minutesText}
+                        onChange={(e) => setMinutesText(e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                        onBlur={() => syncGoalMinutes(resolveGoalFromInputs())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            ;(e.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        aria-label="Goal minutes"
+                        className={durationInputClass}
+                      />
+                      <span className="text-[13px] font-medium text-black/45 dark:text-white/45">m</span>
+                    </div>
                     <button
                       type="button"
-                      onClick={() =>
-                        setState((s) => ({
-                          ...s,
-                          timeGoalMinutes: Math.min(MAX_GOAL_MINUTES, s.timeGoalMinutes + MINUTES_STEP),
-                        }))
-                      }
-                      className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                      onClick={() => syncGoalMinutes(liveGoalMinutes + MINUTES_STEP)}
+                      className="size-9 shrink-0 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                      aria-label="Increase time goal"
                     >
                       <Plus className="size-4" />
                     </button>
-                    <span className="text-[13px] text-black/50 dark:text-white/50">
+                    <span className="text-[13px] text-black/50 dark:text-white/50 shrink-0">
                       per {state.timeGoalPeriod}
                     </span>
                   </div>
@@ -321,10 +399,10 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
                       <button
                         key={preset}
                         type="button"
-                        onClick={() => setState((s) => ({ ...s, timeGoalMinutes: preset }))}
+                        onClick={() => syncGoalMinutes(preset)}
                         className={cn(
                           'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
-                          state.timeGoalMinutes === preset
+                          liveGoalMinutes === preset
                             ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
                             : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
                         )}

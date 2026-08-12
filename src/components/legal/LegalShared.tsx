@@ -78,8 +78,8 @@ export function LegalFooterLinks({ className }: { className?: string }) {
         Privacy Policy
       </Link>
       <span aria-hidden>·</span>
-      <Link to="/legal" className="hover:text-accent-blue transition-colors">
-        Legal
+      <Link to="/imprint" className="hover:text-accent-blue transition-colors">
+        Imprint
       </Link>
     </nav>
   )
