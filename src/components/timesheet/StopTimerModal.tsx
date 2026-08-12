@@ -40,10 +40,10 @@ function clampMinutes(value: number): number {
 }
 
 export function StopTimerModal() {
-  const { session, confirmOpen, stoppedAt, cancelStop, discard } = useTimesheetTimer()
+  const { stoppingSession, confirmOpen, stoppedAt, cancelStop, discard } = useTimesheetTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
-  const workspace = workspaces?.find((w) => w.id === session?.workspaceId)
-  const createEntry = useCreateTimesheetEntry(session?.workspaceId ?? '')
+  const workspace = workspaces?.find((w) => w.id === stoppingSession?.workspaceId)
+  const createEntry = useCreateTimesheetEntry(stoppingSession?.workspaceId ?? '')
 
   const [entryDate, setEntryDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -64,17 +64,17 @@ export function StopTimerModal() {
   }
 
   useEffect(() => {
-    if (!confirmOpen || !session || !stoppedAt) return
-    const draft = draftFromTimerRange(new Date(session.startedAt), stoppedAt)
+    if (!confirmOpen || !stoppingSession || !stoppedAt) return
+    const draft = draftFromTimerRange(new Date(stoppingSession.startedAt), stoppedAt)
     setEntryDate(draft.entry_date)
     setStartTime(draft.start_time)
     setEndTime(draft.end_time)
     setMinutesState(syncDurationFields(draft.minutes))
-    setTopic(session.topic ?? '')
+    setTopic(stoppingSession.topic ?? '')
     setNote('')
     setRangeError(null)
     setSaveError(null)
-  }, [confirmOpen, session, stoppedAt])
+  }, [confirmOpen, stoppingSession, stoppedAt])
 
   function applyRange(nextStart: string, nextEnd: string) {
     if (!nextStart || !nextEnd) {
@@ -118,7 +118,7 @@ export function StopTimerModal() {
   function buildInput(): TimesheetEntryInput | null {
     const nextMinutes = resolveDurationFromInputs()
     const nextStart = startTime
-    const nextEnd = nextStart ? (addMinutesToClock(nextStart, nextMinutes) ?? '') : endTime
+    const nextEnd = endTime
 
     if ((nextStart && !nextEnd) || (!nextStart && nextEnd)) {
       setRangeError('Set both start and end time, or leave both empty.')
@@ -129,12 +129,11 @@ export function StopTimerModal() {
       return null
     }
 
-    setMinutes(nextMinutes)
     return {
       entry_date: entryDate,
       minutes: nextMinutes,
-      start_time: nextStart ? toTimeInputValue(nextStart) : null,
-      end_time: nextEnd ? toTimeInputValue(nextEnd) : null,
+      start_time: nextStart ? toTimeInputValue(nextStart, true) : null,
+      end_time: nextEnd ? toTimeInputValue(nextEnd, true) : null,
       topic: topic.trim() ? topic.trim() : null,
       note: note.trim() ? note.trim() : null,
     }
@@ -142,7 +141,7 @@ export function StopTimerModal() {
 
   async function handleSave() {
     const input = buildInput()
-    if (!input || !session) return
+    if (!input || !stoppingSession) return
     setSaveError(null)
     try {
       await createEntry.mutateAsync(input)
@@ -164,7 +163,7 @@ export function StopTimerModal() {
   const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
 
   return (
-    <GlassModal open={confirmOpen && Boolean(session)} onClose={cancelStop} title="Clock out">
+    <GlassModal open={confirmOpen && Boolean(stoppingSession)} onClose={cancelStop} title="Clock out">
       <div className="flex flex-col gap-4">
         <p className="text-[14px] text-black/55 dark:text-white/55 -mt-1">
           Check that the time looks right, then save it to your timesheet.
@@ -187,6 +186,7 @@ export function StopTimerModal() {
             <span className="text-[11px] font-medium text-black/45 dark:text-white/45 px-0.5">From</span>
             <input
               type="time"
+              step="1"
               value={startTime}
               onChange={(e) => applyRange(e.target.value, endTime)}
               className={timeInputClass}
@@ -197,6 +197,7 @@ export function StopTimerModal() {
             <span className="text-[11px] font-medium text-black/45 dark:text-white/45 px-0.5">Until</span>
             <input
               type="time"
+              step="1"
               value={endTime}
               onChange={(e) => applyRange(startTime, e.target.value)}
               className={timeInputClass}

@@ -1,4 +1,4 @@
--- Running timesheet clock-in sessions (one open session per user).
+-- Running timesheet clock-in sessions (one open session per workspace per user).
 -- Finished time is still stored as timesheet_entries; this table only holds
 -- the in-progress start so any device can reconstruct elapsed time.
 
@@ -9,8 +9,7 @@ create table if not exists public.timesheet_sessions (
   started_at timestamptz not null default now(),
   topic text check (topic is null or char_length(topic) <= 80),
   created_at timestamptz not null default now(),
-  -- One active timer per user (expand later by dropping this uniqueness).
-  constraint timesheet_sessions_one_per_user unique (user_id)
+  constraint timesheet_sessions_one_per_workspace unique (user_id, workspace_id)
 );
 
 create index if not exists timesheet_sessions_workspace_id_idx
@@ -36,6 +35,18 @@ create policy "timesheet_sessions_delete_own" on public.timesheet_sessions
 
 grant select, insert, update, delete on table public.timesheet_sessions to authenticated;
 grant all on table public.timesheet_sessions to service_role;
+
+-- Shared clock for cross-device elapsed display.
+create or replace function public.server_now()
+returns timestamptz
+language sql
+stable
+as $$
+  select now();
+$$;
+
+grant execute on function public.server_now() to authenticated;
+grant execute on function public.server_now() to service_role;
 
 -- Live updates across devices/tabs when a session starts or stops.
 do $$

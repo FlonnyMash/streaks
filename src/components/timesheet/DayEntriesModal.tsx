@@ -86,10 +86,11 @@ export function DayEntriesModal({
   const [minutesText, setMinutesText] = useState('30')
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const { session, elapsedMs, start, requestStop, isSyncing } = useTimesheetTimer()
+  const { sessionForWorkspace, elapsedMsFor, start, requestStop, isSyncing } = useTimesheetTimer()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
   const hasRange = Boolean(draft.startTime && draft.endTime)
   const isEditing = editingId !== null
+  const activeSession = sessionForWorkspace(workspaceId)
 
   function syncDurationFields(total: number) {
     const clamped = clampMinutes(total)
@@ -138,8 +139,7 @@ export function DayEntriesModal({
 
   const total = entries.reduce((sum, e) => sum + e.minutes, 0)
   const isToday = dateKey === toDateKey(new Date())
-  const timerForThisWorkspace = session?.workspaceId === workspaceId
-  const timerForOtherWorkspace = Boolean(session) && !timerForThisWorkspace
+  const timerForThisWorkspace = activeSession
 
   function applyRange(startTime: string, endTime: string) {
     if (!startTime || !endTime) {
@@ -246,17 +246,15 @@ export function DayEntriesModal({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium">Tracking</p>
-                  <p className="text-[18px] font-bold tabular-nums">{formatElapsedClock(elapsedMs)}</p>
+                  <p className="text-[18px] font-bold tabular-nums">
+                    {formatElapsedClock(elapsedMsFor(timerForThisWorkspace.id))}
+                  </p>
                 </div>
-                <Button type="button" size="sm" onClick={requestStop}>
+                <Button type="button" size="sm" onClick={() => requestStop(timerForThisWorkspace.id)}>
                   <Square className="size-3.5 fill-current" />
                   Stop
                 </Button>
               </div>
-            ) : timerForOtherWorkspace ? (
-              <p className="text-[13px] text-black/50 dark:text-white/50 text-center">
-                A timer is already running in another workspace.
-              </p>
             ) : (
               <Button type="button" className="w-full" onClick={() => start(workspaceId)} loading={isSyncing}>
                 <Play className="size-4 fill-current" />

@@ -15,15 +15,15 @@ export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
-  const { session, elapsedMs, start, requestStop, isSyncing } = useTimesheetTimer()
+  const { sessions, elapsedMsFor, start, requestStop, isSyncing } = useTimesheetTimer()
   const [pickerOpen, setPickerOpen] = useState(false)
   // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
   const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
 
   const totals = todayWeekMonthTotals(entries ?? [])
   const todayKey = toDateKey(new Date())
-  const activeWorkspace = workspaces?.find((w) => w.id === session?.workspaceId)
-  const activeAccent = activeWorkspace ? ACCENT_COLOR_MAP[activeWorkspace.color] : null
+  const busyIds = sessions.map((s) => s.workspaceId)
+  const available = (workspaces ?? []).filter((w) => !busyIds.includes(w.id))
 
   const perWorkspaceToday = (workspaces ?? [])
     .map((workspace) => ({
@@ -36,9 +36,9 @@ export function TimesheetTodayWidget() {
     .sort((a, b) => b.minutes - a.minutes)
 
   function handleClockIn() {
-    if (!workspaces || workspaces.length === 0) return
-    if (workspaces.length === 1) {
-      start(workspaces[0].id)
+    if (available.length === 0) return
+    if (available.length === 1) {
+      start(available[0].id)
       return
     }
     setPickerOpen(true)
@@ -70,43 +70,54 @@ export function TimesheetTodayWidget() {
             </div>
           </div>
 
-          {session ? (
-            <div className="rounded-2xl bg-accent-teal/10 px-3.5 py-3 mb-3 flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <span className="relative flex size-2.5 shrink-0">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
-                  <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
-                </span>
-                {activeWorkspace ? (
-                  <>
-                    <div
-                      className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                      style={{ backgroundColor: activeAccent ? `${activeAccent.hex}22` : undefined }}
-                    >
-                      {activeWorkspace.emoji}
+          {sessions.length > 0 && (
+            <div className="flex flex-col gap-2 mb-3">
+              {sessions.map((session) => {
+                const workspace = workspaces?.find((w) => w.id === session.workspaceId)
+                const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
+                return (
+                  <div key={session.id} className="rounded-2xl bg-accent-teal/10 px-3.5 py-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className="relative flex size-2.5 shrink-0">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+                        <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+                      </span>
+                      {workspace ? (
+                        <>
+                          <div
+                            className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+                            style={{ backgroundColor: accent ? `${accent.hex}22` : undefined }}
+                          >
+                            {workspace.emoji}
+                          </div>
+                          <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{workspace.name}</span>
+                        </>
+                      ) : (
+                        <span className="flex-1 min-w-0 truncate text-[13px] font-medium">Timer running</span>
+                      )}
                     </div>
-                    <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{activeWorkspace.name}</span>
-                  </>
-                ) : (
-                  <span className="flex-1 min-w-0 truncate text-[13px] font-medium">Timer running</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-2xl font-bold tabular-nums tracking-tight">{formatElapsedClock(elapsedMs)}</span>
-                <Button type="button" size="sm" onClick={requestStop}>
-                  <Square className="size-3.5 fill-current" />
-                  Clock out
-                </Button>
-              </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-2xl font-bold tabular-nums tracking-tight">
+                        {formatElapsedClock(elapsedMsFor(session.id))}
+                      </span>
+                      <Button type="button" size="sm" onClick={() => requestStop(session.id)}>
+                        <Square className="size-3.5 fill-current" />
+                        Clock out
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ) : (
+          )}
+
+          {available.length > 0 && (
             <Button
               type="button"
               size="md"
               className="w-full mb-3"
               onClick={handleClockIn}
               loading={isSyncing}
-              disabled={!workspaces || workspaces.length === 0}
             >
               <Play className="size-4 fill-current" />
               Clock in
@@ -134,7 +145,7 @@ export function TimesheetTodayWidget() {
               })}
             </div>
           ) : (
-            !session && (
+            sessions.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
                 <Clock className="size-6 text-accent-teal/70" />
                 <p className="text-[13px] text-black/45 dark:text-white/45">
@@ -159,6 +170,7 @@ export function TimesheetTodayWidget() {
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         workspaces={workspaces ?? []}
+        busyWorkspaceIds={busyIds}
         onSelect={start}
       />
     </div>

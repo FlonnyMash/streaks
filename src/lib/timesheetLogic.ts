@@ -106,14 +106,22 @@ export function todayWeekMonthTotals(entries: Pick<TimesheetEntry, 'entry_date' 
   }
 }
 
-/** Parses `HH:MM` or `HH:MM:SS` into minutes from midnight. */
-export function parseTimeToMinutes(time: string): number | null {
-  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(time.trim())
+/** Parses `HH:MM` or `HH:MM:SS` into seconds from midnight. */
+export function parseTimeToSeconds(time: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(time.trim())
   if (!match) return null
   const hours = Number(match[1])
   const minutes = Number(match[2])
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null
-  return hours * 60 + minutes
+  const seconds = Number(match[3] ?? '0')
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) return null
+  return hours * 3600 + minutes * 60 + seconds
+}
+
+/** Parses `HH:MM` or `HH:MM:SS` into whole minutes from midnight (seconds truncated). */
+export function parseTimeToMinutes(time: string): number | null {
+  const totalSeconds = parseTimeToSeconds(time)
+  if (totalSeconds == null) return null
+  return Math.floor(totalSeconds / 60)
 }
 
 /** Formats a DB/time input value as a compact label like `9:05` or `14:30`. */
@@ -126,12 +134,13 @@ export function formatClockTime(time: string | null | undefined): string | null 
   return `${hours}:${String(minutes).padStart(2, '0')}`
 }
 
-/** Duration in minutes between two clock times. Overnight when end < start. */
+/** Duration in minutes between two clock times. Overnight when end < start. Uses seconds when present. */
 export function durationFromRange(startTime: string, endTime: string): number | null {
-  const start = parseTimeToMinutes(startTime)
-  const end = parseTimeToMinutes(endTime)
+  const start = parseTimeToSeconds(startTime)
+  const end = parseTimeToSeconds(endTime)
   if (start == null || end == null || end === start) return null
-  return end > start ? end - start : end + 24 * 60 - start
+  const diffSec = end > start ? end - start : end + 24 * 3600 - start
+  return Math.max(1, Math.round(diffSec / 60))
 }
 
 /** Adds minutes to a clock time and returns `HH:MM` (wraps within 24h). */
@@ -144,14 +153,17 @@ export function addMinutesToClock(startTime: string, minutes: number): string | 
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
 }
 
-/** Normalizes any accepted time string to `HH:MM` for `<input type="time">` / DB writes. */
-export function toTimeInputValue(time: string | null | undefined): string {
+/** Normalizes any accepted time string to `HH:MM` or `HH:MM:SS` for `<input type="time">` / DB writes. */
+export function toTimeInputValue(time: string | null | undefined, withSeconds = false): string {
   if (!time) return ''
-  const total = parseTimeToMinutes(time)
-  if (total == null) return ''
-  const hours = Math.floor(total / 60)
-  const minutes = total % 60
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+  const totalSeconds = parseTimeToSeconds(time)
+  if (totalSeconds == null) return ''
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const base = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+  if (!withSeconds && seconds === 0 && !/:\d{2}:\d{2}/.test(time.trim())) return base
+  return `${base}:${String(seconds).padStart(2, '0')}`
 }
 
 const MAX_ENTRY_MINUTES = 24 * 60
@@ -168,21 +180,23 @@ export function formatElapsedClock(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export function clockTimeFromDate(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+export function clockTimeFromDate(date: Date, withSeconds = false): string {
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  if (!withSeconds) return `${hours}:${minutes}`
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
 }
 
-/** Builds a completed timesheet draft from a clock-in/out range. */
+/** Builds a completed timesheet draft from a clock-in/out range (keeps seconds). */
 export function draftFromTimerRange(startedAt: Date, endedAt: Date) {
   const elapsedMs = Math.max(0, endedAt.getTime() - startedAt.getTime())
   const minutes = Math.min(MAX_ENTRY_MINUTES, Math.max(1, Math.round(elapsedMs / 60_000) || 1))
-  const start_time = clockTimeFromDate(startedAt)
-  const end_time = addMinutesToClock(start_time, minutes) ?? clockTimeFromDate(endedAt)
   return {
     entry_date: toDateKey(startedAt),
     minutes,
-    start_time,
-    end_time,
+    start_time: clockTimeFromDate(startedAt, true),
+    end_time: clockTimeFromDate(endedAt, true),
   }
 }
 

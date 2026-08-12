@@ -5,13 +5,15 @@ import { supabase } from '@/lib/supabaseClient'
 import type { TimesheetSessionRow, TimesheetTimerSession } from '@/lib/types'
 
 interface TimesheetTimerContextValue {
-  session: TimesheetTimerSession | null
-  elapsedMs: number
-  confirmOpen: boolean
+  sessions: TimesheetTimerSession[]
+  stoppingSession: TimesheetTimerSession | null
   stoppedAt: Date | null
+  confirmOpen: boolean
   isSyncing: boolean
+  elapsedMsFor: (sessionId: string) => number
+  sessionForWorkspace: (workspaceId: string) => TimesheetTimerSession | null
   start: (workspaceId: string, topic?: string) => void
-  requestStop: () => void
+  requestStop: (sessionId: string) => void
   cancelStop: () => void
   discard: () => Promise<void>
 }
@@ -19,7 +21,7 @@ interface TimesheetTimerContextValue {
 const TimesheetTimerContext = createContext<TimesheetTimerContextValue | null>(null)
 
 function storageKey(userId: string) {
-  return `timesheet-timer:${userId}`
+  return `timesheet-timers:${userId}`
 }
 
 function fromRow(row: TimesheetSessionRow): TimesheetTimerSession {
@@ -31,91 +33,141 @@ function fromRow(row: TimesheetSessionRow): TimesheetTimerSession {
   }
 }
 
-function readCache(userId: string): TimesheetTimerSession | null {
+function sortSessions(list: TimesheetTimerSession[]): TimesheetTimerSession[] {
+  return [...list].sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
+}
+
+function readCache(userId: string): TimesheetTimerSession[] {
   try {
     const raw = localStorage.getItem(storageKey(userId))
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<TimesheetTimerSession>
-    if (typeof parsed.id !== 'string' || typeof parsed.workspaceId !== 'string' || typeof parsed.startedAt !== 'string') {
-      return null
+    if (!raw) {
+      // Migrate legacy single-session cache.
+      const legacy = localStorage.getItem(`timesheet-timer:${userId}`)
+      if (!legacy) return []
+      const one = JSON.parse(legacy) as Partial<TimesheetTimerSession>
+      if (typeof one.id === 'string' && typeof one.workspaceId === 'string' && typeof one.startedAt === 'string') {
+        return [
+          {
+            id: one.id,
+            workspaceId: one.workspaceId,
+            startedAt: one.startedAt,
+            topic: typeof one.topic === 'string' ? one.topic : undefined,
+          },
+        ]
+      }
+      return []
     }
-    if (Number.isNaN(new Date(parsed.startedAt).getTime())) return null
-    return {
-      id: parsed.id,
-      workspaceId: parsed.workspaceId,
-      startedAt: parsed.startedAt,
-      topic: typeof parsed.topic === 'string' ? parsed.topic : undefined,
-    }
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return sortSessions(
+      parsed.flatMap((item) => {
+        const row = item as Partial<TimesheetTimerSession>
+        if (typeof row.id !== 'string' || typeof row.workspaceId !== 'string' || typeof row.startedAt !== 'string') {
+          return []
+        }
+        if (Number.isNaN(new Date(row.startedAt).getTime())) return []
+        return [
+          {
+            id: row.id,
+            workspaceId: row.workspaceId,
+            startedAt: row.startedAt,
+            topic: typeof row.topic === 'string' ? row.topic : undefined,
+          },
+        ]
+      }),
+    )
   } catch {
-    return null
+    return []
   }
 }
 
-function writeCache(userId: string, session: TimesheetTimerSession | null) {
+function writeCache(userId: string, sessions: TimesheetTimerSession[]) {
   try {
     const key = storageKey(userId)
-    if (!session) localStorage.removeItem(key)
-    else localStorage.setItem(key, JSON.stringify(session))
+    if (sessions.length === 0) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(sessions))
+    localStorage.removeItem(`timesheet-timer:${userId}`)
   } catch {
     // ignore unavailable storage
   }
 }
 
-async function fetchOpenSession(): Promise<TimesheetTimerSession | null> {
-  const { data, error } = await supabase.from('timesheet_sessions').select('*').maybeSingle()
-  if (error) throw error
-  if (!data) return null
-  return fromRow(data as TimesheetSessionRow)
+async function fetchOpenSessions(): Promise<{ sessions: TimesheetTimerSession[]; serverOffsetMs: number }> {
+  const localBefore = Date.now()
+  const [sessionsResult, nowResult] = await Promise.all([
+    supabase.from('timesheet_sessions').select('*').order('started_at', { ascending: true }),
+    supabase.rpc('server_now'),
+  ])
+  const localAfter = Date.now()
+  if (sessionsResult.error) throw sessionsResult.error
+
+  const rows = (sessionsResult.data ?? []) as TimesheetSessionRow[]
+  let serverOffsetMs = 0
+  if (!nowResult.error && nowResult.data) {
+    const serverNowMs = new Date(nowResult.data as string).getTime()
+    if (Number.isFinite(serverNowMs)) {
+      // Approximate RTT midpoint so offset isn't biased by one-way latency.
+      const localMid = localBefore + (localAfter - localBefore) / 2
+      serverOffsetMs = serverNowMs - localMid
+    }
+  }
+
+  return {
+    sessions: sortSessions(rows.map((row) => fromRow(row))),
+    serverOffsetMs,
+  }
 }
 
 export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const userId = user?.id ?? null
-  const [session, setSession] = useState<TimesheetTimerSession | null>(null)
+  const [sessions, setSessions] = useState<TimesheetTimerSession[]>([])
   const [now, setNow] = useState(() => Date.now())
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [serverOffsetMs, setServerOffsetMs] = useState(0)
+  const [stoppingSessionId, setStoppingSessionId] = useState<string | null>(null)
   const [stoppedAt, setStoppedAt] = useState<Date | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const startEpochRef = useRef(0)
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
 
-  const applySession = useCallback(
-    (next: TimesheetTimerSession | null) => {
-      setSession(next)
-      if (userId) writeCache(userId, next)
-      if (!next) {
-        setConfirmOpen(false)
-        setStoppedAt(null)
-      }
+  const applySessions = useCallback(
+    (next: TimesheetTimerSession[]) => {
+      const sorted = sortSessions(next)
+      setSessions(sorted)
+      if (userId) writeCache(userId, sorted)
     },
     [userId],
   )
 
   const refreshFromServer = useCallback(async () => {
     if (!userId) {
-      applySession(null)
+      applySessions([])
+      setServerOffsetMs(0)
       return
     }
     try {
-      const remote = await fetchOpenSession()
-      applySession(remote)
+      const remote = await fetchOpenSessions()
+      applySessions(remote.sessions)
+      setServerOffsetMs(remote.serverOffsetMs)
+      setStoppingSessionId((id) => (id && !remote.sessions.some((s) => s.id === id) ? null : id))
     } catch {
       // Keep cache / current UI if the network blips.
     }
-  }, [applySession, userId])
+  }, [applySessions, userId])
 
-  // Hydrate from cache immediately, then reconcile with Supabase.
   useEffect(() => {
-    setConfirmOpen(false)
+    setStoppingSessionId(null)
     setStoppedAt(null)
     if (!userId) {
-      setSession(null)
+      setSessions([])
+      setServerOffsetMs(0)
       return
     }
-    setSession(readCache(userId))
+    setSessions(readCache(userId))
     void refreshFromServer()
   }, [userId, refreshFromServer])
 
-  // Realtime + focus/visibility so other devices stay in sync.
   useEffect(() => {
     if (!userId) return
 
@@ -129,14 +181,8 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
           table: 'timesheet_sessions',
           filter: `user_id=eq.${userId}`,
         },
-        (payload) => {
-          if (payload.eventType === 'DELETE') {
-            applySession(null)
-            return
-          }
-          const row = (payload.new ?? null) as TimesheetSessionRow | null
-          if (row?.id) applySession(fromRow(row))
-          else void refreshFromServer()
+        () => {
+          void refreshFromServer()
         },
       )
       .subscribe()
@@ -156,30 +202,52 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onFocus)
     }
-  }, [applySession, refreshFromServer, userId])
+  }, [refreshFromServer, userId])
 
   useEffect(() => {
-    if (!session || confirmOpen) return
+    if (sessions.length === 0) return
     setNow(Date.now())
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    const id = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(id)
-  }, [session, confirmOpen])
+  }, [sessions.length])
+
+  const correctedNow = now + serverOffsetMs
+
+  const elapsedMsFor = useCallback(
+    (sessionId: string) => {
+      const session = sessionsRef.current.find((s) => s.id === sessionId)
+      if (!session) return 0
+      const startMs = new Date(session.startedAt).getTime()
+      if (stoppingSessionId === sessionId && stoppedAt) {
+        return Math.max(0, stoppedAt.getTime() - startMs)
+      }
+      return Math.max(0, correctedNow - startMs)
+    },
+    [correctedNow, stoppedAt, stoppingSessionId],
+  )
+
+  const sessionForWorkspace = useCallback(
+    (workspaceId: string) => sessions.find((s) => s.workspaceId === workspaceId) ?? null,
+    [sessions],
+  )
 
   const start = useCallback(
     (workspaceId: string, topic?: string) => {
-      if (!userId || session || isSyncing) return
+      if (!userId || isSyncing) return
+      if (sessionsRef.current.some((s) => s.workspaceId === workspaceId)) return
       hapticTick()
 
       const epoch = ++startEpochRef.current
-      const startedAt = new Date().toISOString()
+      // Prefer server-aligned clock so devices agree on the start instant.
+      const startedAt = new Date(Date.now() + serverOffsetMs).toISOString()
       const trimmedTopic = topic?.trim() ? topic.trim() : undefined
       const optimistic: TimesheetTimerSession = {
-        id: `optimistic-${Date.now()}`,
+        id: `optimistic-${workspaceId}-${Date.now()}`,
         workspaceId,
         startedAt,
         topic: trimmedTopic,
       }
-      applySession(optimistic)
+      applySessions([...sessionsRef.current, optimistic])
       setIsSyncing(true)
 
       void (async () => {
@@ -196,81 +264,97 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
             .single()
 
           if (epoch !== startEpochRef.current) {
-            // User discarded (or restarted) while insert was in flight — drop the row we just created.
-            if (data?.id) {
-              await supabase.from('timesheet_sessions').delete().eq('id', data.id)
-            }
+            if (data?.id) await supabase.from('timesheet_sessions').delete().eq('id', data.id)
             return
           }
 
           if (error) {
-            // Another device may already own the single slot — adopt that session.
-            const remote = await fetchOpenSession().catch(() => null)
-            if (epoch === startEpochRef.current) applySession(remote)
+            await refreshFromServer()
             return
           }
 
-          applySession(fromRow(data as TimesheetSessionRow))
+          applySessions([
+            ...sessionsRef.current.filter((s) => s.id !== optimistic.id && s.workspaceId !== workspaceId),
+            fromRow(data as TimesheetSessionRow),
+          ])
         } catch {
-          if (epoch === startEpochRef.current) applySession(null)
+          if (epoch === startEpochRef.current) {
+            applySessions(sessionsRef.current.filter((s) => s.id !== optimistic.id))
+          }
         } finally {
           if (epoch === startEpochRef.current) setIsSyncing(false)
         }
       })()
     },
-    [applySession, isSyncing, session, userId],
+    [applySessions, isSyncing, refreshFromServer, serverOffsetMs, userId],
   )
 
-  const requestStop = useCallback(() => {
-    if (!session) return
+  const requestStop = useCallback((sessionId: string) => {
+    if (!sessionsRef.current.some((s) => s.id === sessionId)) return
     hapticTick()
-    setStoppedAt(new Date())
-    setConfirmOpen(true)
-  }, [session])
+    setStoppingSessionId(sessionId)
+    // Freeze using the same corrected clock the live display uses.
+    setStoppedAt(new Date(Date.now() + serverOffsetMs))
+  }, [serverOffsetMs])
 
   const cancelStop = useCallback(() => {
-    setConfirmOpen(false)
+    setStoppingSessionId(null)
     setStoppedAt(null)
   }, [])
 
   const discard = useCallback(async () => {
-    const current = session
+    const current = sessionsRef.current.find((s) => s.id === stoppingSessionId) ?? null
     startEpochRef.current += 1
-    applySession(null)
-    if (!current || current.id.startsWith('optimistic-')) return
+    setStoppingSessionId(null)
+    setStoppedAt(null)
+    if (!current) return
+
+    applySessions(sessionsRef.current.filter((s) => s.id !== current.id))
+    if (current.id.startsWith('optimistic-')) return
 
     setIsSyncing(true)
     try {
       const { error } = await supabase.from('timesheet_sessions').delete().eq('id', current.id)
       if (error) throw error
     } catch {
-      // If delete failed, re-sync so the timer can resurface instead of lying about being gone.
       await refreshFromServer()
     } finally {
       setIsSyncing(false)
     }
-  }, [applySession, refreshFromServer, session])
+  }, [applySessions, refreshFromServer, stoppingSessionId])
 
-  const elapsedMs = useMemo(() => {
-    if (!session) return 0
-    const startMs = new Date(session.startedAt).getTime()
-    const endMs = confirmOpen && stoppedAt ? stoppedAt.getTime() : now
-    return Math.max(0, endMs - startMs)
-  }, [confirmOpen, now, session, stoppedAt])
+  const stoppingSession = useMemo(
+    () => sessions.find((s) => s.id === stoppingSessionId) ?? null,
+    [sessions, stoppingSessionId],
+  )
 
   const value = useMemo<TimesheetTimerContextValue>(
     () => ({
-      session,
-      elapsedMs,
-      confirmOpen,
+      sessions,
+      stoppingSession,
       stoppedAt,
+      confirmOpen: Boolean(stoppingSessionId),
       isSyncing,
+      elapsedMsFor,
+      sessionForWorkspace,
       start,
       requestStop,
       cancelStop,
       discard,
     }),
-    [cancelStop, confirmOpen, discard, elapsedMs, isSyncing, requestStop, session, start, stoppedAt],
+    [
+      cancelStop,
+      discard,
+      elapsedMsFor,
+      isSyncing,
+      requestStop,
+      sessionForWorkspace,
+      sessions,
+      start,
+      stoppedAt,
+      stoppingSession,
+      stoppingSessionId,
+    ],
   )
 
   return <TimesheetTimerContext.Provider value={value}>{children}</TimesheetTimerContext.Provider>

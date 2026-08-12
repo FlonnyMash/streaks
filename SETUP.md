@@ -66,8 +66,10 @@ adds an `avatar_url` column to `profiles` and creates a public `avatars` Storage
 policies that only let each user write to their own `{user_id}/...` path.
 
 For cross-device timesheet clock-in/out, also run
-[`supabase/migrations/0013_timesheet_sessions.sql`](supabase/migrations/0013_timesheet_sessions.sql).
-This creates `timesheet_sessions` (one open timer per user) with RLS and Realtime.
+[`supabase/migrations/0013_timesheet_sessions.sql`](supabase/migrations/0013_timesheet_sessions.sql)
+and [`supabase/migrations/0014_timesheet_sessions_multi.sql`](supabase/migrations/0014_timesheet_sessions_multi.sql).
+These create `timesheet_sessions` (one open timer per workspace) with RLS, Realtime, and a
+`server_now()` helper so elapsed time matches across devices.
 
 ## 3. Configure Auth URLs
 
