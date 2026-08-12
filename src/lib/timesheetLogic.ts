@@ -1,4 +1,20 @@
-import { eachDayOfInterval, endOfMonth, endOfWeek, isToday, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  addYears,
+  eachDayOfInterval,
+  endOfDay,
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  format,
+  isToday,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+} from 'date-fns'
 import type { TimesheetEntry } from './types'
 import { toDateKey } from './utils'
 
@@ -136,4 +152,111 @@ export function toTimeInputValue(time: string | null | undefined): string {
   const hours = Math.floor(total / 60)
   const minutes = total % 60
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+/* ---------------------------------------------------------------------- */
+/* PDF export: range selection + stats                                    */
+/* ---------------------------------------------------------------------- */
+
+export const EXPORT_RANGE_KINDS = ['day', 'week', 'month', 'year', 'custom'] as const
+export type ExportRangeKind = (typeof EXPORT_RANGE_KINDS)[number]
+
+export interface ExportRange {
+  kind: ExportRangeKind
+  start: Date
+  end: Date
+}
+
+/** Computes the [start, end] interval for a navigable preset anchored on a given date. */
+export function computePresetRange(kind: Exclude<ExportRangeKind, 'custom'>, anchor: Date): { start: Date; end: Date } {
+  switch (kind) {
+    case 'day':
+      return { start: startOfDay(anchor), end: endOfDay(anchor) }
+    case 'week':
+      return { start: startOfWeek(anchor, { weekStartsOn: 1 }), end: endOfWeek(anchor, { weekStartsOn: 1 }) }
+    case 'month':
+      return { start: startOfMonth(anchor), end: endOfMonth(anchor) }
+    case 'year':
+      return { start: startOfYear(anchor), end: endOfYear(anchor) }
+  }
+}
+
+/** Moves the anchor date one unit forward/backward for a given preset kind. */
+export function shiftAnchor(kind: Exclude<ExportRangeKind, 'custom'>, anchor: Date, direction: 1 | -1): Date {
+  switch (kind) {
+    case 'day':
+      return addDays(anchor, direction)
+    case 'week':
+      return addWeeks(anchor, direction)
+    case 'month':
+      return addMonths(anchor, direction)
+    case 'year':
+      return addYears(anchor, direction)
+  }
+}
+
+/** Human-friendly label for a resolved export range, e.g. "March 2026" or "Mar 1 – Mar 7, 2026". */
+export function formatExportRangeLabel(range: ExportRange): string {
+  const { kind, start, end } = range
+  switch (kind) {
+    case 'day':
+      return format(start, 'EEEE, MMM d, yyyy')
+    case 'month':
+      return format(start, 'MMMM yyyy')
+    case 'year':
+      return format(start, 'yyyy')
+    case 'week':
+    case 'custom': {
+      const sameYear = start.getFullYear() === end.getFullYear()
+      const startLabel = format(start, sameYear ? 'MMM d' : 'MMM d, yyyy')
+      return `${startLabel} – ${format(end, 'MMM d, yyyy')}`
+    }
+  }
+}
+
+/** Filters entries whose entry_date falls within [start, end], inclusive (by date key). */
+export function filterEntriesByRange<T extends Pick<TimesheetEntry, 'entry_date'>>(entries: T[], start: Date, end: Date): T[] {
+  const startKey = toDateKey(start)
+  const endKey = toDateKey(end)
+  return entries.filter((e) => e.entry_date >= startKey && e.entry_date <= endKey)
+}
+
+export interface TimesheetExportStats {
+  totalMinutes: number
+  daysWorked: number
+  entryCount: number
+  avgMinutesPerWorkedDay: number
+  byWorkspace: Array<{ workspaceId: string; minutes: number }>
+  byTopic: Array<{ topic: string; minutes: number }>
+  byDay: Array<{ dateKey: string; minutes: number }>
+}
+
+/** Builds aggregate stats for a set of entries already scoped to the export range. */
+export function buildExportStats(entries: TimesheetEntry[]): TimesheetExportStats {
+  const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0)
+  const dayMinutes = minutesByDate(entries)
+
+  const byWorkspaceMap = new Map<string, number>()
+  const byTopicMap = new Map<string, number>()
+  for (const entry of entries) {
+    byWorkspaceMap.set(entry.workspace_id, (byWorkspaceMap.get(entry.workspace_id) ?? 0) + entry.minutes)
+    const topic = entry.topic?.trim() || 'No topic'
+    byTopicMap.set(topic, (byTopicMap.get(topic) ?? 0) + entry.minutes)
+  }
+
+  return {
+    totalMinutes,
+    daysWorked: dayMinutes.size,
+    entryCount: entries.length,
+    avgMinutesPerWorkedDay: dayMinutes.size > 0 ? Math.round(totalMinutes / dayMinutes.size) : 0,
+    byWorkspace: [...byWorkspaceMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([workspaceId, minutes]) => ({ workspaceId, minutes })),
+    byTopic: [...byTopicMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([topic, minutes]) => ({ topic, minutes })),
+    byDay: [...dayMinutes.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([dateKey, minutes]) => ({ dateKey, minutes })),
+  }
 }

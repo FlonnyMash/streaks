@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { CalendarClock, Plus, Sparkles } from 'lucide-react'
+import { CalendarClock, Download, Plus, Sparkles } from 'lucide-react'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useAllTimesheetEntries } from '@/hooks/useTimesheetEntries'
 import { WorkspaceCard } from '@/components/timesheet/WorkspaceCard'
 import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DaySummaryModal } from '@/components/timesheet/DaySummaryModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
+import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
 import { Spinner } from '@/components/ui/Spinner'
 import {
   FeatureGetStartedButton,
@@ -21,6 +22,7 @@ export function TimesheetPage() {
   const { data: entries } = useAllTimesheetEntries(workspaceIds)
   const [createOpen, setCreateOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -50,11 +52,30 @@ export function TimesheetPage() {
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Timesheet</h1>
             {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+            {showHelpIcon && (
+              <button
+                onClick={() => setExportOpen(true)}
+                aria-label="Export timesheet"
+                title="Export timesheet"
+                className="sm:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
+              >
+                <Download className="size-[18px]" />
+              </button>
+            )}
           </div>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Log time across projects and workspaces.</p>
         </div>
         <div className="hidden sm:flex items-center gap-2">
           {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
+          {showHelpIcon && (
+            <button
+              onClick={() => setExportOpen(true)}
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-black/5 dark:bg-white/10 font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
+            >
+              <Download className="size-4" />
+              Export
+            </button>
+          )}
           <button
             onClick={() => setCreateOpen(true)}
             className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:scale-95 transition-all"
@@ -120,6 +141,16 @@ export function TimesheetPage() {
 
       <CreateWorkspaceModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <FeatureHelpModal feature="timesheet" open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      <ExportTimesheetModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="All Workspaces"
+        titleEmoji="🗂️"
+        accentHex={SUMMARY_ACCENT}
+        workspaces={(workspaces ?? []).map((w) => ({ id: w.id, name: w.name, emoji: w.emoji }))}
+        entries={entries ?? []}
+      />
 
       <DaySummaryModal
         open={selectedDayKey !== null}

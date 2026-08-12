@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
@@ -14,6 +14,7 @@ import {
 import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DayEntriesModal } from '@/components/timesheet/DayEntriesModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
+import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
 import { Spinner } from '@/components/ui/Spinner'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { todayWeekMonthTotals } from '@/lib/timesheetLogic'
@@ -36,6 +37,7 @@ export function TimesheetWorkspacePage() {
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
 
   if (workspacesLoading || entriesLoading || !workspace) {
     return <Spinner />
@@ -67,39 +69,50 @@ export function TimesheetWorkspacePage() {
           <h1 className="font-bold text-lg sm:text-xl tracking-tight truncate">{workspace.name}</h1>
         </div>
 
-        <div className="relative">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setExportOpen(true)}
             className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
-            aria-label="More options"
+            aria-label="Export timesheet"
+            title="Export timesheet"
           >
-            <MoreHorizontal className="size-4" />
+            <Download className="size-4" />
           </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-12 z-20 w-48 glass-panel rounded-2xl p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false)
-                    setEditOpen(true)
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                >
-                  <Pencil className="size-4" /> Edit workspace
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false)
-                    setConfirmDelete(true)
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium text-accent-red hover:bg-accent-red/10 transition-colors"
-                >
-                  <Trash2 className="size-4" /> Delete workspace
-                </button>
-              </div>
-            </>
-          )}
+
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-12 z-20 w-48 glass-panel rounded-2xl p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setEditOpen(true)
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <Pencil className="size-4" /> Edit workspace
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setConfirmDelete(true)
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium text-accent-red hover:bg-accent-red/10 transition-colors"
+                  >
+                    <Trash2 className="size-4" /> Delete workspace
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -152,6 +165,16 @@ export function TimesheetWorkspacePage() {
       />
 
       <CreateWorkspaceModal open={editOpen} onClose={() => setEditOpen(false)} editingWorkspace={workspace} />
+
+      <ExportTimesheetModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title={workspace.name}
+        titleEmoji={workspace.emoji}
+        accentHex={accent.hex}
+        workspaces={[{ id: workspace.id, name: workspace.name, emoji: workspace.emoji }]}
+        entries={entries ?? []}
+      />
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
