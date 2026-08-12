@@ -7,6 +7,11 @@ import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DaySummaryModal } from '@/components/timesheet/DaySummaryModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { Spinner } from '@/components/ui/Spinner'
+import {
+  FeatureGetStartedButton,
+  FeatureHelpIconButton,
+  FeatureHelpModal,
+} from '@/components/ui/FeatureHelp'
 
 const SUMMARY_ACCENT = '#0a84ff'
 
@@ -15,11 +20,14 @@ export function TimesheetPage() {
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries } = useAllTimesheetEntries(workspaceIds)
   const [createOpen, setCreateOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
 
+  const isEmpty = !workspacesLoading && workspaces?.length === 0
+  const showHelpIcon = Boolean(workspaces && workspaces.length > 0)
   const entriesByWorkspace = (workspaceId: string) => entries?.filter((e) => e.workspace_id === workspaceId) ?? []
 
   const dayBreakdown = useMemo(() => {
@@ -39,21 +47,27 @@ export function TimesheetPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Timesheet</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Timesheet</h1>
+            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+          </div>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Log time across projects and workspaces.</p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="hidden sm:inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:scale-95 transition-all"
-        >
-          <Plus className="size-4" />
-          New Workspace
-        </button>
+        <div className="hidden sm:flex items-center gap-2">
+          {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:scale-95 transition-all"
+          >
+            <Plus className="size-4" />
+            New Workspace
+          </button>
+        </div>
       </div>
 
       {workspacesLoading && <Spinner />}
 
-      {!workspacesLoading && workspaces?.length === 0 && (
+      {isEmpty && (
         <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
           <Sparkles className="size-8 text-accent-orange" />
           <h2 className="font-semibold text-lg">No workspaces yet</h2>
@@ -67,6 +81,7 @@ export function TimesheetPage() {
             <Plus className="size-4" />
             Create a workspace
           </button>
+          <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
         </div>
       )}
 
@@ -104,6 +119,7 @@ export function TimesheetPage() {
       </button>
 
       <CreateWorkspaceModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <FeatureHelpModal feature="timesheet" open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <DaySummaryModal
         open={selectedDayKey !== null}

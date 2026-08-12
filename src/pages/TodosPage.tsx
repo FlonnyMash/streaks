@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TodoItem } from '@/components/todos/TodoItem'
 import { CreateTodoModal } from '@/components/todos/CreateTodoModal'
+import {
+  FeatureGetStartedButton,
+  FeatureHelpIconButton,
+  FeatureHelpModal,
+} from '@/components/ui/FeatureHelp'
 import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useToggleTodo, useTodos } from '@/hooks/useTodos'
 import { BUCKET_LABELS, BUCKET_ORDER, groupActiveTodos, sortCompletedTodos } from '@/lib/todoLogic'
 import { cn } from '@/lib/utils'
@@ -22,12 +27,14 @@ export function TodosPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalInitialTitle, setModalInitialTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const active = useMemo(() => (todos ?? []).filter((t) => !t.done), [todos])
   const completed = useMemo(() => sortCompletedTodos((todos ?? []).filter((t) => t.done)), [todos])
   const grouped = useMemo(() => groupActiveTodos(active), [active])
   const visibleBuckets = BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
   const isEmpty = !isLoading && active.length === 0 && completed.length === 0
+  const showHelpIcon = !isEmpty && !isLoading
 
   function openCreate(prefillTitle = '') {
     setEditingTodo(null)
@@ -69,9 +76,17 @@ export function TodosPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Todos</h1>
-        <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Quick tasks, checked off.</p>
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Todos</h1>
+            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+          </div>
+          <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Quick tasks, checked off.</p>
+        </div>
+        {showHelpIcon && (
+          <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="hidden sm:inline-flex mt-1" />
+        )}
       </div>
 
       <form onSubmit={handleQuickAdd} className="flex gap-2 mb-6">
@@ -121,6 +136,7 @@ export function TodosPage() {
             <Plus className="size-4" />
             Create a task
           </button>
+          <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
         </div>
       )}
 
@@ -187,6 +203,7 @@ export function TodosPage() {
         editingTodo={editingTodo ?? undefined}
         initialTitle={modalInitialTitle}
       />
+      <FeatureHelpModal feature="todos" open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }
