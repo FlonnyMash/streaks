@@ -1,7 +1,7 @@
 {
-  "name": "Streaks",
-  "short_name": "Streaks",
-  "description": "Build habits. Keep the streak alive.",
+  "name": "Mashed Personal Dashboard",
+  "short_name": "Mashed",
+  "description": "Streaks, todos, and timesheet in one personal dashboard.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b0f",

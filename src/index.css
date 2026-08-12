@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode so Settings can force light/dark independent of OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -29,6 +32,14 @@
 
 :root {
   color-scheme: light dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 html,

@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Fingerprint, LogOut, Mail, Trash2, TriangleAlert } from 'lucide-react'
+import { Fingerprint, LogOut, Mail, Monitor, Moon, Sun, Trash2, TriangleAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useTheme, type ThemeMode } from '@/hooks/useTheme'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+
+const THEME_OPTIONS: { value: ThemeMode; label: string; hint: string; icon: typeof Sun }[] = [
+  { value: 'light', label: 'Light', hint: 'Always light', icon: Sun },
+  { value: 'dark', label: 'Dark', hint: 'Always dark', icon: Moon },
+  { value: 'system', label: 'System', hint: 'Match device', icon: Monitor },
+]
 
 type PasskeyItem = {
   id: string
@@ -27,6 +35,7 @@ function formatPasskeyDate(value: string) {
 
 export function SettingsPage() {
   const { user, signOut, registerPasskey, ensureSession } = useAuth()
+  const { theme, setTheme } = useTheme()
   const navigate = useNavigate()
   const [passkeys, setPasskeys] = useState<PasskeyItem[]>([])
   const [passkeysLoading, setPasskeysLoading] = useState(true)
@@ -131,6 +140,46 @@ export function SettingsPage() {
             <p className="text-[13px] text-black/45 dark:text-white/45">Signed in as</p>
             <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
           </div>
+        </div>
+      </div>
+
+      <div className="glass-panel rounded-[24px] p-5 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="size-12 rounded-2xl bg-accent-orange/15 flex items-center justify-center">
+            <Sun className="size-5 text-accent-orange" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium">Appearance</p>
+            <p className="text-[13px] text-black/45 dark:text-white/45">
+              Choose light, dark, or follow your device setting.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
+          {THEME_OPTIONS.map((opt) => {
+            const Icon = opt.icon
+            const selected = theme === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setTheme(opt.value)}
+                className={cn(
+                  'rounded-2xl px-2 py-2.5 text-center transition-all',
+                  selected
+                    ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
+                    : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                )}
+              >
+                <Icon className="size-4 mx-auto mb-1 opacity-80" />
+                <div className="text-[13px] font-semibold">{opt.label}</div>
+                <div className="text-[11px] text-black/45 dark:text-white/45 mt-0.5">{opt.hint}</div>
+              </button>
+            )
+          })}
         </div>
       </div>
 

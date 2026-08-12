@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Frown, Meh, Smile } from 'lucide-react'
+import { Check, Frown, Meh, Minus, Plus, Smile } from 'lucide-react'
 import { format } from 'date-fns'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { ParticleBurst } from '@/components/streaks/ParticleBurst'
 import { hapticTick, hapticUndo } from '@/lib/haptics'
-import { cn, fromDateKey } from '@/lib/utils'
+import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
+import { hasDayTimeGoal, hasPeriodTimeGoal } from '@/lib/streakLogic'
 import type { Mood, Streak, StreakEntry } from '@/lib/types'
 
 const MOOD_OPTIONS: Array<{ value: Mood; icon: typeof Frown; label: string }> = [
@@ -16,6 +17,8 @@ const MOOD_OPTIONS: Array<{ value: Mood; icon: typeof Frown; label: string }> = 
 ]
 
 const NOTE_MAX = 500
+const MINUTES_STEP = 5
+const MINUTE_PRESETS = [15, 30, 60]
 
 interface DayDetailModalProps {
   open: boolean
@@ -29,6 +32,7 @@ interface DayDetailModalProps {
   isToggling: boolean
   onToggle: (dateKey: string, completed: boolean) => void
   onSaveDetails: (dateKey: string, note: string | null, mood: Mood | null) => void
+  onLogMinutes: (dateKey: string, minutes: number, completed: boolean) => void
 }
 
 export function DayDetailModal({
@@ -43,20 +47,36 @@ export function DayDetailModal({
   isToggling,
   onToggle,
   onSaveDetails,
+  onLogMinutes,
 }: DayDetailModalProps) {
-  const completed = entry?.completed ?? false
+  const dayGoal = hasDayTimeGoal(streak)
+  const periodGoal = hasPeriodTimeGoal(streak)
+  const goalDriven = dayGoal || periodGoal
+  const goalMinutes = streak.time_goal_minutes ?? 0
+
+  const [minutes, setMinutes] = useState(entry?.minutes ?? 0)
   const [note, setNote] = useState('')
   const [mood, setMood] = useState<Mood | null>(null)
   const [showBurst, setShowBurst] = useState(false)
   const initial = useRef<{ note: string; mood: Mood | null }>({ note: '', mood: null })
+  const prevDayGoalMet = useRef(false)
+
+  // Day goals auto-complete from minutes. Period goals never mark individual days complete —
+  // only the week/month total matters for streak math. Optional track_time keeps the checkbox.
+  const completed = dayGoal ? minutes >= goalMinutes : (entry?.completed ?? false)
+  // Period-goal notes unlock once any time is logged for the day (not via `completed`).
+  const showDetails = dayGoal ? completed : periodGoal ? minutes > 0 : completed
 
   useEffect(() => {
     if (!open) return
     const nextNote = entry?.note ?? ''
     const nextMood = entry?.mood ?? null
+    const nextMinutes = entry?.minutes ?? 0
     setNote(nextNote)
     setMood(nextMood)
+    setMinutes(nextMinutes)
     initial.current = { note: nextNote, mood: nextMood }
+    prevDayGoalMet.current = dayGoal ? nextMinutes >= goalMinutes : (entry?.completed ?? false)
     // Intentionally re-syncs only when the sheet opens for a (possibly new) day, not on every
     // entry mutation — otherwise completing/uncompleting mid-edit would clobber the draft.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -64,7 +84,7 @@ export function DayDetailModal({
 
   if (!dateKey) return null
 
-  const disabled = isFuture || (!isScheduled && !completed)
+  const disabled = isFuture || (!isScheduled && !completed && !periodGoal)
   const isDirty = note !== initial.current.note || mood !== initial.current.mood
 
   function persistIfDirty() {
@@ -78,7 +98,7 @@ export function DayDetailModal({
   }
 
   function handleToggleClick() {
-    if (!dateKey || disabled || isToggling) return
+    if (!dateKey || disabled || isToggling || goalDriven) return
     if (!completed) {
       hapticTick()
       setShowBurst(true)
@@ -89,69 +109,199 @@ export function DayDetailModal({
     }
   }
 
+  function handleMinutesChange(next: number) {
+    if (!dateKey || disabled) return
+    const clamped = Math.max(0, next)
+    setMinutes(clamped)
+    // Period goals: keep `completed` false so per-day flags don't pollute streak/calendar UI.
+    const nextCompleted = dayGoal ? clamped >= goalMinutes : periodGoal ? false : (entry?.completed ?? false)
+    if (dayGoal) {
+      if (nextCompleted && !prevDayGoalMet.current) {
+        hapticTick()
+        setShowBurst(true)
+      } else if (!nextCompleted && prevDayGoalMet.current) {
+        hapticUndo()
+      }
+      prevDayGoalMet.current = nextCompleted
+    }
+    onLogMinutes(dateKey, clamped, nextCompleted)
+  }
+
   return (
     <GlassModal open={open} onClose={handleClose} title={format(fromDateKey(dateKey), 'EEEE, MMM d')}>
       <div className="flex flex-col items-center gap-5">
         <div className="relative">
-          <motion.button
-            onClick={handleToggleClick}
-            disabled={disabled || isToggling}
-            whileTap={disabled ? undefined : { scale: 0.9 }}
-            animate={completed ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className={cn(
-              'relative size-24 rounded-full flex items-center justify-center transition-colors',
-              disabled && 'opacity-40 cursor-default',
-            )}
-            style={{
-              backgroundColor: completed ? accentHex : `${accentHex}14`,
-              boxShadow: completed ? `0 12px 28px -8px ${accentHex}88` : undefined,
-            }}
-          >
-            <AnimatePresence mode="wait">
-              {completed ? (
-                <motion.div
-                  key="check"
-                  initial={{ scale: 0, rotate: -30 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 18 }}
-                >
-                  <Check className="size-10 text-white" strokeWidth={3} />
-                </motion.div>
-              ) : (
-                <motion.span
-                  key="date"
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.6, opacity: 0 }}
-                  className="text-2xl font-bold"
-                  style={{ color: accentHex }}
-                >
-                  {fromDateKey(dateKey).getDate()}
-                </motion.span>
+          {goalDriven ? (
+            <div
+              className="relative size-24 rounded-full flex items-center justify-center transition-colors"
+              style={{
+                backgroundColor: completed ? accentHex : `${accentHex}14`,
+                boxShadow: completed ? `0 12px 28px -8px ${accentHex}88` : undefined,
+              }}
+            >
+              {dayGoal && (
+                <svg className="absolute inset-0 size-24 -rotate-90" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="44" fill="none" stroke={`${accentHex}33`} strokeWidth="4" />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="44"
+                    fill="none"
+                    stroke={accentHex}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 44}
+                    strokeDashoffset={2 * Math.PI * 44 * (1 - Math.min(1, minutes / Math.max(1, goalMinutes)))}
+                  />
+                </svg>
               )}
-            </AnimatePresence>
-          </motion.button>
+              <AnimatePresence mode="wait">
+                {completed ? (
+                  <motion.div
+                    key="check"
+                    initial={{ scale: 0, rotate: -30 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                  >
+                    <Check className="size-10 text-white" strokeWidth={3} />
+                  </motion.div>
+                ) : (
+                  <motion.span
+                    key="minutes"
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    className="text-lg font-bold tabular-nums"
+                    style={{ color: accentHex }}
+                  >
+                    {minutes}m
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <motion.button
+              onClick={handleToggleClick}
+              disabled={disabled || isToggling}
+              whileTap={disabled ? undefined : { scale: 0.9 }}
+              animate={completed ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className={cn(
+                'relative size-24 rounded-full flex items-center justify-center transition-colors',
+                disabled && 'opacity-40 cursor-default',
+              )}
+              style={{
+                backgroundColor: completed ? accentHex : `${accentHex}14`,
+                boxShadow: completed ? `0 12px 28px -8px ${accentHex}88` : undefined,
+              }}
+            >
+              <AnimatePresence mode="wait">
+                {completed ? (
+                  <motion.div
+                    key="check"
+                    initial={{ scale: 0, rotate: -30 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                  >
+                    <Check className="size-10 text-white" strokeWidth={3} />
+                  </motion.div>
+                ) : (
+                  <motion.span
+                    key="date"
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    className="text-2xl font-bold"
+                    style={{ color: accentHex }}
+                  >
+                    {fromDateKey(dateKey).getDate()}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          )}
           {showBurst && completed && <ParticleBurst color={accentHex} onComplete={() => setShowBurst(false)} />}
         </div>
 
         <p className="text-[13px] text-black/50 dark:text-white/50 text-center -mt-1">
-          {disabled
-            ? isFuture
-              ? "You can't mark future days yet."
-              : 'Not a scheduled day for this streak.'
-            : completed
-              ? 'Tap to unmark this day.'
-              : 'Tap to mark this day complete.'}
+          {isFuture
+            ? "You can't log future days yet."
+            : dayGoal
+              ? completed
+                ? `Goal met — ${formatMinutes(minutes)} of ${formatMinutes(goalMinutes)}.`
+                : `${formatMinutes(minutes)} of ${formatMinutes(goalMinutes)} logged today.`
+              : periodGoal
+                ? `${formatMinutes(minutes)} logged today toward this ${streak.time_goal_period}'s ${formatMinutes(goalMinutes)} goal.`
+                : !isScheduled && !completed
+                  ? 'Not a scheduled day for this streak.'
+                  : completed
+                    ? 'Tap to unmark this day.'
+                    : 'Tap to mark this day complete.'}
         </p>
 
-        {completed && entry?.note && (
+        {streak.track_time && !isFuture && (
+          <div className="w-full flex flex-col gap-2">
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5 text-center">
+              {goalDriven ? 'Log time' : 'Time logged (optional)'}
+            </span>
+            <div className="flex items-center justify-center gap-4 glass-panel rounded-2xl py-3">
+              <button
+                type="button"
+                onClick={() => handleMinutesChange(minutes - MINUTES_STEP)}
+                disabled={disabled}
+                className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all disabled:opacity-40"
+              >
+                <Minus className="size-4" />
+              </button>
+              <span className="text-xl font-bold w-20 text-center tabular-nums">{formatMinutes(minutes)}</span>
+              <button
+                type="button"
+                onClick={() => handleMinutesChange(minutes + MINUTES_STEP)}
+                disabled={disabled}
+                className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all disabled:opacity-40"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {MINUTE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleMinutesChange(preset)}
+                  className={cn(
+                    'h-8 px-3 rounded-full text-[12px] font-medium transition-all disabled:opacity-40',
+                    minutes === preset
+                      ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
+                      : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                  )}
+                >
+                  {formatMinutes(preset)}
+                </button>
+              ))}
+              {minutes !== 0 && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleMinutesChange(0)}
+                  className="h-8 px-3 rounded-full text-[12px] font-medium transition-all disabled:opacity-40 bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {completed && entry?.note && !goalDriven && (
           <p className="text-[12px] text-accent-orange text-center -mt-2">Unmarking this day removes your note.</p>
         )}
 
         <AnimatePresence>
-          {completed && (
+          {showDetails && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}

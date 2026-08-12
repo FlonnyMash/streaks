@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { animate, motion } from 'framer-motion'
-import { Flame, Trophy, TrendingUp } from 'lucide-react'
+import { Clock, Flame, Trophy, TrendingUp } from 'lucide-react'
 import type { Streak, StreakEntry } from '@/lib/types'
 import { computeStreakStats } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import { formatMinutes } from '@/lib/utils'
 
 function AnimatedNumber({ value, className }: { value: number | string; className?: string }) {
   const numeric = typeof value === 'number' ? value : null
@@ -48,10 +49,13 @@ export function StreakStats({ streak, entries }: { streak: Streak; entries: Stre
     { label: 'Current', value: stats.currentStreak, icon: Flame, color: accent.hex, bump: flameBump },
     { label: 'Best', value: stats.longestStreak, icon: Trophy, color: '#ffd60a', bump: 0 },
     { label: 'Success', value: `${Math.round(stats.completionRate * 100)}%`, icon: TrendingUp, color: '#30d158', bump: 0 },
+    ...(streak.track_time
+      ? [{ label: 'Time', value: formatMinutes(stats.totalMinutes), icon: Clock, color: '#64d2ff', bump: 0 }]
+      : []),
   ]
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className={streak.track_time ? 'grid grid-cols-2 sm:grid-cols-4 gap-3' : 'grid grid-cols-3 gap-3'}>
       {items.map(({ label, value, icon: Icon, color, bump }) => (
         <div key={label} className="glass-panel rounded-2xl p-3.5 flex flex-col items-center gap-1">
           <motion.div

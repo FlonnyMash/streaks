@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { buildMonthGrid, WEEKDAY_LABELS } from '@/lib/streakLogic'
+import { buildMonthGrid, hasPeriodTimeGoal, WEEKDAY_LABELS } from '@/lib/streakLogic'
 import type { Streak, StreakEntry } from '@/lib/types'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,7 @@ export function StreakCalendar({
 }: StreakCalendarProps) {
   const days = buildMonthGrid(year, month, streak, entries)
   const accent = ACCENT_COLOR_MAP[streak.color]
+  const periodGoal = hasPeriodTimeGoal(streak)
 
   function goPrev() {
     if (month === 0) onMonthChange(year - 1, 11)
@@ -72,6 +73,9 @@ export function StreakCalendar({
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const disabled = day.isFuture || (!day.isScheduled && !day.completed)
+          const partial = day.goalMinutes != null && !day.completed && day.minutes > 0
+          // Period goals don't set per-day `completed`; any logged minutes get a left-dot.
+          const loggedForPeriod = periodGoal && day.minutes > 0
           return (
             <button
               key={day.key}
@@ -85,7 +89,13 @@ export function StreakCalendar({
                 day.isToday && !day.completed && 'ring-2 ring-inset ring-accent-blue/50',
               )}
               style={{
-                backgroundColor: day.completed ? accent.hex : day.isScheduled ? `${accent.hex}12` : 'transparent',
+                backgroundColor: day.completed
+                  ? accent.hex
+                  : partial
+                    ? `${accent.hex}40`
+                    : day.isScheduled
+                      ? `${accent.hex}12`
+                      : 'transparent',
                 color: day.completed ? 'white' : undefined,
               }}
             >
@@ -110,6 +120,12 @@ export function StreakCalendar({
                 <span
                   className="absolute bottom-1 right-1 size-1.5 rounded-full"
                   style={{ backgroundColor: day.completed ? 'white' : accent.hex }}
+                />
+              )}
+              {loggedForPeriod && (
+                <span
+                  className="absolute bottom-1 left-1 size-1.5 rounded-full"
+                  style={{ backgroundColor: accent.hex }}
                 />
               )}
             </button>

@@ -1,32 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { useStreaks, useDeleteStreak } from '@/hooks/useStreaks'
-import { useLogMinutes, useStreakEntries, useToggleStreakEntry, useUpdateEntryDetails } from '@/hooks/useStreakEntries'
-import { StreakCalendar } from '@/components/streaks/StreakCalendar'
-import { StreakStats } from '@/components/streaks/StreakStats'
-import { DayDetailModal } from '@/components/streaks/DayDetailModal'
-import { CelebrationOverlay } from '@/components/streaks/CelebrationOverlay'
-import { CreateStreakModal } from '@/components/streaks/CreateStreakModal'
+import {
+  useDeleteTimesheetWorkspace,
+  useTimesheetWorkspaces,
+} from '@/hooks/useTimesheetWorkspaces'
+import {
+  useCreateTimesheetEntry,
+  useDeleteTimesheetEntry,
+  useTimesheetEntries,
+} from '@/hooks/useTimesheetEntries'
+import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
+import { DayEntriesModal } from '@/components/timesheet/DayEntriesModal'
+import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { Spinner } from '@/components/ui/Spinner'
-import { computeStreakStats, isScheduledDay } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
-import { fromDateKey } from '@/lib/utils'
-import { hapticMilestone } from '@/lib/haptics'
-import type { Mood } from '@/lib/types'
+import { todayWeekMonthTotals } from '@/lib/timesheetLogic'
+import { formatMinutes } from '@/lib/utils'
 
-const MILESTONES = [7, 14, 30, 50, 100, 365]
-
-export function StreakDetailPage() {
+export function TimesheetWorkspacePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { data: streaks, isLoading: streaksLoading } = useStreaks()
-  const streak = useMemo(() => streaks?.find((s) => s.id === id), [streaks, id])
-  const { data: entries, isLoading: entriesLoading } = useStreakEntries(id)
-  const toggleEntry = useToggleStreakEntry(id ?? '')
-  const updateDetails = useUpdateEntryDetails(id ?? '')
-  const logMinutes = useLogMinutes(id ?? '')
-  const deleteStreak = useDeleteStreak()
+  const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
+  const workspace = workspaces?.find((w) => w.id === id)
+  const { data: entries, isLoading: entriesLoading } = useTimesheetEntries(id)
+  const createEntry = useCreateTimesheetEntry(id ?? '')
+  const deleteEntry = useDeleteTimesheetEntry(id ?? '')
+  const deleteWorkspace = useDeleteTimesheetWorkspace()
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -34,59 +34,26 @@ export function StreakDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
-  const [celebration, setCelebration] = useState<number | null>(null)
-  const prevStreakRef = useRef<number | null>(null)
 
-  const stats = useMemo(
-    () => (streak ? computeStreakStats(streak, entries ?? []) : null),
-    [streak, entries],
-  )
-
-  useEffect(() => {
-    if (!stats) return
-    const prev = prevStreakRef.current
-    if (prev !== null && stats.currentStreak > prev && MILESTONES.includes(stats.currentStreak)) {
-      setCelebration(stats.currentStreak)
-      hapticMilestone()
-    }
-    prevStreakRef.current = stats.currentStreak
-  }, [stats])
-
-  if (streaksLoading || entriesLoading || !streak) {
+  if (workspacesLoading || entriesLoading || !workspace) {
     return <Spinner />
   }
 
-  const accent = ACCENT_COLOR_MAP[streak.color]
-  const selectedEntry = entries?.find((e) => e.entry_date === selectedDayKey)
-  const selectedDate = selectedDayKey ? fromDateKey(selectedDayKey) : null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const isSelectedFuture = selectedDate ? selectedDate > today : false
-  const isSelectedScheduled = selectedDate ? isScheduledDay(streak, selectedDate) : true
-
-  function handleToggle(dateKey: string, completed: boolean) {
-    toggleEntry.mutate({ dateKey, completed })
-  }
-
-  function handleSaveDetails(dateKey: string, note: string | null, mood: Mood | null) {
-    updateDetails.mutate({ dateKey, note, mood })
-  }
-
-  function handleLogMinutes(dateKey: string, minutes: number, completed: boolean) {
-    logMinutes.mutate({ dateKey, minutes, completed })
-  }
+  const accent = ACCENT_COLOR_MAP[workspace.color]
+  const totals = todayWeekMonthTotals(entries ?? [])
+  const selectedDayEntries = (entries ?? []).filter((e) => e.entry_date === selectedDayKey)
 
   async function handleDelete() {
     if (!id) return
-    await deleteStreak.mutateAsync(id)
-    navigate('/')
+    await deleteWorkspace.mutateAsync(id)
+    navigate('/timesheet')
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/timesheet')}
           className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
           aria-label="Back"
         >
@@ -94,8 +61,8 @@ export function StreakDetailPage() {
         </button>
 
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-2xl">{streak.emoji}</span>
-          <h1 className="font-bold text-lg sm:text-xl tracking-tight truncate">{streak.name}</h1>
+          <span className="text-2xl">{workspace.emoji}</span>
+          <h1 className="font-bold text-lg sm:text-xl tracking-tight truncate">{workspace.name}</h1>
         </div>
 
         <div className="relative">
@@ -117,7 +84,7 @@ export function StreakDetailPage() {
                   }}
                   className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                 >
-                  <Pencil className="size-4" /> Edit streak
+                  <Pencil className="size-4" /> Edit workspace
                 </button>
                 <button
                   onClick={() => {
@@ -126,7 +93,7 @@ export function StreakDetailPage() {
                   }}
                   className="w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm font-medium text-accent-red hover:bg-accent-red/10 transition-colors"
                 >
-                  <Trash2 className="size-4" /> Delete streak
+                  <Trash2 className="size-4" /> Delete workspace
                 </button>
               </div>
             </>
@@ -134,54 +101,58 @@ export function StreakDetailPage() {
         </div>
       </div>
 
-      <div className="mb-5">
-        <StreakStats streak={streak} entries={entries ?? []} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Today', value: totals.today },
+          { label: 'This week', value: totals.week },
+          { label: 'This month', value: totals.month },
+          { label: 'Total', value: totals.total },
+        ].map(({ label, value }) => (
+          <div key={label} className="glass-panel rounded-2xl p-3.5 flex flex-col items-center gap-1">
+            <span className="text-xl font-bold tabular-nums tracking-tight" style={{ color: value > 0 ? accent.hex : undefined }}>
+              {formatMinutes(value)}
+            </span>
+            <span className="text-[11px] font-medium text-black/45 dark:text-white/45">{label}</span>
+          </div>
+        ))}
       </div>
 
-      <StreakCalendar
-        streak={streak}
+      <TimesheetCalendar
         entries={entries ?? []}
         year={view.year}
         month={view.month}
+        accentHex={accent.hex}
         onMonthChange={(year, month) => setView({ year, month })}
         onSelectDay={setSelectedDayKey}
       />
 
       <p className="text-center text-[13px] text-black/40 dark:text-white/40 mt-4">
-        Tap a day to open it. Future days are locked.
+        Tap a day to log or review time blocks.
       </p>
 
-      <DayDetailModal
+      <DayEntriesModal
         open={selectedDayKey !== null}
         onClose={() => setSelectedDayKey(null)}
-        streak={streak}
         dateKey={selectedDayKey}
-        entry={selectedEntry}
-        isFuture={isSelectedFuture}
-        isScheduled={isSelectedScheduled}
+        entries={selectedDayEntries}
         accentHex={accent.hex}
-        isToggling={toggleEntry.isPending}
-        onToggle={handleToggle}
-        onSaveDetails={handleSaveDetails}
-        onLogMinutes={handleLogMinutes}
+        isSaving={createEntry.isPending}
+        onAdd={(input) => {
+          if (!selectedDayKey) return
+          createEntry.mutate({ entry_date: selectedDayKey, ...input })
+        }}
+        onDelete={(entryId) => deleteEntry.mutate(entryId)}
       />
 
-      <CelebrationOverlay
-        open={celebration !== null}
-        milestone={celebration ?? 0}
-        color={accent.hex}
-        onDismiss={() => setCelebration(null)}
-      />
-
-      <CreateStreakModal open={editOpen} onClose={() => setEditOpen(false)} editingStreak={streak} />
+      <CreateWorkspaceModal open={editOpen} onClose={() => setEditOpen(false)} editingWorkspace={workspace} />
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDelete(false)} />
           <div className="relative glass-panel rounded-[24px] p-5 w-full max-w-sm">
-            <h3 className="font-semibold text-lg mb-1">Delete "{streak.name}"?</h3>
+            <h3 className="font-semibold text-lg mb-1">Delete "{workspace.name}"?</h3>
             <p className="text-[14px] text-black/55 dark:text-white/55 mb-4">
-              This permanently deletes the streak and all its history. This can't be undone.
+              This permanently deletes the workspace and all its logged time. This can't be undone.
             </p>
             <div className="flex gap-2.5">
               <button

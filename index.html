@@ -10,9 +10,25 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Streaks" />
-    <meta name="description" content="Build habits and keep every streak alive." />
-    <title>Streaks</title>
+    <meta name="apple-mobile-web-app-title" content="Mashed" />
+    <meta name="description" content="Mashed Personal Dashboard — streaks, todos, and timesheet in one place." />
+    <title>Mashed Personal Dashboard</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme')
+          var theme = stored === 'light' || stored === 'dark' ? stored : 'system'
+          var dark =
+            theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          var root = document.documentElement
+          root.classList.add(dark ? 'dark' : 'light')
+          root.style.colorScheme = dark ? 'dark' : 'light'
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#000000' : '#f2f2f7')
+        } catch (_) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

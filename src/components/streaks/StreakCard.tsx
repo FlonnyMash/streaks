@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Flame } from 'lucide-react'
+import { Flame, Clock } from 'lucide-react'
 import type { Streak, StreakEntry } from '@/lib/types'
-import { computeStreakStats, isScheduledDay } from '@/lib/streakLogic'
+import { computeStreakStats, hasDayTimeGoal, hasPeriodTimeGoal, isScheduledDay } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
-import { toDateKey } from '@/lib/utils'
+import { formatMinutes, toDateKey } from '@/lib/utils'
 import { addDays, startOfDay } from 'date-fns'
 
 interface StreakCardProps {
@@ -11,13 +11,31 @@ interface StreakCardProps {
   entries: StreakEntry[]
 }
 
+function subtitleFor(streak: Streak): string {
+  if (streak.track_time && streak.time_goal_period && streak.time_goal_minutes) {
+    const periodLabel = streak.time_goal_period === 'day' ? 'day' : streak.time_goal_period === 'week' ? 'week' : 'month'
+    return `${formatMinutes(streak.time_goal_minutes)} / ${periodLabel}`
+  }
+  if (streak.frequency_type === 'weekdays') return 'Custom days'
+  if (streak.frequency_type === 'times_per_week') return `${streak.target_count ?? 1}x per week`
+  return 'Every day'
+}
+
 export function StreakCard({ streak, entries }: StreakCardProps) {
   const stats = computeStreakStats(streak, entries)
   const accent = ACCENT_COLOR_MAP[streak.color]
   const completedDates = new Set(entries.filter((e) => e.completed).map((e) => e.entry_date))
+  const minutesByDate = new Map<string, number>()
+  for (const e of entries) {
+    if (e.minutes != null) minutesByDate.set(e.entry_date, (minutesByDate.get(e.entry_date) ?? 0) + e.minutes)
+  }
+  const dayGoal = hasDayTimeGoal(streak)
+  const periodGoal = hasPeriodTimeGoal(streak)
 
   const today = startOfDay(new Date())
   const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
+
+  const thisWeekMinutes = last7.reduce((sum, date) => sum + (minutesByDate.get(toDateKey(date)) ?? 0), 0)
 
   return (
     <Link
@@ -34,11 +52,7 @@ export function StreakCard({ streak, entries }: StreakCardProps) {
           </div>
           <div className="min-w-0">
             <h3 className="font-semibold text-[16px] tracking-tight truncate">{streak.name}</h3>
-            <p className="text-[13px] text-black/50 dark:text-white/50">
-              {streak.frequency_type === 'daily' && 'Every day'}
-              {streak.frequency_type === 'weekdays' && 'Custom days'}
-              {streak.frequency_type === 'times_per_week' && `${streak.target_count ?? 1}x per week`}
-            </p>
+            <p className="text-[13px] text-black/50 dark:text-white/50">{subtitleFor(streak)}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0 pl-2">
@@ -59,12 +73,14 @@ export function StreakCard({ streak, entries }: StreakCardProps) {
           const key = toDateKey(date)
           const scheduled = isScheduledDay(streak, date)
           const done = completedDates.has(key)
+          const mins = minutesByDate.get(key) ?? 0
+          const partial = dayGoal && !done && mins > 0
           return (
             <div
               key={key}
               className="flex-1 h-7 rounded-lg flex items-center justify-center"
               style={{
-                backgroundColor: done ? accent.hex : scheduled ? `${accent.hex}14` : 'transparent',
+                backgroundColor: done ? accent.hex : partial ? `${accent.hex}40` : scheduled ? `${accent.hex}14` : 'transparent',
                 opacity: scheduled ? 1 : 0.35,
               }}
             >
@@ -73,6 +89,18 @@ export function StreakCard({ streak, entries }: StreakCardProps) {
           )
         })}
       </div>
+
+      {streak.track_time && thisWeekMinutes > 0 && (
+        <div className="mt-3 flex items-center gap-1.5 text-[12px] text-black/45 dark:text-white/45">
+          <Clock className="size-3.5" />
+          {formatMinutes(thisWeekMinutes)} this week
+        </div>
+      )}
+      {periodGoal && (
+        <div className="mt-1 text-[11px] text-black/35 dark:text-white/35">
+          {formatMinutes(stats.totalMinutes)} logged total
+        </div>
+      )}
     </Link>
   )
 }

@@ -55,6 +55,7 @@ function patchToggle(
       completed: true,
       note: null,
       mood: null,
+      minutes: null,
       created_at: new Date().toISOString(),
     }
     const existingIdx = entries.findIndex((e) => e.streak_id === streakId && e.entry_date === dateKey)
@@ -110,6 +111,91 @@ export function useToggleStreakEntry(streakId: string) {
       )
       queryClient.setQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY, (old) =>
         old ? patchToggle(old, streakId, dateKey, completed, user.id) : old,
+      )
+
+      return { previousDetail, previousAll }
+    },
+    onError: (_err, _vars, context) => {
+      if (!context) return
+      queryClient.setQueryData(entriesKey(streakId), context.previousDetail)
+      for (const [key, data] of context.previousAll) {
+        queryClient.setQueryData(key, data)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
+      queryClient.invalidateQueries(ALL_ENTRIES_KEY)
+    },
+  })
+}
+
+function patchMinutes(
+  entries: StreakEntry[],
+  streakId: string,
+  dateKey: string,
+  minutes: number,
+  completed: boolean,
+  userId: string,
+): StreakEntry[] {
+  const existingIdx = entries.findIndex((e) => e.streak_id === streakId && e.entry_date === dateKey)
+  if (existingIdx >= 0) {
+    const next = [...entries]
+    next[existingIdx] = { ...next[existingIdx], minutes, completed }
+    return next
+  }
+  const optimisticEntry: StreakEntry = {
+    id: `optimistic-${streakId}-${dateKey}`,
+    streak_id: streakId,
+    user_id: userId,
+    entry_date: dateKey,
+    completed,
+    note: null,
+    mood: null,
+    minutes,
+    created_at: new Date().toISOString(),
+  }
+  return [...entries, optimisticEntry]
+}
+
+interface MinutesContext {
+  previousDetail: StreakEntry[] | undefined
+  previousAll: Array<[QueryKey, StreakEntry[] | undefined]>
+}
+
+/**
+ * Logs minutes for a day. `completed` must be computed by the caller:
+ * - day time goals: `minutes >= time_goal_minutes`
+ * - week/month time goals: always `false` (period totals drive the streak, not per-day flags)
+ * - track_time without a goal: pass through the entry's existing `completed` so the checkbox stays primary
+ */
+export function useLogMinutes(streakId: string) {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ dateKey, minutes, completed }: { dateKey: string; minutes: number; completed: boolean }) => {
+      if (!user) throw new Error('Not signed in')
+      const { error } = await supabase
+        .from('streak_entries')
+        .upsert(
+          { streak_id: streakId, user_id: user.id, entry_date: dateKey, minutes, completed },
+          { onConflict: 'streak_id,entry_date' },
+        )
+      if (error) throw error
+    },
+    onMutate: async ({ dateKey, minutes, completed }): Promise<MinutesContext | undefined> => {
+      if (!user) return undefined
+      await queryClient.cancelQueries({ queryKey: entriesKey(streakId) })
+      await queryClient.cancelQueries(ALL_ENTRIES_KEY)
+
+      const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
+      const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
+
+      queryClient.setQueryData<StreakEntry[]>(entriesKey(streakId), (old) =>
+        patchMinutes(old ?? [], streakId, dateKey, minutes, completed, user.id),
+      )
+      queryClient.setQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY, (old) =>
+        old ? patchMinutes(old, streakId, dateKey, minutes, completed, user.id) : old,
       )
 
       return { previousDetail, previousAll }

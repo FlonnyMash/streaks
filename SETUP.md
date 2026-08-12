@@ -1,4 +1,4 @@
-# Streaks — Setup Guide
+# Mashed Personal Dashboard — Setup Guide
 
 This app is a static React SPA that talks directly to [Supabase](https://supabase.com) for
 authentication and data storage, and deploys as a static site to Cloudflare Pages. There is
@@ -29,6 +29,19 @@ If you set up your project before per-day notes/moods were added, also run
 [`supabase/migrations/0004_entry_note_mood.sql`](supabase/migrations/0004_entry_note_mood.sql)
 to add the `note` and `mood` columns to `streak_entries`.
 
+If you set up your project before streak time tracking was added, also run
+[`supabase/migrations/0005_streak_time_tracking.sql`](supabase/migrations/0005_streak_time_tracking.sql)
+to add `track_time`, `time_goal_minutes`, and `time_goal_period` to `streaks`, and a `minutes`
+column to `streak_entries`.
+
+If you want the Todos section, also run
+[`supabase/migrations/0006_todos.sql`](supabase/migrations/0006_todos.sql) to create the `todos`
+table and its Row Level Security policies.
+
+If you want the Timesheet section, also run
+[`supabase/migrations/0007_timesheet.sql`](supabase/migrations/0007_timesheet.sql) to create the
+`timesheet_workspaces` and `timesheet_entries` tables and their Row Level Security policies.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:
@@ -47,7 +60,7 @@ Enabled by default — no action needed. Optional: in **Authentication → Provi
 
 1. Go to [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers) and click **New OAuth App** (this can be a personal account or an organization).
 2. Fill in:
-   - **Application name**: anything, e.g. `Streaks`
+   - **Application name**: anything, e.g. `Mashed Personal Dashboard`
    - **Homepage URL**: your production URL (e.g. `https://streaks.pages.dev`), `http://localhost:5173` works fine while developing
    - **Authorization callback URL**: your Supabase callback URL:
      `https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback`

@@ -1,9 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Flame, LayoutGrid, Settings } from 'lucide-react'
+import { CalendarClock, Flame, ListTodo, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: LayoutGrid, end: true },
+  { to: '/streaks', label: 'Streaks', icon: Flame, end: false },
+  { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
+  { to: '/timesheet', label: 'Timesheet', icon: CalendarClock, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
@@ -14,7 +16,7 @@ export function GlassNavbar() {
         <div className="glass-surface rounded-2xl px-4 h-16 flex items-center justify-between shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px]">
             <Flame className="size-5 text-accent-orange" fill="currentColor" fillOpacity={0.15} />
-            Streaks
+            Mashed Dashboard
           </div>
           <nav className="flex items-center gap-1">
             {links.map(({ to, label, icon: Icon, end }) => (

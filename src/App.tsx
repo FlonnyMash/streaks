@@ -7,6 +7,9 @@ import { SignupPage } from '@/pages/SignupPage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { StreakDetailPage } from '@/pages/StreakDetailPage'
+import { TodosPage } from '@/pages/TodosPage'
+import { TimesheetPage } from '@/pages/TimesheetPage'
+import { TimesheetWorkspacePage } from '@/pages/TimesheetWorkspacePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 
 export function App() {
@@ -30,8 +33,9 @@ export function App() {
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
+      <Route path="/" element={<Navigate to="/streaks" replace />} />
       <Route
-        path="/"
+        path="/streaks"
         element={
           <ProtectedRoute>
             <AppShell>
@@ -46,6 +50,36 @@ export function App() {
           <ProtectedRoute>
             <AppShell>
               <StreakDetailPage />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/todos"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <TodosPage />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/timesheet"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <TimesheetPage />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/timesheet/:id"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <TimesheetWorkspacePage />
             </AppShell>
           </ProtectedRoute>
         }

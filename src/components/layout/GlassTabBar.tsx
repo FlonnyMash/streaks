@@ -1,9 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutGrid, Settings } from 'lucide-react'
+import { CalendarClock, Flame, ListTodo, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const links = [
-  { to: '/', label: 'Streaks', icon: LayoutGrid, end: true },
+  { to: '/streaks', label: 'Streaks', icon: Flame, end: false },
+  { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
+  { to: '/timesheet', label: 'Timesheet', icon: CalendarClock, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 

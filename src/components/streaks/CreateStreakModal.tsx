@@ -2,13 +2,25 @@ import { useEffect, useState } from 'react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { Switch } from '@/components/ui/Switch'
 import { ACCENT_COLOR_MAP, EMOJI_OPTIONS } from '@/lib/accentColors'
-import { ACCENT_COLORS, type AccentColor, type FrequencyType, type Streak } from '@/lib/types'
+import { ACCENT_COLORS, type AccentColor, type FrequencyType, type Streak, type TimeGoalPeriod } from '@/lib/types'
 import { WEEKDAY_LABELS, jsDayToWeekdayIndex, weekdayIndexToJsDay } from '@/lib/streakLogic'
 import { useCreateStreak, useUpdateStreak } from '@/hooks/useStreaks'
-import { cn } from '@/lib/utils'
+import { cn, formatMinutes } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
 import { Minus, Plus } from 'lucide-react'
+
+const TIME_GOAL_PERIOD_OPTIONS: { value: TimeGoalPeriod; label: string }[] = [
+  { value: 'day', label: 'Daily' },
+  { value: 'week', label: 'Weekly' },
+  { value: 'month', label: 'Monthly' },
+]
+
+const MINUTE_PRESETS = [15, 30, 60, 120]
+const MINUTES_STEP = 5
+const MIN_GOAL_MINUTES = 5
+const MAX_GOAL_MINUTES = 24 * 60
 
 interface CreateStreakModalProps {
   open: boolean
@@ -30,6 +42,10 @@ function defaultState() {
     frequency_type: 'daily' as FrequencyType,
     weekdayIndices: [0, 2, 4] as number[],
     targetCount: 3,
+    trackTime: false,
+    hasTimeGoal: false,
+    timeGoalPeriod: 'day' as TimeGoalPeriod,
+    timeGoalMinutes: 30,
   }
 }
 
@@ -40,6 +56,7 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
   const updateStreak = useUpdateStreak()
   const isEditing = Boolean(editingStreak)
   const pending = createStreak.isPending || updateStreak.isPending
+  const hasGoal = state.trackTime && state.hasTimeGoal
 
   useEffect(() => {
     if (!open) return
@@ -51,6 +68,10 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
         frequency_type: editingStreak.frequency_type,
         weekdayIndices: (editingStreak.target_weekdays ?? []).map(jsDayToWeekdayIndex),
         targetCount: editingStreak.target_count ?? 3,
+        trackTime: editingStreak.track_time,
+        hasTimeGoal: editingStreak.time_goal_period != null,
+        timeGoalPeriod: editingStreak.time_goal_period ?? 'day',
+        timeGoalMinutes: editingStreak.time_goal_minutes ?? 30,
       })
     } else {
       setState(defaultState())
@@ -72,7 +93,7 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
       setError('Give your streak a name.')
       return
     }
-    if (state.frequency_type === 'weekdays' && state.weekdayIndices.length === 0) {
+    if (!hasGoal && state.frequency_type === 'weekdays' && state.weekdayIndices.length === 0) {
       setError('Pick at least one day.')
       return
     }
@@ -82,9 +103,15 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
       name: state.name.trim(),
       emoji: state.emoji,
       color: state.color,
-      frequency_type: state.frequency_type,
-      target_weekdays: state.frequency_type === 'weekdays' ? state.weekdayIndices.map(weekdayIndexToJsDay) : null,
-      target_count: state.frequency_type === 'times_per_week' ? state.targetCount : null,
+      // A time goal replaces the day-based schedule as the completion criterion, so force
+      // 'daily' (unrestricted) scheduling underneath it instead of stacking two gates.
+      frequency_type: hasGoal ? ('daily' as FrequencyType) : state.frequency_type,
+      target_weekdays:
+        !hasGoal && state.frequency_type === 'weekdays' ? state.weekdayIndices.map(weekdayIndexToJsDay) : null,
+      target_count: !hasGoal && state.frequency_type === 'times_per_week' ? state.targetCount : null,
+      track_time: state.trackTime,
+      time_goal_minutes: hasGoal ? state.timeGoalMinutes : null,
+      time_goal_period: hasGoal ? state.timeGoalPeriod : null,
     }
 
     try {
@@ -154,65 +181,160 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
           </div>
         </div>
 
-        <div>
-          <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Frequency</span>
-          <div className="grid grid-cols-3 gap-2 mt-1.5">
-            {FREQUENCY_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setState((s) => ({ ...s, frequency_type: opt.value }))}
-                className={cn(
-                  'rounded-2xl px-2 py-2.5 text-center transition-all',
-                  state.frequency_type === opt.value
-                    ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
-                    : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                )}
-              >
-                <div className="text-[13px] font-semibold">{opt.label}</div>
-                <div className="text-[11px] text-black/45 dark:text-white/45 mt-0.5">{opt.hint}</div>
-              </button>
-            ))}
-          </div>
-
-          {state.frequency_type === 'weekdays' && (
-            <div className="flex gap-1.5 mt-3">
-              {WEEKDAY_LABELS.map((label, index) => (
+        {!hasGoal && (
+          <div>
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Frequency</span>
+            <div className="grid grid-cols-3 gap-2 mt-1.5">
+              {FREQUENCY_OPTIONS.map((opt) => (
                 <button
-                  key={label}
+                  key={opt.value}
                   type="button"
-                  onClick={() => toggleWeekday(index)}
+                  onClick={() => setState((s) => ({ ...s, frequency_type: opt.value }))}
                   className={cn(
-                    'flex-1 h-10 rounded-xl text-[12px] font-semibold transition-all',
-                    state.weekdayIndices.includes(index)
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/50 dark:text-white/50',
+                    'rounded-2xl px-2 py-2.5 text-center transition-all',
+                    state.frequency_type === opt.value
+                      ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
+                      : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
                   )}
                 >
-                  {label[0]}
+                  <div className="text-[13px] font-semibold">{opt.label}</div>
+                  <div className="text-[11px] text-black/45 dark:text-white/45 mt-0.5">{opt.hint}</div>
                 </button>
               ))}
             </div>
-          )}
 
-          {state.frequency_type === 'times_per_week' && (
-            <div className="flex items-center justify-center gap-4 mt-3 glass-panel rounded-2xl py-3">
-              <button
-                type="button"
-                onClick={() => setState((s) => ({ ...s, targetCount: Math.max(1, s.targetCount - 1) }))}
-                className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
-              >
-                <Minus className="size-4" />
-              </button>
-              <span className="text-xl font-bold w-10 text-center tabular-nums">{state.targetCount}</span>
-              <button
-                type="button"
-                onClick={() => setState((s) => ({ ...s, targetCount: Math.min(7, s.targetCount + 1) }))}
-                className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
-              >
-                <Plus className="size-4" />
-              </button>
-              <span className="text-[13px] text-black/50 dark:text-white/50">times / week</span>
+            {state.frequency_type === 'weekdays' && (
+              <div className="flex gap-1.5 mt-3">
+                {WEEKDAY_LABELS.map((label, index) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => toggleWeekday(index)}
+                    className={cn(
+                      'flex-1 h-10 rounded-xl text-[12px] font-semibold transition-all',
+                      state.weekdayIndices.includes(index)
+                        ? 'bg-accent-blue text-white'
+                        : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/50 dark:text-white/50',
+                    )}
+                  >
+                    {label[0]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {state.frequency_type === 'times_per_week' && (
+              <div className="flex items-center justify-center gap-4 mt-3 glass-panel rounded-2xl py-3">
+                <button
+                  type="button"
+                  onClick={() => setState((s) => ({ ...s, targetCount: Math.max(1, s.targetCount - 1) }))}
+                  className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                >
+                  <Minus className="size-4" />
+                </button>
+                <span className="text-xl font-bold w-10 text-center tabular-nums">{state.targetCount}</span>
+                <button
+                  type="button"
+                  onClick={() => setState((s) => ({ ...s, targetCount: Math.min(7, s.targetCount + 1) }))}
+                  className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                >
+                  <Plus className="size-4" />
+                </button>
+                <span className="text-[13px] text-black/50 dark:text-white/50">times / week</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="glass-panel rounded-2xl p-4">
+          <Switch
+            checked={state.trackTime}
+            onChange={(checked) => setState((s) => ({ ...s, trackTime: checked, hasTimeGoal: checked && s.hasTimeGoal }))}
+            label="Track time"
+            description="Log how many minutes you spend each day"
+          />
+
+          {state.trackTime && (
+            <div className="mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-col gap-3">
+              <Switch
+                checked={state.hasTimeGoal}
+                onChange={(checked) => setState((s) => ({ ...s, hasTimeGoal: checked }))}
+                label="Require a time goal"
+                description="Meeting the goal is what counts as done — replaces the frequency schedule"
+              />
+
+              {state.hasTimeGoal && (
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    {TIME_GOAL_PERIOD_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setState((s) => ({ ...s, timeGoalPeriod: opt.value }))}
+                        className={cn(
+                          'h-10 rounded-xl text-[13px] font-semibold transition-all',
+                          state.timeGoalPeriod === opt.value
+                            ? 'bg-accent-blue text-white'
+                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/60 dark:text-white/60 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-4 glass-panel rounded-2xl py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setState((s) => ({
+                          ...s,
+                          timeGoalMinutes: Math.max(MIN_GOAL_MINUTES, s.timeGoalMinutes - MINUTES_STEP),
+                        }))
+                      }
+                      className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                    >
+                      <Minus className="size-4" />
+                    </button>
+                    <span className="text-xl font-bold w-20 text-center tabular-nums">
+                      {formatMinutes(state.timeGoalMinutes)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setState((s) => ({
+                          ...s,
+                          timeGoalMinutes: Math.min(MAX_GOAL_MINUTES, s.timeGoalMinutes + MINUTES_STEP),
+                        }))
+                      }
+                      className="size-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 active:scale-90 transition-all"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                    <span className="text-[13px] text-black/50 dark:text-white/50">
+                      per {state.timeGoalPeriod}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {MINUTE_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setState((s) => ({ ...s, timeGoalMinutes: preset }))}
+                        className={cn(
+                          'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
+                          state.timeGoalMinutes === preset
+                            ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
+                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                        )}
+                      >
+                        {formatMinutes(preset)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
