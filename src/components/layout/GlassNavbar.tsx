@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
 import { BrandIcon } from '@/components/BrandIcon'
@@ -24,10 +24,13 @@ export function GlassNavbar() {
             <div className="absolute inset-0 bg-gradient-to-b from-white/35 to-transparent dark:from-white/16" />
           </div>
           <div className="relative z-10 h-full pl-4 pr-3 flex items-center gap-2 min-w-0">
-            <div className="flex items-center gap-2 font-semibold tracking-tight text-[15px] min-w-0 shrink">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 font-semibold tracking-tight text-[15px] min-w-0 shrink rounded-full hover:opacity-80 active:scale-[0.98] transition-all"
+            >
               <BrandIcon className="size-6 shrink-0" />
               <span className="truncate">Mashed Personal Dashboard</span>
-            </div>
+            </Link>
             <nav className="flex items-center gap-0.5 shrink-0 ml-auto">
               {links.map(({ to, label, icon: Icon, end }) => (
                 <NavLink

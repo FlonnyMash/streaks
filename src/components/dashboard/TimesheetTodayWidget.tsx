@@ -1,21 +1,29 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, Clock } from 'lucide-react'
+import { CalendarClock, Clock, Play, Square } from 'lucide-react'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useAllTimesheetEntries } from '@/hooks/useTimesheetEntries'
-import { todayWeekMonthTotals } from '@/lib/timesheetLogic'
+import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
+import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
+import { todayWeekMonthTotals, formatElapsedClock } from '@/lib/timesheetLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { formatMinutes, toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
 
 export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
+  const { session, elapsedMs, start, requestStop } = useTimesheetTimer()
+  const [pickerOpen, setPickerOpen] = useState(false)
   // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
   const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
 
   const totals = todayWeekMonthTotals(entries ?? [])
   const todayKey = toDateKey(new Date())
+  const activeWorkspace = workspaces?.find((w) => w.id === session?.workspaceId)
+  const activeAccent = activeWorkspace ? ACCENT_COLOR_MAP[activeWorkspace.color] : null
 
   const perWorkspaceToday = (workspaces ?? [])
     .map((workspace) => ({
@@ -26,6 +34,15 @@ export function TimesheetTodayWidget() {
     }))
     .filter((w) => w.minutes > 0)
     .sort((a, b) => b.minutes - a.minutes)
+
+  function handleClockIn() {
+    if (!workspaces || workspaces.length === 0) return
+    if (workspaces.length === 1) {
+      start(workspaces[0].id)
+      return
+    }
+    setPickerOpen(true)
+  }
 
   return (
     <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
@@ -53,6 +70,48 @@ export function TimesheetTodayWidget() {
             </div>
           </div>
 
+          {session ? (
+            <div className="rounded-2xl bg-accent-teal/10 px-3.5 py-3 mb-3 flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <span className="relative flex size-2.5 shrink-0">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+                  <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+                </span>
+                {activeWorkspace ? (
+                  <>
+                    <div
+                      className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+                      style={{ backgroundColor: activeAccent ? `${activeAccent.hex}22` : undefined }}
+                    >
+                      {activeWorkspace.emoji}
+                    </div>
+                    <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{activeWorkspace.name}</span>
+                  </>
+                ) : (
+                  <span className="flex-1 min-w-0 truncate text-[13px] font-medium">Timer running</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-2xl font-bold tabular-nums tracking-tight">{formatElapsedClock(elapsedMs)}</span>
+                <Button type="button" size="sm" onClick={requestStop}>
+                  <Square className="size-3.5 fill-current" />
+                  Clock out
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="md"
+              className="w-full mb-3"
+              onClick={handleClockIn}
+              disabled={!workspaces || workspaces.length === 0}
+            >
+              <Play className="size-4 fill-current" />
+              Clock in
+            </Button>
+          )}
+
           {perWorkspaceToday.length > 0 ? (
             <div className="flex flex-col gap-0.5">
               {perWorkspaceToday.map(({ workspace, minutes }) => {
@@ -74,10 +133,16 @@ export function TimesheetTodayWidget() {
               })}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
-              <Clock className="size-6 text-accent-teal/70" />
-              <p className="text-[13px] text-black/45 dark:text-white/45">No time logged yet today.</p>
-            </div>
+            !session && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
+                <Clock className="size-6 text-accent-teal/70" />
+                <p className="text-[13px] text-black/45 dark:text-white/45">
+                  {workspaces && workspaces.length === 0
+                    ? 'Create a workspace to start tracking.'
+                    : 'No time logged yet today.'}
+                </p>
+              </div>
+            )
           )}
         </div>
       )}
@@ -88,6 +153,13 @@ export function TimesheetTodayWidget() {
       >
         View timesheet →
       </Link>
+
+      <ClockInPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        workspaces={workspaces ?? []}
+        onSelect={start}
+      />
     </div>
   )
 }

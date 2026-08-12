@@ -47,6 +47,7 @@ const HELP_CONTENT: Record<
     what: 'Timesheet tracks how you spend time across projects. Each workspace is a project, client, or job, and entries log minutes (optionally with start/end times and topics).',
     how: [
       'Create a workspace for each project you want to track.',
+      'Clock in from the dashboard or from today in a workspace to start a live timer, then clock out to review and save the block.',
       'Open a workspace and tap a day on the calendar to add or edit time entries.',
       'Use the overview calendar on this page to see time across all workspaces at a glance.',
     ],

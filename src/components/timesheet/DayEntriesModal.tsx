@@ -1,35 +1,38 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { format } from 'date-fns'
-import { Minus, Plus, Trash2, X } from 'lucide-react'
+import { Check, Minus, Play, Plus, Square, Trash2 } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import {
   DEFAULT_QUICK_PRESETS,
   addMinutesToClock,
-  addQuickPreset,
   durationFromRange,
   formatClockTime,
+  formatElapsedClock,
   normalizeQuickPresets,
-  removeQuickPreset,
   toTimeInputValue,
 } from '@/lib/timesheetLogic'
-import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
+import { cn, formatMinutes, fromDateKey, toDateKey } from '@/lib/utils'
 import type { TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
+import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 
 const MINUTES_STEP = 15
 const MAX_MINUTES = 24 * 60
+
+type EntryDraftInput = Omit<TimesheetEntryInput, 'entry_date'>
 
 interface DayEntriesModalProps {
   open: boolean
   onClose: () => void
   dateKey: string | null
+  workspaceId: string
   entries: TimesheetEntry[]
   accentHex: string
   isSaving: boolean
   quickPresets?: number[]
-  onPresetsChange?: (presets: number[]) => void
-  onAdd: (input: Omit<TimesheetEntryInput, 'entry_date'>) => void
+  onAdd: (input: EntryDraftInput) => void
+  onUpdate: (id: string, input: EntryDraftInput) => void
   onDelete: (id: string) => void
 }
 
@@ -69,22 +72,24 @@ export function DayEntriesModal({
   open,
   onClose,
   dateKey,
+  workspaceId,
   entries,
   accentHex,
   isSaving,
   quickPresets,
-  onPresetsChange,
   onAdd,
+  onUpdate,
   onDelete,
 }: DayEntriesModalProps) {
   const [draft, setDraft] = useState(() => defaultDraft())
   const [hoursText, setHoursText] = useState('0')
   const [minutesText, setMinutesText] = useState('30')
   const [rangeError, setRangeError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const { session, elapsedMs, start, requestStop } = useTimesheetTimer()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
-  const canManagePresets = Boolean(onPresetsChange)
-  const currentIsPreset = presets.includes(draft.minutes)
   const hasRange = Boolean(draft.startTime && draft.endTime)
+  const isEditing = editingId !== null
 
   function syncDurationFields(total: number) {
     const clamped = clampMinutes(total)
@@ -93,17 +98,48 @@ export function DayEntriesModal({
     return clamped
   }
 
-  useEffect(() => {
-    if (!open) return
+  function resetDraft() {
     const next = defaultDraft()
     setDraft(next)
     syncDurationFields(next.minutes)
     setRangeError(null)
+    setEditingId(null)
+  }
+
+  function loadEntryIntoDraft(entry: TimesheetEntry) {
+    const startTime = toTimeInputValue(entry.start_time)
+    const endTime = toTimeInputValue(entry.end_time)
+    const minutes = clampMinutes(entry.minutes)
+    setEditingId(entry.id)
+    setDraft({
+      minutes,
+      startTime,
+      endTime,
+      topic: entry.topic ?? '',
+      note: entry.note ?? '',
+    })
+    syncDurationFields(minutes)
+    setRangeError(null)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    resetDraft()
   }, [open, dateKey])
+
+  useEffect(() => {
+    if (!editingId) return
+    if (!entries.some((e) => e.id === editingId)) {
+      resetDraft()
+    }
+  }, [entries, editingId])
 
   if (!dateKey) return null
 
   const total = entries.reduce((sum, e) => sum + e.minutes, 0)
+  const isToday = dateKey === toDateKey(new Date())
+  const timerForThisWorkspace = session?.workspaceId === workspaceId
+  const timerForOtherWorkspace = Boolean(session) && !timerForThisWorkspace
 
   function applyRange(startTime: string, endTime: string) {
     if (!startTime || !endTime) {
@@ -135,7 +171,7 @@ export function DayEntriesModal({
     return clamped
   }
 
-  /** Reads the live hour/minute fields so Add works even if the inputs never blurred. */
+  /** Reads the live hour/minute fields so Save works even if the inputs never blurred. */
   function resolveDurationFromInputs(hoursRaw = hoursText, minutesRaw = minutesText): number {
     let hours = Math.max(0, Math.min(24, Number.parseInt(hoursRaw, 10) || 0))
     let mins = Math.max(0, Math.min(59, Number.parseInt(minutesRaw, 10) || 0))
@@ -153,40 +189,83 @@ export function DayEntriesModal({
     setMinutes(resolveDurationFromInputs(hoursText, raw))
   }
 
-  function handleAdd() {
+  function buildInputFromDraft(): EntryDraftInput | null {
     const minutes = resolveDurationFromInputs()
     const startTime = draft.startTime
     const endTime = startTime ? (addMinutesToClock(startTime, minutes) ?? '') : draft.endTime
 
     if ((startTime && !endTime) || (!startTime && endTime)) {
       setRangeError('Set both start and end time, or leave both empty.')
-      return
+      return null
     }
     if (startTime && endTime && durationFromRange(startTime, endTime) == null) {
       setRangeError('End time must be after start time.')
-      return
+      return null
     }
-    if (minutes <= 0) return
+    if (minutes <= 0) return null
 
     // Keep draft/duration fields in sync with what we're about to save.
     setMinutes(minutes)
 
-    onAdd({
+    return {
       minutes,
       start_time: startTime ? toTimeInputValue(startTime) : null,
       end_time: endTime ? toTimeInputValue(endTime) : null,
       topic: draft.topic.trim() ? draft.topic.trim() : null,
       note: draft.note.trim() ? draft.note.trim() : null,
-    })
-    const next = defaultDraft()
-    setDraft(next)
-    syncDurationFields(next.minutes)
-    setRangeError(null)
+    }
+  }
+
+  function handleSave() {
+    const input = buildInputFromDraft()
+    if (!input) return
+
+    if (editingId) {
+      onUpdate(editingId, input)
+    } else {
+      onAdd(input)
+    }
+    resetDraft()
+  }
+
+  function handleDelete(id: string) {
+    if (editingId === id) resetDraft()
+    onDelete(id)
   }
 
   return (
     <GlassModal open={open} onClose={onClose} title={format(fromDateKey(dateKey), 'EEEE, MMM d')}>
       <div className="flex flex-col gap-5">
+        {isToday && (
+          <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3">
+            {timerForThisWorkspace ? (
+              <div className="flex items-center gap-3">
+                <span className="relative flex size-2.5 shrink-0">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+                  <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium">Tracking</p>
+                  <p className="text-[18px] font-bold tabular-nums">{formatElapsedClock(elapsedMs)}</p>
+                </div>
+                <Button type="button" size="sm" onClick={requestStop}>
+                  <Square className="size-3.5 fill-current" />
+                  Stop
+                </Button>
+              </div>
+            ) : timerForOtherWorkspace ? (
+              <p className="text-[13px] text-black/50 dark:text-white/50 text-center">
+                A timer is already running in another workspace.
+              </p>
+            ) : (
+              <Button type="button" className="w-full" onClick={() => start(workspaceId)}>
+                <Play className="size-4 fill-current" />
+                Start tracking
+              </Button>
+            )}
+          </div>
+        )}
+
         {total > 0 && (
           <p className="text-center text-[13px] text-black/50 dark:text-white/50 -mt-1">
             <span className="font-semibold" style={{ color: accentHex }}>
@@ -202,6 +281,7 @@ export function DayEntriesModal({
               {entries.map((entry) => {
                 const startLabel = formatClockTime(entry.start_time)
                 const endLabel = formatClockTime(entry.end_time)
+                const isActive = editingId === entry.id
                 return (
                   <motion.div
                     key={entry.id}
@@ -209,28 +289,40 @@ export function DayEntriesModal({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="flex items-start gap-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3"
+                    className={cn(
+                      'flex items-start gap-3 rounded-2xl px-3.5 py-3 transition-colors',
+                      isActive
+                        ? 'bg-accent-blue/10 ring-1 ring-accent-blue/40'
+                        : 'bg-black/[0.03] dark:bg-white/[0.05]',
+                    )}
                   >
-                    <div
-                      className="shrink-0 size-9 rounded-xl flex items-center justify-center text-[12px] font-bold tabular-nums text-white"
-                      style={{ backgroundColor: accentHex }}
-                    >
-                      {formatMinutes(entry.minutes)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-medium truncate">{entry.topic || 'Time logged'}</p>
-                      {startLabel && endLabel && (
-                        <p className="text-[12px] font-medium tabular-nums text-black/55 dark:text-white/55">
-                          {startLabel} – {endLabel}
-                        </p>
-                      )}
-                      {entry.note && (
-                        <p className="text-[12px] text-black/45 dark:text-white/45 truncate">{entry.note}</p>
-                      )}
-                    </div>
                     <button
                       type="button"
-                      onClick={() => onDelete(entry.id)}
+                      onClick={() => (isActive ? resetDraft() : loadEntryIntoDraft(entry))}
+                      className="flex min-w-0 flex-1 items-start gap-3 text-left rounded-xl -m-1 p-1 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors"
+                      aria-label={isActive ? 'Cancel editing entry' : 'Edit entry'}
+                    >
+                      <div
+                        className="shrink-0 size-9 rounded-xl flex items-center justify-center text-[12px] font-bold tabular-nums text-white"
+                        style={{ backgroundColor: accentHex }}
+                      >
+                        {formatMinutes(entry.minutes)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-medium truncate">{entry.topic || 'Time logged'}</p>
+                        {startLabel && endLabel && (
+                          <p className="text-[12px] font-medium tabular-nums text-black/55 dark:text-white/55">
+                            {startLabel} – {endLabel}
+                          </p>
+                        )}
+                        {entry.note && (
+                          <p className="text-[12px] text-black/45 dark:text-white/45 truncate">{entry.note}</p>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(entry.id)}
                       aria-label="Delete entry"
                       className="shrink-0 size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-red hover:bg-accent-red/10 transition-colors"
                     >
@@ -244,7 +336,20 @@ export function DayEntriesModal({
         )}
 
         <div className="flex flex-col gap-3 pt-1 border-t border-black/[0.06] dark:border-white/[0.08]">
-          <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5 pt-3">Log time</span>
+          <div className="flex items-center justify-between gap-2 px-0.5 pt-3">
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60">
+              {isEditing ? 'Edit time block' : 'Log time'}
+            </span>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={resetDraft}
+                className="text-[12px] font-medium text-black/45 dark:text-white/45 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <label className="flex-1 min-w-0 flex flex-col gap-1">
@@ -338,42 +443,20 @@ export function DayEntriesModal({
 
           <div className="flex flex-wrap gap-2 justify-center">
             {presets.map((preset) => (
-              <div key={preset} className="relative group">
-                <button
-                  type="button"
-                  onClick={() => setMinutes(preset)}
-                  className={cn(
-                    'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
-                    canManagePresets && 'pr-7',
-                    draft.minutes === preset
-                      ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
-                      : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                  )}
-                >
-                  {formatMinutes(preset)}
-                </button>
-                {canManagePresets && (
-                  <button
-                    type="button"
-                    aria-label={`Remove ${formatMinutes(preset)} preset`}
-                    onClick={() => onPresetsChange?.(removeQuickPreset(presets, preset))}
-                    className="absolute -top-1 -right-1 size-5 rounded-full flex items-center justify-center bg-black/10 dark:bg-white/15 text-black/50 dark:text-white/50 hover:bg-accent-red hover:text-white transition-colors"
-                  >
-                    <X className="size-3" strokeWidth={2.5} />
-                  </button>
-                )}
-              </div>
-            ))}
-            {canManagePresets && !currentIsPreset && (
               <button
+                key={preset}
                 type="button"
-                onClick={() => onPresetsChange?.(addQuickPreset(presets, draft.minutes))}
-                className="h-8 px-3 rounded-full text-[12px] font-medium transition-all bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/15 inline-flex items-center gap-1"
+                onClick={() => setMinutes(preset)}
+                className={cn(
+                  'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
+                  draft.minutes === preset
+                    ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
+                    : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                )}
               >
-                <Plus className="size-3.5" />
-                Save {formatMinutes(draft.minutes)}
+                {formatMinutes(preset)}
               </button>
-            )}
+            ))}
           </div>
 
           <input
@@ -390,9 +473,9 @@ export function DayEntriesModal({
             className={inputClass}
           />
 
-          <Button onClick={handleAdd} loading={isSaving} size="lg" className="w-full">
-            <Plus className="size-4" />
-            Add time block
+          <Button onClick={handleSave} loading={isSaving} size="lg" className="w-full">
+            {isEditing ? <Check className="size-4" /> : <Plus className="size-4" />}
+            {isEditing ? 'Save changes' : 'Add time block'}
           </Button>
         </div>
       </div>

@@ -4,17 +4,18 @@ import { ArrowLeft, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-reac
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
-  useUpdateTimesheetWorkspace,
 } from '@/hooks/useTimesheetWorkspaces'
 import {
   useCreateTimesheetEntry,
   useDeleteTimesheetEntry,
   useTimesheetEntries,
+  useUpdateTimesheetEntry,
 } from '@/hooks/useTimesheetEntries'
 import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DayEntriesModal } from '@/components/timesheet/DayEntriesModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
+import { ActiveTimerBanner } from '@/components/timesheet/ActiveTimerBanner'
 import { Spinner } from '@/components/ui/Spinner'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { todayWeekMonthTotals } from '@/lib/timesheetLogic'
@@ -27,9 +28,9 @@ export function TimesheetWorkspacePage() {
   const workspace = workspaces?.find((w) => w.id === id)
   const { data: entries, isLoading: entriesLoading } = useTimesheetEntries(id)
   const createEntry = useCreateTimesheetEntry(id ?? '')
+  const updateEntry = useUpdateTimesheetEntry(id ?? '')
   const deleteEntry = useDeleteTimesheetEntry(id ?? '')
   const deleteWorkspace = useDeleteTimesheetWorkspace()
-  const updateWorkspace = useUpdateTimesheetWorkspace()
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -116,6 +117,8 @@ export function TimesheetWorkspacePage() {
         </div>
       </div>
 
+      <ActiveTimerBanner />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Today', value: totals.today },
@@ -149,17 +152,17 @@ export function TimesheetWorkspacePage() {
         open={selectedDayKey !== null}
         onClose={() => setSelectedDayKey(null)}
         dateKey={selectedDayKey}
+        workspaceId={workspace.id}
         entries={selectedDayEntries}
         accentHex={accent.hex}
-        isSaving={createEntry.isPending}
+        isSaving={createEntry.isPending || updateEntry.isPending}
         quickPresets={workspace.quick_presets}
-        onPresetsChange={(quick_presets) => {
-          if (!id) return
-          updateWorkspace.mutate({ id, input: { quick_presets } })
-        }}
         onAdd={(input) => {
           if (!selectedDayKey) return
           createEntry.mutate({ entry_date: selectedDayKey, ...input })
+        }}
+        onUpdate={(entryId, input) => {
+          updateEntry.mutate({ id: entryId, input })
         }}
         onDelete={(entryId) => deleteEntry.mutate(entryId)}
       />

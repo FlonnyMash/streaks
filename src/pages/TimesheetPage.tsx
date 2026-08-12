@@ -7,6 +7,7 @@ import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DaySummaryModal } from '@/components/timesheet/DaySummaryModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
+import { ActiveTimerBanner } from '@/components/timesheet/ActiveTimerBanner'
 import { Spinner } from '@/components/ui/Spinner'
 import {
   FeatureGetStartedButton,
@@ -85,6 +86,8 @@ export function TimesheetPage() {
           </button>
         </div>
       </div>
+
+      <ActiveTimerBanner />
 
       {workspacesLoading && <Spinner />}
 

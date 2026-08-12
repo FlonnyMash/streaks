@@ -154,6 +154,38 @@ export function toTimeInputValue(time: string | null | undefined): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
+const MAX_ENTRY_MINUTES = 24 * 60
+
+/** Live timer label: `m:ss` or `h:mm:ss`. */
+export function formatElapsedClock(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+export function clockTimeFromDate(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+/** Builds a completed timesheet draft from a clock-in/out range. */
+export function draftFromTimerRange(startedAt: Date, endedAt: Date) {
+  const elapsedMs = Math.max(0, endedAt.getTime() - startedAt.getTime())
+  const minutes = Math.min(MAX_ENTRY_MINUTES, Math.max(1, Math.round(elapsedMs / 60_000) || 1))
+  const start_time = clockTimeFromDate(startedAt)
+  const end_time = addMinutesToClock(start_time, minutes) ?? clockTimeFromDate(endedAt)
+  return {
+    entry_date: toDateKey(startedAt),
+    minutes,
+    start_time,
+    end_time,
+  }
+}
+
 /* ---------------------------------------------------------------------- */
 /* PDF export: range selection + stats                                    */
 /* ---------------------------------------------------------------------- */
