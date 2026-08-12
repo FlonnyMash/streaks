@@ -50,6 +50,22 @@ body,
 #root {
   min-height: 100%;
   min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+:root {
+  --app-height: 100dvh;
+  --fixed-bottom-shift: 0px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.tabbar-bottom {
+  bottom: var(--fixed-bottom-shift, 0px);
+  padding-bottom: max(0.5rem, var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+.fab-above-tabbar {
+  bottom: calc(5rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)) + var(--fixed-bottom-shift, 0px));
 }
 
 body {

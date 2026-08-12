@@ -40,66 +40,21 @@ export function App() {
       <Route path="/impressum" element={<Navigate to="/legal" replace />} />
 
       <Route path="/" element={<Navigate to="/streaks" replace />} />
+
       <Route
-        path="/streaks"
         element={
           <ProtectedRoute>
-            <AppShell>
-              <DashboardPage />
-            </AppShell>
+            <AppShell />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/streaks/:id"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <StreakDetailPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/todos"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <TodosPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/timesheet"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <TimesheetPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/timesheet/:id"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <TimesheetWorkspacePage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <AppShell>
-              <SettingsPage />
-            </AppShell>
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="/streaks" element={<DashboardPage />} />
+        <Route path="/streaks/:id" element={<StreakDetailPage />} />
+        <Route path="/todos" element={<TodosPage />} />
+        <Route path="/timesheet" element={<TimesheetPage />} />
+        <Route path="/timesheet/:id" element={<TimesheetWorkspacePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
