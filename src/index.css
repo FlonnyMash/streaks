@@ -119,15 +119,24 @@ body {
 @layer components {
   .glass-surface,
   .glass-panel {
-    --glass-bg: light-dark(rgba(255, 255, 255, 0.55), rgba(44, 44, 46, 0.55));
-    --glass-border: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.18));
-    --glass-blur: 24px;
-    --glass-shadow: light-dark(0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 24px rgba(0, 0, 0, 0.35));
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+    --glass-border: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.22));
+    --glass-blur: 64px;
+    --glass-shadow: light-dark(
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22)
+    ),
+      light-dark(0 8px 32px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.4));
 
     background: var(--glass-bg);
-    backdrop-filter: saturate(180%) blur(var(--glass-blur));
-    -webkit-backdrop-filter: saturate(180%) blur(var(--glass-blur));
+    backdrop-filter: saturate(220%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(220%) blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+  }
+
+  .glass-panel {
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.45), rgba(44, 44, 46, 0.42));
+    --glass-blur: 32px;
   }
 }

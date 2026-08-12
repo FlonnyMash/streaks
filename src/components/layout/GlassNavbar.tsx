@@ -19,8 +19,10 @@ export function GlassNavbar() {
         <div className="relative flex-1 min-w-0 h-14">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 glass-surface rounded-full shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]"
-          />
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/35 to-transparent dark:from-white/16" />
+          </div>
           <div className="relative z-10 h-full pl-4 pr-3 flex items-center gap-2 min-w-0">
             <div className="flex items-center gap-2 font-semibold tracking-tight text-[15px] min-w-0 shrink">
               <BrandIcon className="size-6 shrink-0" />
