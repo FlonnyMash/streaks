@@ -77,10 +77,11 @@ export function DayDetailModal({
     setMinutes(nextMinutes)
     initial.current = { note: nextNote, mood: nextMood }
     prevDayGoalMet.current = dayGoal ? nextMinutes >= goalMinutes : (entry?.completed ?? false)
-    // Intentionally re-syncs only when the sheet opens for a (possibly new) day, not on every
-    // entry mutation — otherwise completing/uncompleting mid-edit would clobber the draft.
+    // Intentionally omits `entry` so completing/uncompleting mid-edit doesn't clobber the draft.
+    // dayGoal / goalMinutes are included so a streak edit that changes the goal while this sheet
+    // is open still refreshes haptic baseline state.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dateKey])
+  }, [open, dateKey, dayGoal, goalMinutes])
 
   if (!dateKey) return null
 

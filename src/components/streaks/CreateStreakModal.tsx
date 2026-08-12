@@ -249,7 +249,7 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
         <div className="glass-panel rounded-2xl p-4">
           <Switch
             checked={state.trackTime}
-            onChange={(checked) => setState((s) => ({ ...s, trackTime: checked, hasTimeGoal: checked && s.hasTimeGoal }))}
+            onChange={(checked) => setState((s) => ({ ...s, trackTime: checked }))}
             label="Track time"
             description="Log how many minutes you spend each day"
           />

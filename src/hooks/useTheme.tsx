@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -28,12 +28,21 @@ function readStoredTheme(): ThemeMode {
 
 function applyResolvedTheme(resolved: 'light' | 'dark') {
   const root = document.documentElement
-  root.classList.remove('light', 'dark')
-  root.classList.add(resolved)
-  root.style.colorScheme = resolved
+  // Skip the remove/add dance when the bootstrap script (or a prior apply) already set the
+  // matching class — avoids a redundant classList churn that can flash the wrong theme.
+  if (!root.classList.contains(resolved)) {
+    root.classList.remove('light', 'dark')
+    root.classList.add(resolved)
+  }
+  if (root.style.colorScheme !== resolved) {
+    root.style.colorScheme = resolved
+  }
 
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#000000' : '#f2f2f7')
+  const nextMeta = resolved === 'dark' ? '#000000' : '#f2f2f7'
+  if (meta && meta.getAttribute('content') !== nextMeta) {
+    meta.setAttribute('content', nextMeta)
+  }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -49,7 +58,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
-  useEffect(() => {
+  // useLayoutEffect so any mismatch vs the index.html bootstrap script is corrected before paint.
+  useLayoutEffect(() => {
     applyResolvedTheme(resolvedTheme)
   }, [resolvedTheme])
 
