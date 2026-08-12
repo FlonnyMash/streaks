@@ -79,6 +79,8 @@ export interface Todo {
   archived: boolean
   completed_at: string | null
   created_at: string
+  /** Optional timesheet workspace this task logs time to. */
+  workspace_id: string | null
   topics: TodoTopic[]
 }
 
@@ -87,6 +89,7 @@ export interface TodoInput {
   notes: string | null
   due_date: string | null
   importance: TodoImportance
+  workspace_id?: string | null
   /** Topic names to attach. Omitted on update leaves existing links unchanged. */
   topicNames?: string[]
 }
@@ -143,6 +146,8 @@ export interface TimesheetTimerSession {
   workspaceId: string
   startedAt: string
   topic?: string
+  /** Set when the timer was started from a specific todo. */
+  todoId?: string
 }
 
 export interface TimesheetSessionRow {
@@ -151,6 +156,7 @@ export interface TimesheetSessionRow {
   workspace_id: string
   started_at: string
   topic: string | null
+  todo_id: string | null
   created_at: string
 }
 

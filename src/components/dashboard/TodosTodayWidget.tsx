@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Circle, ListTodo, PartyPopper } from 'lucide-react'
-import { useToggleTodo, useTodos } from '@/hooks/useTodos'
+import { useTodos } from '@/hooks/useTodos'
+import { useCompleteTodoWithTime } from '@/hooks/useTodoTimePrompt'
 import { toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -8,7 +9,7 @@ const IMPORTANCE_DOT = { 1: 'bg-black/20 dark:bg-white/25', 2: 'bg-accent-orange
 
 export function TodosTodayWidget() {
   const { data: todos, isLoading } = useTodos()
-  const toggleTodo = useToggleTodo()
+  const completeTodo = useCompleteTodoWithTime()
   const todayKey = toDateKey(new Date())
 
   const dueToday = (todos ?? [])
@@ -50,7 +51,7 @@ export function TodosTodayWidget() {
             <button
               key={todo.id}
               type="button"
-              onClick={() => toggleTodo.mutate({ id: todo.id, done: !todo.done })}
+              onClick={() => completeTodo(todo, !todo.done)}
               className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 -mx-1 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors text-left"
             >
               {todo.done ? (

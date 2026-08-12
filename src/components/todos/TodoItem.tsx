@@ -1,7 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Pencil, Play, Square, Trash2 } from 'lucide-react'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { ImportanceMeter } from '@/components/todos/ImportanceMeter'
+import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
+import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
+import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import { formatElapsedClock } from '@/lib/timesheetLogic'
 import type { Todo } from '@/lib/types'
 import { cn, fromDateKey } from '@/lib/utils'
 
@@ -30,6 +34,16 @@ function dueLabel(dueDate: string): { text: string; overdue: boolean } {
 export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: TodoItemProps) {
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
+  const { data: workspaces } = useTimesheetWorkspaces()
+  const { start, requestStop, sessionForTodo, sessionForWorkspace, elapsedMsFor, isSyncing } = useTimesheetTimer()
+
+  const workspace = todo.workspace_id
+    ? (workspaces ?? []).find((w) => w.id === todo.workspace_id) ?? null
+    : null
+  const ownSession = sessionForTodo(todo.id)
+  const workspaceSession = todo.workspace_id ? sessionForWorkspace(todo.workspace_id) : null
+  const otherTimerRunning = Boolean(workspaceSession && workspaceSession.todoId !== todo.id)
+  const showTimer = Boolean(workspace && !todo.done)
 
   return (
     <motion.div
@@ -71,7 +85,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             {todo.title}
           </p>
         </div>
-        {(due || notesPreview || (todo.topics ?? []).length > 0) && (
+        {(due || notesPreview || (todo.topics ?? []).length > 0 || workspace) && (
           <div className="mt-0.5 min-w-0">
             {due && (
               <p
@@ -98,8 +112,20 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
                 {notesPreview}
               </p>
             )}
-            {(todo.topics ?? []).length > 0 && (
+            {(workspace || (todo.topics ?? []).length > 0) && (
               <div className={cn('flex flex-wrap gap-1 mt-1', todo.done && 'opacity-50')}>
+                {workspace && (
+                  <span
+                    className="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-medium truncate max-w-[9rem]"
+                    style={{
+                      backgroundColor: `${ACCENT_COLOR_MAP[workspace.color].hex}22`,
+                      color: ACCENT_COLOR_MAP[workspace.color].hex,
+                    }}
+                  >
+                    <span className="shrink-0">{workspace.emoji}</span>
+                    <span className="truncate">{workspace.name}</span>
+                  </span>
+                )}
                 {(todo.topics ?? []).slice(0, 4).map((topic) => (
                   <span
                     key={topic.id}
@@ -120,6 +146,34 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
       </button>
 
       <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
+        {showTimer && ownSession && (
+          <span className="text-[11px] font-semibold tabular-nums text-accent-blue px-1 min-w-[2.5rem] text-right">
+            {formatElapsedClock(elapsedMsFor(ownSession.id))}
+          </span>
+        )}
+        {showTimer && ownSession && (
+          <button
+            type="button"
+            onClick={() => requestStop(ownSession.id)}
+            aria-label="Stop timer"
+            className="size-8 rounded-full flex items-center justify-center text-accent-red hover:bg-accent-red/10 transition-colors"
+          >
+            <Square className="size-3.5 fill-current" />
+          </button>
+        )}
+        {showTimer && workspace && !ownSession && (
+          <button
+            type="button"
+            onClick={() => start(workspace.id, { topic: todo.title, todoId: todo.id })}
+            disabled={otherTimerRunning || isSyncing}
+            aria-label="Start timer"
+            title={otherTimerRunning ? 'A timer is already running for this workspace' : 'Start timer'}
+            className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+          >
+            <Play className="size-3.5 fill-current" />
+          </button>
+        )}
+
         {(onMoveUp || onMoveDown) && (
           <div className="hidden sm:flex flex-col">
             <button

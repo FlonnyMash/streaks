@@ -10,14 +10,15 @@ import {
   FeatureHelpIconButton,
   FeatureHelpModal,
 } from '@/components/ui/FeatureHelp'
-import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useToggleTodo, useTodos } from '@/hooks/useTodos'
+import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useTodos } from '@/hooks/useTodos'
+import { useCompleteTodoWithTime } from '@/hooks/useTodoTimePrompt'
 import { BUCKET_LABELS, BUCKET_ORDER, groupActiveTodos, sortCompletedTodos, uniqueTopicsFromTodos } from '@/lib/todoLogic'
 import { cn } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
 
 export function TodosPage() {
   const { data: todos, isLoading } = useTodos()
-  const toggleTodo = useToggleTodo()
+  const completeTodo = useCompleteTodoWithTime()
   const deleteTodo = useDeleteTodo()
   const createTodo = useCreateTodo()
   const swapPositions = useSwapTodoPositions()
@@ -155,7 +156,7 @@ export function TodosPage() {
       </form>
 
       {!isLoading && !isEmpty && filterTopics.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-1 px-1">
+        <div className="flex gap-1.5 overflow-x-auto py-1 mb-4 -mx-1 px-1">
           <button
             type="button"
             onClick={() => setSelectedTopicId(null)}
@@ -222,7 +223,7 @@ export function TodosPage() {
                     <TodoItem
                       key={todo.id}
                       todo={todo}
-                      onToggle={(id, done) => toggleTodo.mutate({ id, done })}
+                      onToggle={(_id, done) => completeTodo(todo, done)}
                       onView={openView}
                       onEdit={openEdit}
                       onDelete={(id) => deleteTodo.mutate(id)}
@@ -259,7 +260,7 @@ export function TodosPage() {
                       <TodoItem
                         key={todo.id}
                         todo={todo}
-                        onToggle={(id, done) => toggleTodo.mutate({ id, done })}
+                        onToggle={(_id, done) => completeTodo(todo, done)}
                         onView={openView}
                         onEdit={openEdit}
                         onDelete={(id) => deleteTodo.mutate(id)}

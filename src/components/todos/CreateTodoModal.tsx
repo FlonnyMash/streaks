@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 import { Pencil } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
@@ -7,6 +8,8 @@ import { TextField } from '@/components/ui/TextField'
 import { ImportanceMeter, IMPORTANCE_OPTIONS } from '@/components/todos/ImportanceMeter'
 import { TopicChipList, TopicPicker } from '@/components/todos/TopicPicker'
 import { useCreateTodo, useTodoTopics, useUpdateTodo } from '@/hooks/useTodos'
+import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
+import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { cn, fromDateKey } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
 import type { Todo, TodoImportance } from '@/lib/types'
@@ -25,7 +28,14 @@ interface CreateTodoModalProps {
 }
 
 function defaultState(initialTitle = '') {
-  return { title: initialTitle, notes: '', dueDate: '', importance: 2 as TodoImportance, topicNames: [] as string[] }
+  return {
+    title: initialTitle,
+    notes: '',
+    dueDate: '',
+    importance: 2 as TodoImportance,
+    topicNames: [] as string[],
+    workspaceId: '' as string,
+  }
 }
 
 function formatDueDate(dueDate: string) {
@@ -44,6 +54,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
   const createTodo = useCreateTodo()
   const updateTodo = useUpdateTodo()
   const { data: existingTopics } = useTodoTopics()
+  const { data: workspaces } = useTimesheetWorkspaces()
   const pending = createTodo.isPending || updateTodo.isPending
   const isView = mode === 'view'
   const isEditing = mode === 'edit'
@@ -59,6 +70,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
         dueDate: todo.due_date ?? '',
         importance: todo.importance ?? 2,
         topicNames: (todo.topics ?? []).map((t) => t.name),
+        workspaceId: todo.workspace_id ?? '',
       })
     } else {
       setState(defaultState(initialTitle ?? ''))
@@ -78,6 +90,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
       notes: state.notes.trim() ? state.notes.trim() : null,
       due_date: state.dueDate || null,
       importance: state.importance,
+      workspace_id: state.workspaceId || null,
       topicNames: state.topicNames,
     }
 
@@ -95,6 +108,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
 
   const title = mode === 'create' ? 'New Task' : mode === 'view' ? 'Task' : 'Edit Task'
   const importanceLabel = IMPORTANCE_OPTIONS.find((o) => o.value === state.importance)?.label ?? 'Medium'
+  const selectedWorkspace = (workspaces ?? []).find((w) => w.id === state.workspaceId)
 
   return (
     <GlassModal open={open} onClose={onClose} title={title}>
@@ -132,6 +146,23 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
             <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Topics</p>
             {state.topicNames.length > 0 ? (
               <TopicChipList names={state.topicNames} />
+            ) : (
+              <p className="text-[15px] text-black/70 dark:text-white/70">None</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Workspace</p>
+            {selectedWorkspace ? (
+              <div className="flex items-center gap-3">
+                <div
+                  className="size-8 rounded-xl flex items-center justify-center text-base shrink-0"
+                  style={{ backgroundColor: `${ACCENT_COLOR_MAP[selectedWorkspace.color].hex}22` }}
+                >
+                  {selectedWorkspace.emoji}
+                </div>
+                <p className="text-[15px] text-black/70 dark:text-white/70 truncate">{selectedWorkspace.name}</p>
+              </div>
             ) : (
               <p className="text-[15px] text-black/70 dark:text-white/70">None</p>
             )}
@@ -187,6 +218,64 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
             onChange={(topicNames) => setState((s) => ({ ...s, topicNames }))}
             disabled={pending}
           />
+
+          <div className="flex flex-col gap-2">
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Workspace</span>
+            <p className="text-[12px] text-black/45 dark:text-white/45 -mt-1 px-0.5">
+              Optional. Play starts a timer on this timesheet.
+            </p>
+            {(workspaces ?? []).length === 0 ? (
+              <p className="text-[13px] text-black/50 dark:text-white/50 px-0.5">
+                No workspaces yet.{' '}
+                <Link to="/timesheet" className="text-accent-blue font-medium">
+                  Create one in Timesheet
+                </Link>{' '}
+                to track time from tasks.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setState((s) => ({ ...s, workspaceId: '' }))}
+                  disabled={pending}
+                  className={cn(
+                    'flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-all',
+                    !state.workspaceId
+                      ? 'bg-accent-blue/10 ring-1 ring-accent-blue'
+                      : 'bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08]',
+                  )}
+                >
+                  <span className="text-[14px] font-medium">None</span>
+                </button>
+                {(workspaces ?? []).map((workspace) => {
+                  const accent = ACCENT_COLOR_MAP[workspace.color]
+                  const selected = state.workspaceId === workspace.id
+                  return (
+                    <button
+                      key={workspace.id}
+                      type="button"
+                      onClick={() => setState((s) => ({ ...s, workspaceId: workspace.id }))}
+                      disabled={pending}
+                      className={cn(
+                        'flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-all',
+                        selected
+                          ? 'bg-accent-blue/10 ring-1 ring-accent-blue'
+                          : 'bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08]',
+                      )}
+                    >
+                      <div
+                        className="size-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                        style={{ backgroundColor: `${accent.hex}22` }}
+                      >
+                        {workspace.emoji}
+                      </div>
+                      <span className="font-medium truncate">{workspace.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-2">
             <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Importance</span>

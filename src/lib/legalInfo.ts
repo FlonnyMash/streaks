@@ -10,5 +10,5 @@ export const LEGAL = {
   email: 'kontakt@lucabakan.de',
   emailHref: 'mailto:kontakt@lucabakan.de',
   appName: 'Mashed Personal Dashboard',
-  privacyUpdated: 'August 12, 2026',
+  privacyUpdated: 'August 13, 2026',
 } as const

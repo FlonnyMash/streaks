@@ -56,8 +56,9 @@ export function PrivacyPolicyPage() {
         />
         <p>
           Where required, we rely on data processing agreements and/or the providers’ privacy terms
-          and Standard Contractual Clauses for transfers outside the EEA. The exact server region of
-          your Supabase project depends on the project configuration.
+          and Standard Contractual Clauses for transfers outside the EEA. Our Supabase project is hosted
+          in the EU (Ireland, region eu-west-1). Cloudflare and identity providers may process data in
+          other regions under the safeguards above.
         </p>
       </LegalSection>
 
@@ -70,10 +71,11 @@ export function PrivacyPolicyPage() {
             'Profile photo (optional): an image you upload (up to 5 MB), stored in Supabase Storage under your user ID, with a publicly accessible URL saved on your profile so the App can display it',
             'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
-            'Content you create: streaks (name, emoji, color, frequency, time goals), daily entries (notes, mood, minutes), todos (title, notes, due date, importance, topics), timesheet workspaces and entries (topics, notes, times)',
+            'Content you create: streaks (name, emoji, color, frequency, time goals), daily streak entries (notes, mood, minutes), todos (title, notes, due date, importance, topics, optional linked timesheet workspace), timesheet workspaces (including quick duration presets), running timesheet sessions (workspace, start time, optional topic, optional linked todo), and timesheet entries (topics, notes, start/end times, minutes, mood)',
+            'Optional timesheet PDF export: generated on your device for download; the App does not upload the PDF to our servers',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
-            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), and whether the “Add to Home Screen” tip was dismissed',
+            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and a cache of active timesheet timers (keyed to your user ID) used to keep running timers available across reloads',
           ]}
         />
         <p>
@@ -90,11 +92,11 @@ export function PrivacyPolicyPage() {
           items={[
             'Providing and operating your user account and sign-in (Art. 6(1)(b) GDPR)',
             'Verifying you meet the minimum age of 16 to use the App (Art. 6(1)(c) GDPR)',
-            'Storing and syncing your personal app content (Art. 6(1)(b) GDPR)',
+            'Storing and syncing your personal app content, including running timesheet sessions (Art. 6(1)(b) GDPR)',
             'Displaying your optional profile photo in the App (Art. 6(1)(b) GDPR)',
             'Securing authentication (sessions, passkeys, password reset) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
-            'Storing theme, passkey-prompt, and install-tip preferences for a comfortable display (Art. 6(1)(f) GDPR)',
+            'Storing theme, passkey-prompt, install-tip, and active-timer-cache preferences for a comfortable display (Art. 6(1)(f) GDPR)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
           ]}
         />
@@ -102,21 +104,24 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="6. Retention">
         <p>
-          Account data, app content, and any uploaded profile photo are stored for as long as your
-          account exists or until you delete individual records, replace or clear your photo, or delete
-          the entire account. The auth session remains until you sign out or the tokens expire. Theme,
-          passkey-prompt, and install-tip preferences remain in local storage until you change them or
-          clear browser storage. Server and access logs of hosting / auth providers may be retained
-          briefly according to their own retention policies.
+          Account data, app content (including running timesheet sessions), and any uploaded profile
+          photo are stored for as long as your account exists or until you delete individual records,
+          stop or discard a timer, replace or clear your photo, or delete the entire account. The auth
+          session remains until you sign out or the tokens expire. Theme, passkey-prompt, install-tip,
+          and active-timer-cache preferences remain in local storage until you change them, the timer
+          cache is cleared when no sessions remain, or you clear browser storage. Server and access
+          logs of hosting / auth providers may be retained briefly according to their own retention
+          policies.
         </p>
       </LegalSection>
 
       <LegalSection title="7. Storage on your device (local storage)">
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
-          the theme preference, the passkey setup prompt status, and the “Add to Home Screen” tip
-          dismissal. These are not tracking cookies. Without storing the session, persistent sign-in
-          would not be possible.
+          the theme preference, the passkey setup prompt status, the “Add to Home Screen” tip
+          dismissal, and a cache of active timesheet timers. These are not tracking cookies. Without
+          storing the session, persistent sign-in would not be possible. Optional timesheet PDF exports
+          are created locally on your device and are not stored by the App on our servers.
         </p>
       </LegalSection>
 

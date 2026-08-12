@@ -38,6 +38,7 @@ function mapTodo(row: TodoRow): Todo {
     archived: row.archived,
     completed_at: row.completed_at,
     created_at: row.created_at,
+    workspace_id: row.workspace_id ?? null,
     topics,
   }
 }
