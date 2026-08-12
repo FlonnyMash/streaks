@@ -74,6 +74,7 @@ export function useCreateTimesheetEntry(workspaceId: string) {
         end_time: input.end_time,
         topic: input.topic,
         note: input.note,
+        mood: input.mood ?? null,
         created_at: new Date().toISOString(),
       }
 

@@ -71,6 +71,13 @@ and [`supabase/migrations/0014_timesheet_sessions_multi.sql`](supabase/migration
 These create `timesheet_sessions` (one open timer per workspace) with RLS, Realtime, and a
 `server_now()` helper so elapsed time matches across devices.
 
+To store an optional mood on timesheet entries (asked on clock-out), also run
+[`supabase/migrations/0016_timesheet_entry_mood.sql`](supabase/migrations/0016_timesheet_entry_mood.sql).
+
+For todo topics (tags), also run
+[`supabase/migrations/0015_todo_topics.sql`](supabase/migrations/0015_todo_topics.sql). This creates
+`todo_topics` and `todo_topic_links` with RLS so each user can tag their own tasks.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:

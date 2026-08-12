@@ -60,6 +60,13 @@ export interface StreakEntry {
 /** 1 = low, 2 = medium, 3 = high */
 export type TodoImportance = 1 | 2 | 3
 
+export interface TodoTopic {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+}
+
 export interface Todo {
   id: string
   user_id: string
@@ -72,6 +79,7 @@ export interface Todo {
   archived: boolean
   completed_at: string | null
   created_at: string
+  topics: TodoTopic[]
 }
 
 export interface TodoInput {
@@ -79,6 +87,8 @@ export interface TodoInput {
   notes: string | null
   due_date: string | null
   importance: TodoImportance
+  /** Topic names to attach. Omitted on update leaves existing links unchanged. */
+  topicNames?: string[]
 }
 
 export interface TimesheetWorkspace {
@@ -112,6 +122,8 @@ export interface TimesheetEntry {
   end_time: string | null
   topic: string | null
   note: string | null
+  /** Optional 1–3 mood from clock-out ("How was your day?"). */
+  mood: Mood | null
   created_at: string
 }
 
@@ -122,6 +134,7 @@ export interface TimesheetEntryInput {
   end_time: string | null
   topic: string | null
   note: string | null
+  mood: Mood | null
 }
 
 /** Running clock-in session (persisted in timesheet_sessions). */

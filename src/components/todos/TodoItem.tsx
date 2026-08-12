@@ -71,7 +71,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             {todo.title}
           </p>
         </div>
-        {(due || notesPreview) && (
+        {(due || notesPreview || (todo.topics ?? []).length > 0) && (
           <div className="mt-0.5 min-w-0">
             {due && (
               <p
@@ -97,6 +97,23 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
               >
                 {notesPreview}
               </p>
+            )}
+            {(todo.topics ?? []).length > 0 && (
+              <div className={cn('flex flex-wrap gap-1 mt-1', todo.done && 'opacity-50')}>
+                {(todo.topics ?? []).slice(0, 4).map((topic) => (
+                  <span
+                    key={topic.id}
+                    className="inline-flex items-center h-5 px-2 rounded-full text-[10px] font-medium bg-black/[0.06] dark:bg-white/[0.08] text-black/50 dark:text-white/50 truncate max-w-[7.5rem]"
+                  >
+                    {topic.name}
+                  </span>
+                ))}
+                {(todo.topics ?? []).length > 4 && (
+                  <span className="inline-flex items-center h-5 px-2 rounded-full text-[10px] font-medium text-black/40 dark:text-white/40">
+                    +{(todo.topics ?? []).length - 4}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}

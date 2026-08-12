@@ -5,7 +5,8 @@ import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { ImportanceMeter, IMPORTANCE_OPTIONS } from '@/components/todos/ImportanceMeter'
-import { useCreateTodo, useUpdateTodo } from '@/hooks/useTodos'
+import { TopicChipList, TopicPicker } from '@/components/todos/TopicPicker'
+import { useCreateTodo, useTodoTopics, useUpdateTodo } from '@/hooks/useTodos'
 import { cn, fromDateKey } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
 import type { Todo, TodoImportance } from '@/lib/types'
@@ -24,7 +25,7 @@ interface CreateTodoModalProps {
 }
 
 function defaultState(initialTitle = '') {
-  return { title: initialTitle, notes: '', dueDate: '', importance: 2 as TodoImportance }
+  return { title: initialTitle, notes: '', dueDate: '', importance: 2 as TodoImportance, topicNames: [] as string[] }
 }
 
 function formatDueDate(dueDate: string) {
@@ -42,6 +43,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
   const [error, setError] = useState<string | null>(null)
   const createTodo = useCreateTodo()
   const updateTodo = useUpdateTodo()
+  const { data: existingTopics } = useTodoTopics()
   const pending = createTodo.isPending || updateTodo.isPending
   const isView = mode === 'view'
   const isEditing = mode === 'edit'
@@ -56,6 +58,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
         notes: todo.notes ?? '',
         dueDate: todo.due_date ?? '',
         importance: todo.importance ?? 2,
+        topicNames: (todo.topics ?? []).map((t) => t.name),
       })
     } else {
       setState(defaultState(initialTitle ?? ''))
@@ -75,6 +78,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
       notes: state.notes.trim() ? state.notes.trim() : null,
       due_date: state.dueDate || null,
       importance: state.importance,
+      topicNames: state.topicNames,
     }
 
     try {
@@ -124,6 +128,15 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
             </div>
           </div>
 
+          <div>
+            <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Topics</p>
+            {state.topicNames.length > 0 ? (
+              <TopicChipList names={state.topicNames} />
+            ) : (
+              <p className="text-[15px] text-black/70 dark:text-white/70">None</p>
+            )}
+          </div>
+
           {todo?.done && (
             <p className="text-[13px] font-medium text-accent-green">Completed</p>
           )}
@@ -166,6 +179,13 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
             type="date"
             value={state.dueDate}
             onChange={(e) => setState((s) => ({ ...s, dueDate: e.target.value }))}
+          />
+
+          <TopicPicker
+            selected={state.topicNames}
+            existing={existingTopics ?? []}
+            onChange={(topicNames) => setState((s) => ({ ...s, topicNames }))}
+            disabled={pending}
           />
 
           <div className="flex flex-col gap-2">

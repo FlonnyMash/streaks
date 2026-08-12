@@ -70,7 +70,7 @@ export function PrivacyPolicyPage() {
             'Profile photo (optional): an image you upload (up to 5 MB), stored in Supabase Storage under your user ID, with a publicly accessible URL saved on your profile so the App can display it',
             'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
-            'Content you create: streaks (name, emoji, color, frequency, time goals), daily entries (notes, mood, minutes), todos (title, notes, due date, importance), timesheet workspaces and entries (topics, notes, times)',
+            'Content you create: streaks (name, emoji, color, frequency, time goals), daily entries (notes, mood, minutes), todos (title, notes, due date, importance, topics), timesheet workspaces and entries (topics, notes, times)',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
             'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), and whether the “Add to Home Screen” tip was dismissed',

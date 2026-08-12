@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
@@ -11,11 +11,13 @@ import {
   useTimesheetEntries,
   useUpdateTimesheetEntry,
 } from '@/hooks/useTimesheetEntries'
+import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DayEntriesModal } from '@/components/timesheet/DayEntriesModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
 import { ActiveTimerBanner } from '@/components/timesheet/ActiveTimerBanner'
+import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
 import { Spinner } from '@/components/ui/Spinner'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { todayWeekMonthTotals } from '@/lib/timesheetLogic'
@@ -31,6 +33,7 @@ export function TimesheetWorkspacePage() {
   const updateEntry = useUpdateTimesheetEntry(id ?? '')
   const deleteEntry = useDeleteTimesheetEntry(id ?? '')
   const deleteWorkspace = useDeleteTimesheetWorkspace()
+  const { sessionForWorkspace, start } = useTimesheetTimer()
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -39,6 +42,7 @@ export function TimesheetWorkspacePage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  const [clockInOpen, setClockInOpen] = useState(false)
 
   if (workspacesLoading || entriesLoading || !workspace) {
     return <Spinner />
@@ -47,6 +51,8 @@ export function TimesheetWorkspacePage() {
   const accent = ACCENT_COLOR_MAP[workspace.color]
   const totals = todayWeekMonthTotals(entries ?? [])
   const selectedDayEntries = (entries ?? []).filter((e) => e.entry_date === selectedDayKey)
+  const activeSession = sessionForWorkspace(workspace.id)
+  const canClockIn = !activeSession
 
   async function handleDelete() {
     if (!id) return
@@ -71,6 +77,17 @@ export function TimesheetWorkspacePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {canClockIn && (
+            <button
+              onClick={() => setClockInOpen(true)}
+              className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
+              aria-label="Clock in"
+              title="Clock in"
+            >
+              <Play className="size-4 fill-current" />
+            </button>
+          )}
+
           <button
             onClick={() => setExportOpen(true)}
             className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
@@ -168,6 +185,15 @@ export function TimesheetWorkspacePage() {
       />
 
       <CreateWorkspaceModal open={editOpen} onClose={() => setEditOpen(false)} editingWorkspace={workspace} />
+
+      <ClockInPickerModal
+        open={clockInOpen}
+        onClose={() => setClockInOpen(false)}
+        workspaces={[workspace]}
+        busyWorkspaceIds={activeSession ? [workspace.id] : []}
+        preselectedWorkspaceId={workspace.id}
+        onStart={(workspaceId, options) => start(workspaceId, options)}
+      />
 
       <ExportTimesheetModal
         open={exportOpen}

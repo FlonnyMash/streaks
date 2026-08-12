@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Minus, Play, Plus } from 'lucide-react'
+import { Check, Frown, Meh, Minus, Play, Plus, Smile } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { useCreateTimesheetEntry } from '@/hooks/useTimesheetEntries'
@@ -14,10 +14,16 @@ import {
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { cn } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
-import type { TimesheetEntryInput } from '@/lib/types'
+import type { Mood, TimesheetEntryInput } from '@/lib/types'
 
 const MINUTES_STEP = 15
 const MAX_MINUTES = 24 * 60
+
+const MOOD_OPTIONS: Array<{ value: Mood; icon: typeof Frown; label: string }> = [
+  { value: 1, icon: Frown, label: 'Rough' },
+  { value: 2, icon: Meh, label: 'Okay' },
+  { value: 3, icon: Smile, label: 'Great' },
+]
 
 const inputClass = cn(
   'h-11 rounded-2xl px-4 text-[15px] outline-none transition-all',
@@ -53,6 +59,7 @@ export function StopTimerModal() {
   const [minutesText, setMinutesText] = useState('1')
   const [topic, setTopic] = useState('')
   const [note, setNote] = useState('')
+  const [mood, setMood] = useState<Mood | null>(null)
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -72,6 +79,7 @@ export function StopTimerModal() {
     setMinutesState(syncDurationFields(draft.minutes))
     setTopic(stoppingSession.topic ?? '')
     setNote('')
+    setMood(null)
     setRangeError(null)
     setSaveError(null)
   }, [confirmOpen, stoppingSession, stoppedAt])
@@ -136,6 +144,7 @@ export function StopTimerModal() {
       end_time: nextEnd ? toTimeInputValue(nextEnd, true) : null,
       topic: topic.trim() ? topic.trim() : null,
       note: note.trim() ? note.trim() : null,
+      mood,
     }
   }
 
@@ -260,6 +269,38 @@ export function StopTimerModal() {
           placeholder="Topic (optional) — e.g. Client call"
           className={inputClass}
         />
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">
+            How was your day?
+          </span>
+          <div className="flex items-center justify-center gap-3">
+            {MOOD_OPTIONS.map(({ value, icon: Icon, label }) => {
+              const selected = mood === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMood(selected ? null : value)}
+                  className={cn(
+                    'flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all',
+                    selected
+                      ? 'bg-accent-blue/15 ring-1 ring-accent-blue/40'
+                      : 'bg-black/[0.03] dark:bg-white/[0.05]',
+                  )}
+                  aria-label={label}
+                  aria-pressed={selected}
+                >
+                  <Icon className="size-6" strokeWidth={2} style={{ opacity: selected ? 1 : 0.4 }} />
+                  <span className="text-[11px] font-medium" style={{ opacity: selected ? 1 : 0.4 }}>
+                    {label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <input
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, 500))}

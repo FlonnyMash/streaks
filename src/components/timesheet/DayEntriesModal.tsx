@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { format } from 'date-fns'
-import { Check, Minus, Play, Plus, Square, Trash2 } from 'lucide-react'
+import { Check, Frown, Meh, Minus, Play, Plus, Smile, Square, Trash2 } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
@@ -15,12 +15,25 @@ import {
   toTimeInputValue,
 } from '@/lib/timesheetLogic'
 import { cn, formatMinutes, fromDateKey, toDateKey } from '@/lib/utils'
-import type { TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
+import type { Mood, TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 
 const MINUTES_STEP = 15
 const MAX_MINUTES = 24 * 60
+
+const MOOD_OPTIONS: Array<{ value: Mood; icon: typeof Frown; label: string }> = [
+  { value: 1, icon: Frown, label: 'Rough' },
+  { value: 2, icon: Meh, label: 'Okay' },
+  { value: 3, icon: Smile, label: 'Great' },
+]
+
+function moodIcon(mood: Mood | null | undefined) {
+  if (mood === 1) return Frown
+  if (mood === 2) return Meh
+  if (mood === 3) return Smile
+  return null
+}
 
 type EntryDraftInput = Omit<TimesheetEntryInput, 'entry_date'>
 
@@ -44,10 +57,11 @@ interface Draft {
   endTime: string
   topic: string
   note: string
+  mood: Mood | null
 }
 
 function defaultDraft(): Draft {
-  return { minutes: 30, startTime: '', endTime: '', topic: '', note: '' }
+  return { minutes: 30, startTime: '', endTime: '', topic: '', note: '', mood: null }
 }
 
 function clampMinutes(value: number): number {
@@ -122,6 +136,7 @@ export function DayEntriesModal({
       endTime,
       topic: entry.topic ?? '',
       note: entry.note ?? '',
+      mood: entry.mood ?? null,
     })
     syncDurationFields(minutes)
     setRangeError(null)
@@ -217,6 +232,7 @@ export function DayEntriesModal({
       end_time: endTime ? toTimeInputValue(endTime) : null,
       topic: draft.topic.trim() ? draft.topic.trim() : null,
       note: draft.note.trim() ? draft.note.trim() : null,
+      mood: draft.mood,
     }
   }
 
@@ -242,7 +258,10 @@ export function DayEntriesModal({
       <div className="flex flex-col gap-5">
         {isToday && (
           timerForThisWorkspace ? (
-            <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3">
+            <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3 flex flex-col gap-3">
+              <p className="text-[12px] text-black/50 dark:text-white/50 text-center">
+                Only one timer per workspace is allowed.
+              </p>
               <div className="flex items-center gap-3">
                 <span className="relative flex size-2.5 shrink-0">
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
@@ -284,6 +303,7 @@ export function DayEntriesModal({
                 const startLabel = formatClockTime(entry.start_time)
                 const endLabel = formatClockTime(entry.end_time)
                 const isActive = editingId === entry.id
+                const MoodIcon = moodIcon(entry.mood)
                 return (
                   <motion.div
                     key={entry.id}
@@ -311,7 +331,16 @@ export function DayEntriesModal({
                         {formatMinutes(entry.minutes)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-medium truncate">{entry.topic || 'Time logged'}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-[14px] font-medium truncate">{entry.topic || 'Time logged'}</p>
+                          {MoodIcon && (
+                            <MoodIcon
+                              className="size-3.5 shrink-0 text-black/45 dark:text-white/45"
+                              strokeWidth={2}
+                              aria-label={MOOD_OPTIONS.find((o) => o.value === entry.mood)?.label}
+                            />
+                          )}
+                        </div>
                         {startLabel && endLabel && (
                           <p className="text-[12px] font-medium tabular-nums text-black/55 dark:text-white/55">
                             {startLabel} – {endLabel}
@@ -467,6 +496,37 @@ export function DayEntriesModal({
             placeholder="Topic (optional) — e.g. Client call"
             className={inputClass}
           />
+
+          <div className="flex flex-col gap-2">
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">
+              How was your day?
+            </span>
+            <div className="flex items-center justify-center gap-3">
+              {MOOD_OPTIONS.map(({ value, icon: Icon, label }) => {
+                const selected = draft.mood === value
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, mood: selected ? null : value }))}
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all',
+                      selected
+                        ? 'bg-accent-blue/15 ring-1 ring-accent-blue/40'
+                        : 'bg-black/[0.03] dark:bg-white/[0.05]',
+                    )}
+                    aria-label={label}
+                    aria-pressed={selected}
+                  >
+                    <Icon className="size-6" strokeWidth={2} style={{ opacity: selected ? 1 : 0.4 }} />
+                    <span className="text-[11px] font-medium" style={{ opacity: selected ? 1 : 0.4 }}>
+                      {label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           <input
             value={draft.note}
