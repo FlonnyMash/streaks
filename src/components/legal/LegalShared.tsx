@@ -27,7 +27,7 @@ export function LegalPageShell({
               else navigate('/login')
             }}
             className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all shrink-0"
-            aria-label="Zurück"
+            aria-label="Back"
           >
             <ArrowLeft className="size-4" />
           </button>
@@ -39,7 +39,7 @@ export function LegalPageShell({
         </article>
 
         <p className="mt-5 text-center text-[13px] text-black/45 dark:text-white/45">
-          Siehe auch{' '}
+          See also{' '}
           <Link to={otherHref} className="text-accent-blue font-medium">
             {otherLabel}
           </Link>
@@ -71,15 +71,15 @@ export function LegalList({ items }: { items: string[] }) {
 export function LegalFooterLinks({ className }: { className?: string }) {
   return (
     <nav
-      aria-label="Rechtliches"
+      aria-label="Legal"
       className={cn('flex items-center justify-center gap-3 text-[12px] text-black/40 dark:text-white/40', className)}
     >
-      <Link to="/datenschutz" className="hover:text-accent-blue transition-colors">
-        Datenschutz
+      <Link to="/privacy" className="hover:text-accent-blue transition-colors">
+        Privacy Policy
       </Link>
       <span aria-hidden>·</span>
-      <Link to="/impressum" className="hover:text-accent-blue transition-colors">
-        Impressum
+      <Link to="/legal" className="hover:text-accent-blue transition-colors">
+        Legal
       </Link>
     </nav>
   )

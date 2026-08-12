@@ -3,8 +3,8 @@ import { ChevronRight, Scale } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 
 const LEGAL_ITEMS = [
-  { to: '/datenschutz', label: 'Datenschutz', hint: 'Privacy policy (DSGVO)' },
-  { to: '/impressum', label: 'Impressum', hint: 'Legal notice' },
+  { to: '/privacy', label: 'Privacy Policy', hint: 'How we handle your data' },
+  { to: '/legal', label: 'Legal', hint: 'Imprint and contact details' },
 ] as const
 
 export function LegalPickerModal({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -11,8 +11,8 @@ import { TodosPage } from '@/pages/TodosPage'
 import { TimesheetPage } from '@/pages/TimesheetPage'
 import { TimesheetWorkspacePage } from '@/pages/TimesheetWorkspacePage'
 import { SettingsPage } from '@/pages/SettingsPage'
-import { DatenschutzPage } from '@/pages/DatenschutzPage'
-import { ImpressumPage } from '@/pages/ImpressumPage'
+import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage'
+import { LegalPage } from '@/pages/LegalPage'
 
 export function App() {
   return (
@@ -34,8 +34,10 @@ export function App() {
         }
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
-      <Route path="/datenschutz" element={<DatenschutzPage />} />
-      <Route path="/impressum" element={<ImpressumPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/legal" element={<LegalPage />} />
+      <Route path="/datenschutz" element={<Navigate to="/privacy" replace />} />
+      <Route path="/impressum" element={<Navigate to="/legal" replace />} />
 
       <Route path="/" element={<Navigate to="/streaks" replace />} />
       <Route

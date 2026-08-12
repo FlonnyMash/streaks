@@ -262,7 +262,7 @@ export function SettingsPage() {
           <div className="min-w-0 flex-1">
             <p className="font-medium">Legal</p>
             <p className="text-[13px] text-black/45 dark:text-white/45">
-              Datenschutz and Impressum
+              Privacy Policy and Legal
             </p>
           </div>
           <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />

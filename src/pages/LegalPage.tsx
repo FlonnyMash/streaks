@@ -1,10 +1,10 @@
 import { LegalPageShell, LegalSection } from '@/components/legal/LegalShared'
 import { LEGAL } from '@/lib/legalInfo'
 
-export function ImpressumPage() {
+export function LegalPage() {
   return (
-    <LegalPageShell title="Impressum" otherHref="/datenschutz" otherLabel="Datenschutz">
-      <LegalSection title="Angaben gemäß § 5 DDG">
+    <LegalPageShell title="Legal" otherHref="/privacy" otherLabel="Privacy Policy">
+      <LegalSection title="Information according to § 5 DDG">
         <p>
           {LEGAL.name}
           <br />
@@ -16,29 +16,29 @@ export function ImpressumPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Kontakt">
+      <LegalSection title="Contact">
         <p>
-          Telefon:{' '}
+          Phone:{' '}
           <a className="text-accent-blue" href={LEGAL.phoneHref}>
             {LEGAL.phone}
           </a>
           <br />
-          E-Mail:{' '}
+          Email:{' '}
           <a className="text-accent-blue" href={LEGAL.emailHref}>
             {LEGAL.email}
           </a>
         </p>
       </LegalSection>
 
-      <LegalSection title="Umsatzsteuer-ID">
+      <LegalSection title="VAT ID">
         <p>
-          Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
+          VAT identification number according to § 27a of the German Value Added Tax Act:
           <br />
           {LEGAL.vatId}
         </p>
       </LegalSection>
 
-      <LegalSection title="Verantwortlich für den Inhalt">
+      <LegalSection title="Responsible for content">
         <p>
           {LEGAL.name}
           <br />
@@ -48,9 +48,9 @@ export function ImpressumPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Online-Streitbeilegung">
+      <LegalSection title="Online dispute resolution">
         <p>
-          Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
+          The European Commission provides a platform for online dispute resolution (ODR):{' '}
           <a
             className="text-accent-blue break-all"
             href="https://ec.europa.eu/consumers/odr"
@@ -59,16 +59,16 @@ export function ImpressumPage() {
           >
             https://ec.europa.eu/consumers/odr
           </a>
-          . Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
-          Verbraucherschlichtungsstelle teilzunehmen.
+          . We are neither obliged nor willing to participate in dispute resolution proceedings before
+          a consumer arbitration board.
         </p>
       </LegalSection>
 
-      <LegalSection title="Haftung für Inhalte und Links">
+      <LegalSection title="Liability for content and links">
         <p>
-          Als Diensteanbieter sind wir für eigene Inhalte nach den allgemeinen Gesetzen verantwortlich.
-          Für Inhalte verlinkter externer Websites übernehmen wir keine Gewähr. Für die Inhalte der
-          verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich.
+          As a service provider we are responsible for our own content under general applicable law.
+          We accept no liability for the content of external websites we link to. The respective
+          provider is always responsible for the content of linked pages.
         </p>
       </LegalSection>
     </LegalPageShell>
