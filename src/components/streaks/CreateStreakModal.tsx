@@ -62,6 +62,16 @@ function clampGoalMinutes(value: number): number {
   return Math.min(MAX_GOAL_MINUTES, Math.max(MIN_GOAL_MINUTES, Math.round(value)))
 }
 
+/** Parses h/m text without enforcing the minimum — matches what’s still typed in the fields. */
+function parseGoalFromInputs(hoursRaw: string, minutesRaw: string): number {
+  let hours = Math.max(0, Math.min(24, Number.parseInt(hoursRaw, 10) || 0))
+  let mins = Math.max(0, Math.min(59, Number.parseInt(minutesRaw, 10) || 0))
+  if (hours === 24) mins = 0
+  const total = hours * 60 + mins
+  if (!Number.isFinite(total)) return 0
+  return Math.min(MAX_GOAL_MINUTES, Math.max(0, Math.round(total)))
+}
+
 function durationParts(totalMinutes: number) {
   const clamped = clampGoalMinutes(totalMinutes)
   return {
@@ -90,16 +100,13 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
     return next.minutes
   }
 
-  /** Reads the live hour/minute fields so Save works even if the inputs never blurred. */
+  /** Commits a valid goal (min 5m) from the live fields — used on blur and Save. */
   function resolveGoalFromInputs(hoursRaw = hoursText, minutesRaw = minutesText): number {
-    let hours = Math.max(0, Math.min(24, Number.parseInt(hoursRaw, 10) || 0))
-    let mins = Math.max(0, Math.min(59, Number.parseInt(minutesRaw, 10) || 0))
-    if (hours === 24) mins = 0
-    return clampGoalMinutes(hours * 60 + mins)
+    return clampGoalMinutes(parseGoalFromInputs(hoursRaw, minutesRaw))
   }
 
-  // Prefer the editable fields over state so +/- and presets stay correct before blur.
-  const liveGoalMinutes = resolveGoalFromInputs()
+  // Unclamped so +/- and preset highlight match the inputs before blur.
+  const liveGoalMinutes = parseGoalFromInputs(hoursText, minutesText)
 
   useEffect(() => {
     if (!open) return
