@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Flame } from 'lucide-react'
@@ -25,6 +25,11 @@ interface ConfettiPiece {
 
 /** Full-screen confetti + milestone badge, shown briefly when a streak hits a round number. */
 export function CelebrationOverlay({ open, milestone, color, onDismiss }: CelebrationOverlayProps) {
+  // Keep the latest dismiss callback without putting it in the effect deps — callers often pass
+  // an inline arrow, which would otherwise reset the auto-dismiss timer on every parent render.
+  const onDismissRef = useRef(onDismiss)
+  onDismissRef.current = onDismiss
+
   const pieces = useMemo<ConfettiPiece[]>(() => {
     return Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
       id: i,
@@ -42,9 +47,9 @@ export function CelebrationOverlay({ open, milestone, color, onDismiss }: Celebr
 
   useEffect(() => {
     if (!open) return
-    const timer = setTimeout(onDismiss, AUTO_DISMISS_MS)
+    const timer = setTimeout(() => onDismissRef.current(), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [open, onDismiss])
+  }, [open])
 
   return createPortal(
     <AnimatePresence>
