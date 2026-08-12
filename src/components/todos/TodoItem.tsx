@@ -8,7 +8,8 @@ import { cn, fromDateKey } from '@/lib/utils'
 interface TodoItemProps {
   todo: Todo
   onToggle: (id: string, done: boolean) => void
-  onOpen: (todo: Todo) => void
+  onView: (todo: Todo) => void
+  onEdit: (todo: Todo) => void
   onDelete: (id: string) => void
   onMoveUp?: () => void
   onMoveDown?: () => void
@@ -26,7 +27,7 @@ function dueLabel(dueDate: string): { text: string; overdue: boolean } {
   return { text: format(date, 'MMM d'), overdue }
 }
 
-export function TodoItem({ todo, onToggle, onOpen, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: TodoItemProps) {
+export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: TodoItemProps) {
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
 
@@ -58,7 +59,7 @@ export function TodoItem({ todo, onToggle, onOpen, onDelete, onMoveUp, onMoveDow
         </AnimatePresence>
       </button>
 
-      <button type="button" onClick={() => onOpen(todo)} className="flex-1 min-w-0 text-left">
+      <button type="button" onClick={() => onView(todo)} className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 min-w-0">
           <ImportanceMeter value={todo.importance ?? 1} size="sm" className="shrink-0 opacity-90" />
           <p
@@ -127,8 +128,8 @@ export function TodoItem({ todo, onToggle, onOpen, onDelete, onMoveUp, onMoveDow
 
         <button
           type="button"
-          onClick={() => onOpen(todo)}
-          aria-label="Edit details"
+          onClick={() => onEdit(todo)}
+          aria-label="Edit task"
           className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
         >
           <Pencil className="size-3.5" />

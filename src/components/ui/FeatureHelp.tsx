@@ -33,7 +33,8 @@ const HELP_CONTENT: Record<
     how: [
       'Type in the quick-add field and press Enter to create a task instantly.',
       'Use the details button to add notes, a due date, and importance before saving.',
-      'Tap a task to edit it, check it off when done, or reorder items within a group.',
+      'Tap a task to view details, or use the pencil to edit notes, due date, and importance.',
+      'Check tasks off when done, or reorder items within a group.',
     ],
     goodFor: [
       'One-off tasks and errands',

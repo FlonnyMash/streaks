@@ -4,7 +4,7 @@ import { ChevronDown, ListTodo, Plus, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TodoItem } from '@/components/todos/TodoItem'
-import { CreateTodoModal } from '@/components/todos/CreateTodoModal'
+import { CreateTodoModal, type TodoModalMode } from '@/components/todos/CreateTodoModal'
 import {
   FeatureGetStartedButton,
   FeatureHelpIconButton,
@@ -23,7 +23,8 @@ export function TodosPage() {
   const swapPositions = useSwapTodoPositions()
 
   const [quickTitle, setQuickTitle] = useState('')
-  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [activeTodo, setActiveTodo] = useState<Todo | null>(null)
+  const [modalMode, setModalMode] = useState<TodoModalMode>('create')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalInitialTitle, setModalInitialTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
@@ -37,20 +38,30 @@ export function TodosPage() {
   const showHelpIcon = !isEmpty && !isLoading
 
   function openCreate(prefillTitle = '') {
-    setEditingTodo(null)
+    setActiveTodo(null)
+    setModalMode('create')
     setModalInitialTitle(prefillTitle)
     setModalOpen(true)
   }
 
-  function openEditor(todo: Todo) {
-    setEditingTodo(todo)
+  function openView(todo: Todo) {
+    setActiveTodo(todo)
+    setModalMode('view')
     setModalInitialTitle('')
     setModalOpen(true)
   }
 
-  function closeEditor() {
+  function openEdit(todo: Todo) {
+    setActiveTodo(todo)
+    setModalMode('edit')
+    setModalInitialTitle('')
+    setModalOpen(true)
+  }
+
+  function closeModal() {
     setModalOpen(false)
-    setEditingTodo(null)
+    setActiveTodo(null)
+    setModalMode('create')
     setModalInitialTitle('')
   }
 
@@ -154,7 +165,8 @@ export function TodosPage() {
                       key={todo.id}
                       todo={todo}
                       onToggle={(id, done) => toggleTodo.mutate({ id, done })}
-                      onOpen={openEditor}
+                      onView={openView}
+                      onEdit={openEdit}
                       onDelete={(id) => deleteTodo.mutate(id)}
                       onMoveUp={() => handleMove(grouped[bucket], index, -1)}
                       onMoveDown={() => handleMove(grouped[bucket], index, 1)}
@@ -185,7 +197,8 @@ export function TodosPage() {
                         key={todo.id}
                         todo={todo}
                         onToggle={(id, done) => toggleTodo.mutate({ id, done })}
-                        onOpen={openEditor}
+                        onView={openView}
+                        onEdit={openEdit}
                         onDelete={(id) => deleteTodo.mutate(id)}
                       />
                     ))}
@@ -199,8 +212,9 @@ export function TodosPage() {
 
       <CreateTodoModal
         open={modalOpen}
-        onClose={closeEditor}
-        editingTodo={editingTodo ?? undefined}
+        onClose={closeModal}
+        todo={activeTodo ?? undefined}
+        mode={modalMode}
         initialTitle={modalInitialTitle}
       />
       <FeatureHelpModal feature="todos" open={helpOpen} onClose={() => setHelpOpen(false)} />
