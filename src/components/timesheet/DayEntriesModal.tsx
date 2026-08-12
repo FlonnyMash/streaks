@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { Check, Minus, Play, Plus, Square, Trash2 } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
+import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
 import {
   DEFAULT_QUICK_PRESETS,
   addMinutesToClock,
@@ -16,6 +17,7 @@ import {
 import { cn, formatMinutes, fromDateKey, toDateKey } from '@/lib/utils'
 import type { TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
+import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 
 const MINUTES_STEP = 15
 const MAX_MINUTES = 24 * 60
@@ -86,7 +88,9 @@ export function DayEntriesModal({
   const [minutesText, setMinutesText] = useState('30')
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [clockInOpen, setClockInOpen] = useState(false)
   const { sessionForWorkspace, elapsedMsFor, start, requestStop, isSyncing } = useTimesheetTimer()
+  const { data: workspaces } = useTimesheetWorkspaces()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
   const hasRange = Boolean(draft.startTime && draft.endTime)
   const isEditing = editingId !== null
@@ -256,7 +260,7 @@ export function DayEntriesModal({
                 </Button>
               </div>
             ) : (
-              <Button type="button" className="w-full" onClick={() => start(workspaceId)} loading={isSyncing}>
+              <Button type="button" className="w-full" onClick={() => setClockInOpen(true)} loading={isSyncing}>
                 <Play className="size-4 fill-current" />
                 Start tracking
               </Button>
@@ -477,6 +481,17 @@ export function DayEntriesModal({
           </Button>
         </div>
       </div>
+
+      <ClockInPickerModal
+        open={clockInOpen}
+        onClose={() => setClockInOpen(false)}
+        workspaces={workspaces ?? []}
+        busyWorkspaceIds={(workspaces ?? [])
+          .filter((w) => sessionForWorkspace(w.id))
+          .map((w) => w.id)}
+        preselectedWorkspaceId={workspaceId}
+        onStart={(id, startedAt) => start(id, startedAt ? { startedAt } : undefined)}
+      />
     </GlassModal>
   )
 }

@@ -37,10 +37,6 @@ export function TimesheetTodayWidget() {
 
   function handleClockIn() {
     if (available.length === 0) return
-    if (available.length === 1) {
-      start(available[0].id)
-      return
-    }
     setPickerOpen(true)
   }
 
@@ -171,7 +167,7 @@ export function TimesheetTodayWidget() {
         onClose={() => setPickerOpen(false)}
         workspaces={workspaces ?? []}
         busyWorkspaceIds={busyIds}
-        onSelect={start}
+        onStart={(workspaceId, startedAt) => start(workspaceId, startedAt ? { startedAt } : undefined)}
       />
     </div>
   )

@@ -12,7 +12,7 @@ interface TimesheetTimerContextValue {
   isSyncing: boolean
   elapsedMsFor: (sessionId: string) => number
   sessionForWorkspace: (workspaceId: string) => TimesheetTimerSession | null
-  start: (workspaceId: string, topic?: string) => void
+  start: (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => void
   requestStop: (sessionId: string) => void
   cancelStop: () => void
   discard: () => Promise<void>
@@ -232,15 +232,19 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   )
 
   const start = useCallback(
-    (workspaceId: string, topic?: string) => {
+    (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => {
       if (!userId || isSyncing) return
       if (sessionsRef.current.some((s) => s.workspaceId === workspaceId)) return
       hapticTick()
 
       const epoch = ++startEpochRef.current
-      // Prefer server-aligned clock so devices agree on the start instant.
-      const startedAt = new Date(Date.now() + serverOffsetMs).toISOString()
-      const trimmedTopic = topic?.trim() ? topic.trim() : undefined
+      const correctedNow = Date.now() + serverOffsetMs
+      let startedAtMs = options?.startedAt ? options.startedAt.getTime() : correctedNow
+      if (!Number.isFinite(startedAtMs)) startedAtMs = correctedNow
+      // Never allow a future start relative to the corrected clock.
+      if (startedAtMs > correctedNow) startedAtMs = correctedNow
+      const startedAt = new Date(startedAtMs).toISOString()
+      const trimmedTopic = options?.topic?.trim() ? options.topic.trim() : undefined
       const optimistic: TimesheetTimerSession = {
         id: `optimistic-${workspaceId}-${Date.now()}`,
         workspaceId,

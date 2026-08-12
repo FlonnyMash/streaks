@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Minus, Plus } from 'lucide-react'
+import { Check, Minus, Play, Plus } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { useCreateTimesheetEntry } from '@/hooks/useTimesheetEntries'
@@ -272,6 +272,17 @@ export function StopTimerModal() {
         <Button onClick={handleSave} loading={createEntry.isPending} size="lg" className="w-full">
           <Check className="size-4" />
           Save time block
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="w-full"
+          onClick={cancelStop}
+          disabled={createEntry.isPending}
+        >
+          <Play className="size-4 fill-current" />
+          Resume timer
         </Button>
         <button
           type="button"
