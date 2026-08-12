@@ -1,11 +1,11 @@
 import { BrandIcon } from '@/components/BrandIcon'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
 
-/** Mobile-only top bar: brand on the left, profile/avatar on the right. */
+/** Mobile-only top bar: brand on the left, profile/avatar on the right. Stays fixed while content scrolls. */
 export function MobileTopBar() {
   return (
-    <div className="sm:hidden fixed inset-x-0 top-0 z-40 safe-top">
-      <div className="pt-3 px-4 flex items-center justify-between gap-3">
+    <header className="sm:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
+      <div className="px-4 pb-2 pt-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 h-11">
           <BrandIcon className="size-8 shrink-0" />
           <h1 className="text-[17px] font-bold tracking-tight leading-tight truncate">
@@ -16,6 +16,6 @@ export function MobileTopBar() {
           <ProfileAvatarButton size="sm" />
         </div>
       </div>
-    </div>
+    </header>
   )
 }
