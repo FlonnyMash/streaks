@@ -15,7 +15,7 @@ export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
-  const { session, elapsedMs, start, requestStop } = useTimesheetTimer()
+  const { session, elapsedMs, start, requestStop, isSyncing } = useTimesheetTimer()
   const [pickerOpen, setPickerOpen] = useState(false)
   // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
   const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
@@ -105,6 +105,7 @@ export function TimesheetTodayWidget() {
               size="md"
               className="w-full mb-3"
               onClick={handleClockIn}
+              loading={isSyncing}
               disabled={!workspaces || workspaces.length === 0}
             >
               <Play className="size-4 fill-current" />

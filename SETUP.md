@@ -65,6 +65,10 @@ To let users upload a custom profile photo from Settings, also run
 adds an `avatar_url` column to `profiles` and creates a public `avatars` Storage bucket with
 policies that only let each user write to their own `{user_id}/...` path.
 
+For cross-device timesheet clock-in/out, also run
+[`supabase/migrations/0013_timesheet_sessions.sql`](supabase/migrations/0013_timesheet_sessions.sql).
+This creates `timesheet_sessions` (one open timer per user) with RLS and Realtime.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:

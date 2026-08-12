@@ -146,7 +146,16 @@ export function StopTimerModal() {
     setSaveError(null)
     try {
       await createEntry.mutateAsync(input)
-      discard()
+      await discard()
+    } catch (error) {
+      setSaveError(getErrorMessage(error))
+    }
+  }
+
+  async function handleDiscard() {
+    setSaveError(null)
+    try {
+      await discard()
     } catch (error) {
       setSaveError(getErrorMessage(error))
     }
@@ -265,8 +274,9 @@ export function StopTimerModal() {
         </Button>
         <button
           type="button"
-          onClick={discard}
-          className="h-11 rounded-2xl text-[14px] font-medium text-accent-red hover:bg-accent-red/10 active:scale-95 transition-all"
+          onClick={handleDiscard}
+          disabled={createEntry.isPending}
+          className="h-11 rounded-2xl text-[14px] font-medium text-accent-red hover:bg-accent-red/10 active:scale-95 transition-all disabled:opacity-50"
         >
           Discard timer
         </button>

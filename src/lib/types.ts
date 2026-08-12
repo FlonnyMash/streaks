@@ -124,11 +124,21 @@ export interface TimesheetEntryInput {
   note: string | null
 }
 
-/** Client-only running clock-in session (not stored in Supabase). */
+/** Running clock-in session (persisted in timesheet_sessions). */
 export interface TimesheetTimerSession {
+  id: string
   workspaceId: string
   startedAt: string
   topic?: string
+}
+
+export interface TimesheetSessionRow {
+  id: string
+  user_id: string
+  workspace_id: string
+  started_at: string
+  topic: string | null
+  created_at: string
 }
 
 export interface Profile {

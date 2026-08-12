@@ -1,17 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { hapticTick } from '@/lib/haptics'
-import type { TimesheetTimerSession } from '@/lib/types'
+import { supabase } from '@/lib/supabaseClient'
+import type { TimesheetSessionRow, TimesheetTimerSession } from '@/lib/types'
 
 interface TimesheetTimerContextValue {
   session: TimesheetTimerSession | null
   elapsedMs: number
   confirmOpen: boolean
   stoppedAt: Date | null
+  isSyncing: boolean
   start: (workspaceId: string, topic?: string) => void
   requestStop: () => void
   cancelStop: () => void
-  discard: () => void
+  discard: () => Promise<void>
 }
 
 const TimesheetTimerContext = createContext<TimesheetTimerContextValue | null>(null)
@@ -20,14 +22,26 @@ function storageKey(userId: string) {
   return `timesheet-timer:${userId}`
 }
 
-function readSession(userId: string): TimesheetTimerSession | null {
+function fromRow(row: TimesheetSessionRow): TimesheetTimerSession {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    startedAt: row.started_at,
+    topic: row.topic ?? undefined,
+  }
+}
+
+function readCache(userId: string): TimesheetTimerSession | null {
   try {
     const raw = localStorage.getItem(storageKey(userId))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<TimesheetTimerSession>
-    if (typeof parsed.workspaceId !== 'string' || typeof parsed.startedAt !== 'string') return null
+    if (typeof parsed.id !== 'string' || typeof parsed.workspaceId !== 'string' || typeof parsed.startedAt !== 'string') {
+      return null
+    }
     if (Number.isNaN(new Date(parsed.startedAt).getTime())) return null
     return {
+      id: parsed.id,
       workspaceId: parsed.workspaceId,
       startedAt: parsed.startedAt,
       topic: typeof parsed.topic === 'string' ? parsed.topic : undefined,
@@ -37,7 +51,7 @@ function readSession(userId: string): TimesheetTimerSession | null {
   }
 }
 
-function writeSession(userId: string, session: TimesheetTimerSession | null) {
+function writeCache(userId: string, session: TimesheetTimerSession | null) {
   try {
     const key = storageKey(userId)
     if (!session) localStorage.removeItem(key)
@@ -47,6 +61,13 @@ function writeSession(userId: string, session: TimesheetTimerSession | null) {
   }
 }
 
+async function fetchOpenSession(): Promise<TimesheetTimerSession | null> {
+  const { data, error } = await supabase.from('timesheet_sessions').select('*').maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return fromRow(data as TimesheetSessionRow)
+}
+
 export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const userId = user?.id ?? null
@@ -54,23 +75,88 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(() => Date.now())
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [stoppedAt, setStoppedAt] = useState<Date | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const startEpochRef = useRef(0)
 
+  const applySession = useCallback(
+    (next: TimesheetTimerSession | null) => {
+      setSession(next)
+      if (userId) writeCache(userId, next)
+      if (!next) {
+        setConfirmOpen(false)
+        setStoppedAt(null)
+      }
+    },
+    [userId],
+  )
+
+  const refreshFromServer = useCallback(async () => {
+    if (!userId) {
+      applySession(null)
+      return
+    }
+    try {
+      const remote = await fetchOpenSession()
+      applySession(remote)
+    } catch {
+      // Keep cache / current UI if the network blips.
+    }
+  }, [applySession, userId])
+
+  // Hydrate from cache immediately, then reconcile with Supabase.
   useEffect(() => {
     setConfirmOpen(false)
     setStoppedAt(null)
-    setSession(userId ? readSession(userId) : null)
-  }, [userId])
+    if (!userId) {
+      setSession(null)
+      return
+    }
+    setSession(readCache(userId))
+    void refreshFromServer()
+  }, [userId, refreshFromServer])
 
+  // Realtime + focus/visibility so other devices stay in sync.
   useEffect(() => {
     if (!userId) return
-    const id = userId
-    function onStorage(event: StorageEvent) {
-      if (event.key !== storageKey(id)) return
-      setSession(readSession(id))
+
+    const channel = supabase
+      .channel(`timesheet-sessions:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'timesheet_sessions',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            applySession(null)
+            return
+          }
+          const row = (payload.new ?? null) as TimesheetSessionRow | null
+          if (row?.id) applySession(fromRow(row))
+          else void refreshFromServer()
+        },
+      )
+      .subscribe()
+
+    function onVisible() {
+      if (document.visibilityState === 'visible') void refreshFromServer()
     }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [userId])
+    function onFocus() {
+      void refreshFromServer()
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      void supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [applySession, refreshFromServer, userId])
 
   useEffect(() => {
     if (!session || confirmOpen) return
@@ -79,25 +165,60 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id)
   }, [session, confirmOpen])
 
-  const persist = useCallback(
-    (next: TimesheetTimerSession | null) => {
-      setSession(next)
-      if (userId) writeSession(userId, next)
-    },
-    [userId],
-  )
-
   const start = useCallback(
     (workspaceId: string, topic?: string) => {
-      if (!userId || session) return
+      if (!userId || session || isSyncing) return
       hapticTick()
-      persist({
+
+      const epoch = ++startEpochRef.current
+      const startedAt = new Date().toISOString()
+      const trimmedTopic = topic?.trim() ? topic.trim() : undefined
+      const optimistic: TimesheetTimerSession = {
+        id: `optimistic-${Date.now()}`,
         workspaceId,
-        startedAt: new Date().toISOString(),
-        topic: topic?.trim() ? topic.trim() : undefined,
-      })
+        startedAt,
+        topic: trimmedTopic,
+      }
+      applySession(optimistic)
+      setIsSyncing(true)
+
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('timesheet_sessions')
+            .insert({
+              user_id: userId,
+              workspace_id: workspaceId,
+              started_at: startedAt,
+              topic: trimmedTopic ?? null,
+            })
+            .select('*')
+            .single()
+
+          if (epoch !== startEpochRef.current) {
+            // User discarded (or restarted) while insert was in flight — drop the row we just created.
+            if (data?.id) {
+              await supabase.from('timesheet_sessions').delete().eq('id', data.id)
+            }
+            return
+          }
+
+          if (error) {
+            // Another device may already own the single slot — adopt that session.
+            const remote = await fetchOpenSession().catch(() => null)
+            if (epoch === startEpochRef.current) applySession(remote)
+            return
+          }
+
+          applySession(fromRow(data as TimesheetSessionRow))
+        } catch {
+          if (epoch === startEpochRef.current) applySession(null)
+        } finally {
+          if (epoch === startEpochRef.current) setIsSyncing(false)
+        }
+      })()
     },
-    [persist, session, userId],
+    [applySession, isSyncing, session, userId],
   )
 
   const requestStop = useCallback(() => {
@@ -112,11 +233,23 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     setStoppedAt(null)
   }, [])
 
-  const discard = useCallback(() => {
-    persist(null)
-    setConfirmOpen(false)
-    setStoppedAt(null)
-  }, [persist])
+  const discard = useCallback(async () => {
+    const current = session
+    startEpochRef.current += 1
+    applySession(null)
+    if (!current || current.id.startsWith('optimistic-')) return
+
+    setIsSyncing(true)
+    try {
+      const { error } = await supabase.from('timesheet_sessions').delete().eq('id', current.id)
+      if (error) throw error
+    } catch {
+      // If delete failed, re-sync so the timer can resurface instead of lying about being gone.
+      await refreshFromServer()
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [applySession, refreshFromServer, session])
 
   const elapsedMs = useMemo(() => {
     if (!session) return 0
@@ -131,12 +264,13 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       elapsedMs,
       confirmOpen,
       stoppedAt,
+      isSyncing,
       start,
       requestStop,
       cancelStop,
       discard,
     }),
-    [cancelStop, confirmOpen, discard, elapsedMs, requestStop, session, start, stoppedAt],
+    [cancelStop, confirmOpen, discard, elapsedMs, isSyncing, requestStop, session, start, stoppedAt],
   )
 
   return <TimesheetTimerContext.Provider value={value}>{children}</TimesheetTimerContext.Provider>

@@ -86,7 +86,7 @@ export function DayEntriesModal({
   const [minutesText, setMinutesText] = useState('30')
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const { session, elapsedMs, start, requestStop } = useTimesheetTimer()
+  const { session, elapsedMs, start, requestStop, isSyncing } = useTimesheetTimer()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
   const hasRange = Boolean(draft.startTime && draft.endTime)
   const isEditing = editingId !== null
@@ -258,7 +258,7 @@ export function DayEntriesModal({
                 A timer is already running in another workspace.
               </p>
             ) : (
-              <Button type="button" className="w-full" onClick={() => start(workspaceId)}>
+              <Button type="button" className="w-full" onClick={() => start(workspaceId)} loading={isSyncing}>
                 <Play className="size-4 fill-current" />
                 Start tracking
               </Button>
