@@ -53,7 +53,7 @@ export function CompleteProfilePage() {
 
     try {
       await completeOnboarding.mutateAsync({ firstName: firstName.trim(), dateOfBirth })
-      navigate('/streaks', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(getErrorMessage(err))
     }

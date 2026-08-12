@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Cake,
+  Camera,
   ChevronRight,
   Fingerprint,
   LogOut,
@@ -9,6 +10,7 @@ import {
   Monitor,
   Moon,
   Pencil,
+  RotateCcw,
   Scale,
   Sun,
   Trash2,
@@ -17,14 +19,24 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme, type ThemeMode } from '@/hooks/useTheme'
-import { useProfile, useSetDateOfBirth, useUpdateFirstName } from '@/hooks/useProfile'
+import { useProfile, useRemoveAvatar, useSetDateOfBirth, useUpdateAvatar, useUpdateFirstName } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
-import { MIN_AGE_YEARS, isOAuthOnlyAccount, isOldEnough, isValidPastDate, primaryProviderLabel } from '@/lib/profile'
+import {
+  MIN_AGE_YEARS,
+  getOAuthAvatarUrl,
+  isOAuthOnlyAccount,
+  isOldEnough,
+  isValidPastDate,
+  primaryProviderLabel,
+} from '@/lib/profile'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { Avatar } from '@/components/ui/Avatar'
 import { LegalPickerModal } from '@/components/legal/LegalPickerModal'
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
 function formatDateOfBirth(value: string) {
   try {
@@ -69,9 +81,44 @@ export function SettingsPage() {
   const { data: profile } = useProfile()
   const updateFirstName = useUpdateFirstName()
   const setDateOfBirth = useSetDateOfBirth()
+  const updateAvatar = useUpdateAvatar()
+  const removeAvatar = useRemoveAvatar()
   const navigate = useNavigate()
 
   const oauthOnly = isOAuthOnlyAccount(user)
+  const oauthAvatarUrl = getOAuthAvatarUrl(user)
+
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+
+  async function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please choose an image file.')
+      return
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError('Image must be smaller than 5 MB.')
+      return
+    }
+    setAvatarError(null)
+    try {
+      await updateAvatar.mutateAsync(file)
+    } catch (err) {
+      setAvatarError(getErrorMessage(err))
+    }
+  }
+
+  async function handleResetAvatar() {
+    setAvatarError(null)
+    try {
+      await removeAvatar.mutateAsync()
+    } catch (err) {
+      setAvatarError(getErrorMessage(err))
+    }
+  }
 
   const [editingName, setEditingName] = useState(false)
   const [firstNameDraft, setFirstNameDraft] = useState('')
@@ -246,6 +293,48 @@ export function SettingsPage() {
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
         <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 mb-4">Profile</p>
+
+        {/* Avatar */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative shrink-0">
+            <Avatar src={profile?.avatar_url ?? oauthAvatarUrl} name={profile?.first_name} size="xl" />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={updateAvatar.isPending}
+              aria-label="Change avatar"
+              className="absolute -bottom-1 -right-1 size-7 rounded-full bg-accent-blue text-white flex items-center justify-center ring-2 ring-white dark:ring-black shadow-sm active:scale-90 transition-transform disabled:opacity-60"
+            >
+              <Camera className="size-3.5" />
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Profile photo</p>
+            <p className="text-[13px] text-black/45 dark:text-white/45 mb-2">
+              {updateAvatar.isPending ? 'Uploading…' : 'Shown in the top-right of the app.'}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="secondary" loading={updateAvatar.isPending} onClick={() => avatarInputRef.current?.click()}>
+                <Camera className="size-3.5" />
+                Change photo
+              </Button>
+              {profile?.avatar_url && oauthAvatarUrl && (
+                <Button size="sm" variant="ghost" loading={removeAvatar.isPending} onClick={handleResetAvatar}>
+                  <RotateCcw className="size-3.5" />
+                  Reset to {primaryProviderLabel(user)} photo
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+        {avatarError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{avatarError}</p>}
 
         {/* First name */}
         <div className="flex items-center gap-3 mb-4">

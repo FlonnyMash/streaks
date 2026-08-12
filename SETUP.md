@@ -60,6 +60,11 @@ To collect a first name + date of birth and enforce the 16+ age minimum, also ru
 `onboarding_required = false`), and a trigger that rejects a date of birth under 16 years old or
 any attempt to change one that's already set.
 
+To let users upload a custom profile photo from Settings, also run
+[`supabase/migrations/0012_profile_avatar.sql`](supabase/migrations/0012_profile_avatar.sql). This
+adds an `avatar_url` column to `profiles` and creates a public `avatars` Storage bucket with
+policies that only let each user write to their own `{user_id}/...` path.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:

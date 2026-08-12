@@ -1,20 +1,21 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CalendarClock, Flame, ListTodo, Settings } from 'lucide-react'
+import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProfileAvatarButton } from './ProfileAvatarButton'
 
 const links = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: false },
   { to: '/streaks', label: 'Streaks', icon: Flame, end: false },
   { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
   { to: '/timesheet', label: 'Timesheet', icon: CalendarClock, end: false },
-  { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
 export function GlassNavbar() {
   return (
     <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top">
-      <div className="mx-auto max-w-5xl px-6 pt-4">
-        <div className="glass-surface rounded-full px-4 h-16 flex items-center justify-between shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
+      <div className="mx-auto max-w-5xl px-6 pt-4 flex items-center gap-3">
+        <div className="glass-surface rounded-full px-4 h-16 flex items-center justify-between flex-1 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px] pl-2">
             <Flame className="size-5 text-accent-orange" fill="currentColor" fillOpacity={0.15} />
             Mashed Personal Dashboard
@@ -49,6 +50,9 @@ export function GlassNavbar() {
               </NavLink>
             ))}
           </nav>
+        </div>
+        <div className="glass-surface rounded-full size-16 flex items-center justify-center shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
+          <ProfileAvatarButton size="md" />
         </div>
       </div>
     </header>

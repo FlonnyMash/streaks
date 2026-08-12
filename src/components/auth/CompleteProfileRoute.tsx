@@ -15,7 +15,7 @@ export function CompleteProfileRoute({ children }: { children: ReactNode }) {
   // Only send users into the app once we have a real profile that finished onboarding.
   // A null/error profile stays on this page so they can complete (upsert) it.
   if (!isError && profile && !profile.onboarding_required) {
-    return <Navigate to="/streaks" replace />
+    return <Navigate to="/dashboard" replace />
   }
   return <>{children}</>
 }

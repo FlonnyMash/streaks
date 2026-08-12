@@ -68,6 +68,62 @@ export function useSetDateOfBirth() {
   })
 }
 
+/** Uploads a new avatar image to Storage and saves its public URL on the profile. */
+export function useUpdateAvatar() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error('Not signed in')
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${user.id}/avatar-${Date.now()}.${extension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { cacheControl: '3600', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrlData.publicUrl })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}
+
+/** Clears the custom avatar so the UI falls back to the OAuth provider's picture (if any). */
+export function useRemoveAvatar() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not signed in')
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}
+
 /** Used by the post-OAuth /complete-profile screen: confirms name + sets DOB in one step. */
 export function useCompleteOnboarding() {
   const { user } = useAuth()

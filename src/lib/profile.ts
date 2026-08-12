@@ -74,3 +74,11 @@ export function primaryProviderLabel(user: User | null): string {
   if (provider === 'github') return 'GitHub'
   return 'your sign-in provider'
 }
+
+/** Best-effort avatar URL from OAuth provider metadata (Google/GitHub), used when no custom avatar is set. */
+export function getOAuthAvatarUrl(user: User | null): string | null {
+  if (!user) return null
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+  const raw = (meta.avatar_url as string | undefined) || (meta.picture as string | undefined) || ''
+  return raw.trim() || null
+}

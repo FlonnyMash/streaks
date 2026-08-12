@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { CompleteProfilePage } from '@/pages/CompleteProfilePage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
+import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { StreakDetailPage } from '@/pages/StreakDetailPage'
 import { TodosPage } from '@/pages/TodosPage'
@@ -50,7 +51,7 @@ export function App() {
       <Route path="/datenschutz" element={<Navigate to="/privacy" replace />} />
       <Route path="/impressum" element={<Navigate to="/imprint" replace />} />
 
-      <Route path="/" element={<Navigate to="/streaks" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       <Route
         element={
@@ -59,6 +60,7 @@ export function App() {
           </ProtectedRoute>
         }
       >
+        <Route path="/dashboard" element={<HomePage />} />
         <Route path="/streaks" element={<DashboardPage />} />
         <Route path="/streaks/:id" element={<StreakDetailPage />} />
         <Route path="/todos" element={<TodosPage />} />
