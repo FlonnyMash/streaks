@@ -119,9 +119,9 @@ body {
 @layer components {
   .glass-surface,
   .glass-panel {
-    --glass-bg: light-dark(rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.45), rgba(44, 44, 46, 0.42));
     --glass-border: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.22));
-    --glass-blur: 64px;
+    --glass-blur: 32px;
     --glass-shadow: light-dark(
       inset 0 1px 0 rgba(255, 255, 255, 0.55),
       inset 0 1px 0 rgba(255, 255, 255, 0.22)
@@ -135,8 +135,9 @@ body {
     box-shadow: var(--glass-shadow);
   }
 
-  .glass-panel {
-    --glass-bg: light-dark(rgba(255, 255, 255, 0.45), rgba(44, 44, 46, 0.42));
-    --glass-blur: 32px;
+  /* Chrome (navbar/tab bar) needs to be dense enough that scrolling content behind it is unreadable. */
+  .glass-surface {
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.65), rgba(28, 28, 30, 0.78));
+    --glass-blur: 64px;
   }
 }

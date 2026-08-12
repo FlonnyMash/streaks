@@ -61,7 +61,17 @@ export function GlassNavbar() {
             </nav>
           </div>
         </div>
-        <ProfileAvatarButton size="md" />
+        <div className="relative size-14 shrink-0">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/35 to-transparent dark:from-white/16" />
+          </div>
+          <div className="relative z-10 size-full flex items-center justify-center">
+            <ProfileAvatarButton size="md" />
+          </div>
+        </div>
       </div>
     </header>
   )
