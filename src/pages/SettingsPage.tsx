@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Fingerprint, LogOut, Mail, Monitor, Moon, Sun, Trash2, TriangleAlert } from 'lucide-react'
+import { ChevronRight, Fingerprint, LogOut, Mail, Monitor, Moon, Scale, Sun, Trash2, TriangleAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme, type ThemeMode } from '@/hooks/useTheme'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { LegalPickerModal } from '@/components/legal/LegalPickerModal'
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; hint: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', hint: 'Always light', icon: Sun },
@@ -46,6 +47,7 @@ export function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [legalOpen, setLegalOpen] = useState(false)
 
   const loadPasskeys = useCallback(async () => {
     setPasskeysLoading(true)
@@ -244,6 +246,29 @@ export function SettingsPage() {
         {passkeyMsg && <p className="text-[13px] text-accent-green mt-2">{passkeyMsg}</p>}
         {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
       </div>
+
+      <section className="sm:hidden mb-4">
+        <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
+          Legal
+        </h2>
+        <button
+          type="button"
+          onClick={() => setLegalOpen(true)}
+          className="w-full glass-panel rounded-[24px] p-5 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+        >
+          <div className="size-12 rounded-2xl bg-accent-teal/15 flex items-center justify-center shrink-0">
+            <Scale className="size-5 text-accent-teal" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Legal</p>
+            <p className="text-[13px] text-black/45 dark:text-white/45">
+              Datenschutz and Impressum
+            </p>
+          </div>
+          <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />
+        </button>
+        <LegalPickerModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+      </section>
 
       <section>
         <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">

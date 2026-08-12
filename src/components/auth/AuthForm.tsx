@@ -4,6 +4,7 @@ import { Flame, Fingerprint, KeyRound, Mail } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { LegalFooterLinks } from '@/components/legal/LegalShared'
 import { isSupabaseConfigured } from '@/lib/supabaseClient'
 
 function GitHubIcon() {
@@ -196,6 +197,8 @@ export function AuthForm({ mode }: AuthFormProps) {
           <KeyRound className="size-3.5" />
           Secured by Supabase Auth
         </p>
+
+        <LegalFooterLinks className="sm:hidden mt-4" />
       </div>
     </div>
   )

@@ -11,6 +11,8 @@ import { TodosPage } from '@/pages/TodosPage'
 import { TimesheetPage } from '@/pages/TimesheetPage'
 import { TimesheetWorkspacePage } from '@/pages/TimesheetWorkspacePage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { DatenschutzPage } from '@/pages/DatenschutzPage'
+import { ImpressumPage } from '@/pages/ImpressumPage'
 
 export function App() {
   return (
@@ -32,6 +34,8 @@ export function App() {
         }
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/datenschutz" element={<DatenschutzPage />} />
+      <Route path="/impressum" element={<ImpressumPage />} />
 
       <Route path="/" element={<Navigate to="/streaks" replace />} />
       <Route
