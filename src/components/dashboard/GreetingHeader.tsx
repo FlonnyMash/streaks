@@ -33,7 +33,7 @@ export function GreetingHeader() {
         </div>
       ) : (
         <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">
-          {getTimeGreeting(now)}{name ? `, ${name}` : ''}
+          {getTimeGreeting(now)}{name ? `, ${name}!` : ''}
         </h1>
       )}
       <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">
