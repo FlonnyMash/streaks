@@ -12,7 +12,7 @@ const links = [
 
 export function GlassNavbar() {
   return (
-    <header className="hidden sm:block sticky top-0 z-40 safe-top">
+    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top">
       <div className="mx-auto max-w-5xl px-6 pt-4">
         <div className="glass-surface rounded-full px-4 h-16 flex items-center justify-between shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px] pl-2">
