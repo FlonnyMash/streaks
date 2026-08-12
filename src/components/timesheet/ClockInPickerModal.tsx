@@ -17,15 +17,17 @@ interface ClockInPickerModalProps {
   busyWorkspaceIds?: string[]
   /** Skip workspace list and start for this workspace. */
   preselectedWorkspaceId?: string | null
-  onStart: (workspaceId: string, startedAt?: Date) => void
+  onStart: (workspaceId: string, options?: { startedAt?: Date; topic?: string }) => void
 }
 
 const fieldClass = cn(
-  'h-11 w-full rounded-2xl px-3 text-[15px] font-semibold tabular-nums outline-none transition-all',
+  'h-11 w-full rounded-2xl px-3 text-[15px] outline-none transition-all',
   'bg-black/[0.04] dark:bg-white/[0.06]',
   'border border-black/[0.06] dark:border-white/[0.08]',
   'focus:border-accent-blue focus:bg-white dark:focus:bg-white/[0.08] focus:ring-4 focus:ring-accent-blue/15',
 )
+
+const timeFieldClass = cn(fieldClass, 'font-semibold tabular-nums')
 
 export function ClockInPickerModal({
   open,
@@ -44,12 +46,14 @@ export function ClockInPickerModal({
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [whenMode, setWhenMode] = useState<WhenMode>('now')
   const [pastLocal, setPastLocal] = useState(() => toDateTimeLocalValue(new Date()))
+  const [topic, setTopic] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     setWhenMode('now')
     setPastLocal(toDateTimeLocalValue(new Date()))
+    setTopic('')
     setError(null)
     if (preselectedWorkspaceId && !busy.has(preselectedWorkspaceId)) {
       setWorkspaceId(preselectedWorkspaceId)
@@ -70,8 +74,9 @@ export function ClockInPickerModal({
       setError('Choose a workspace.')
       return
     }
+    const trimmedTopic = topic.trim() || undefined
     if (whenMode === 'now') {
-      onStart(workspaceId)
+      onStart(workspaceId, trimmedTopic ? { topic: trimmedTopic } : undefined)
       onClose()
       return
     }
@@ -84,7 +89,10 @@ export function ClockInPickerModal({
       setError('Start time can’t be in the future.')
       return
     }
-    onStart(workspaceId, past)
+    onStart(workspaceId, {
+      startedAt: past,
+      ...(trimmedTopic ? { topic: trimmedTopic } : {}),
+    })
     onClose()
   }
 
@@ -193,10 +201,17 @@ export function ClockInPickerModal({
                     setPastLocal(e.target.value)
                     setError(null)
                   }}
-                  className={fieldClass}
+                  className={timeFieldClass}
                 />
               </label>
             )}
+
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value.slice(0, 80))}
+              placeholder="Topic (optional) — e.g. Client call"
+              className={fieldClass}
+            />
 
             {error && <p className="text-[12px] text-accent-red text-center -mt-1">{error}</p>}
 

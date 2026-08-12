@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
-import { CalendarClock, Download, Plus, Sparkles } from 'lucide-react'
+import { CalendarClock, Download, Play, Plus, Sparkles } from 'lucide-react'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useAllTimesheetEntries } from '@/hooks/useTimesheetEntries'
+import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { WorkspaceCard } from '@/components/timesheet/WorkspaceCard'
 import { TimesheetCalendar } from '@/components/timesheet/TimesheetCalendar'
 import { DaySummaryModal } from '@/components/timesheet/DaySummaryModal'
 import { CreateWorkspaceModal } from '@/components/timesheet/CreateWorkspaceModal'
 import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModal'
 import { ActiveTimerBanner } from '@/components/timesheet/ActiveTimerBanner'
+import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
 import { Spinner } from '@/components/ui/Spinner'
 import {
   FeatureGetStartedButton,
@@ -21,9 +23,11 @@ export function TimesheetPage() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries } = useAllTimesheetEntries(workspaceIds)
+  const { sessions, start } = useTimesheetTimer()
   const [createOpen, setCreateOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [clockInOpen, setClockInOpen] = useState(false)
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -31,6 +35,8 @@ export function TimesheetPage() {
 
   const isEmpty = !workspacesLoading && workspaces?.length === 0
   const showHelpIcon = Boolean(workspaces && workspaces.length > 0)
+  const busyIds = sessions.map((s) => s.workspaceId)
+  const canClockIn = Boolean(workspaces?.some((w) => !busyIds.includes(w.id)))
   const entriesByWorkspace = (workspaceId: string) => entries?.filter((e) => e.workspace_id === workspaceId) ?? []
 
   const dayBreakdown = useMemo(() => {
@@ -53,6 +59,16 @@ export function TimesheetPage() {
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Timesheet</h1>
             {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+            {showHelpIcon && canClockIn && (
+              <button
+                onClick={() => setClockInOpen(true)}
+                aria-label="Clock in"
+                title="Clock in"
+                className="sm:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
+              >
+                <Play className="size-[18px] fill-current" />
+              </button>
+            )}
             {showHelpIcon && (
               <button
                 onClick={() => setExportOpen(true)}
@@ -75,6 +91,16 @@ export function TimesheetPage() {
             >
               <Download className="size-4" />
               Export
+            </button>
+          )}
+          {showHelpIcon && (
+            <button
+              onClick={() => setClockInOpen(true)}
+              disabled={!canClockIn}
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-black/5 dark:bg-white/10 font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <Play className="size-4 fill-current" />
+              Clock in
             </button>
           )}
           <button
@@ -144,6 +170,14 @@ export function TimesheetPage() {
 
       <CreateWorkspaceModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <FeatureHelpModal feature="timesheet" open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      <ClockInPickerModal
+        open={clockInOpen}
+        onClose={() => setClockInOpen(false)}
+        workspaces={workspaces ?? []}
+        busyWorkspaceIds={busyIds}
+        onStart={(workspaceId, options) => start(workspaceId, options)}
+      />
 
       <ExportTimesheetModal
         open={exportOpen}

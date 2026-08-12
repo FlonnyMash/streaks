@@ -167,7 +167,7 @@ export function TimesheetTodayWidget() {
         onClose={() => setPickerOpen(false)}
         workspaces={workspaces ?? []}
         busyWorkspaceIds={busyIds}
-        onStart={(workspaceId, startedAt) => start(workspaceId, startedAt ? { startedAt } : undefined)}
+        onStart={(workspaceId, options) => start(workspaceId, options)}
       />
     </div>
   )

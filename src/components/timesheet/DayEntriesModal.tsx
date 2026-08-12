@@ -241,8 +241,8 @@ export function DayEntriesModal({
     <GlassModal open={open} onClose={onClose} title={format(fromDateKey(dateKey), 'EEEE, MMM d')}>
       <div className="flex flex-col gap-5">
         {isToday && (
-          <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3">
-            {timerForThisWorkspace ? (
+          timerForThisWorkspace ? (
+            <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3">
               <div className="flex items-center gap-3">
                 <span className="relative flex size-2.5 shrink-0">
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
@@ -259,13 +259,13 @@ export function DayEntriesModal({
                   Stop
                 </Button>
               </div>
-            ) : (
-              <Button type="button" className="w-full" onClick={() => setClockInOpen(true)} loading={isSyncing}>
-                <Play className="size-4 fill-current" />
-                Start tracking
-              </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Button type="button" size="lg" className="w-full" onClick={() => setClockInOpen(true)} loading={isSyncing}>
+              <Play className="size-4 fill-current" />
+              Start tracking
+            </Button>
+          )
         )}
 
         {total > 0 && (
@@ -490,7 +490,7 @@ export function DayEntriesModal({
           .filter((w) => sessionForWorkspace(w.id))
           .map((w) => w.id)}
         preselectedWorkspaceId={workspaceId}
-        onStart={(id, startedAt) => start(id, startedAt ? { startedAt } : undefined)}
+        onStart={(id, options) => start(id, options)}
       />
     </GlassModal>
   )
