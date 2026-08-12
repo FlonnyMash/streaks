@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Avatar } from '@/components/ui/Avatar'
 import { LegalPickerModal } from '@/components/legal/LegalPickerModal'
+import { AddToHomeScreenSettings } from '@/components/pwa/AddToHomeScreen'
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
@@ -545,6 +546,8 @@ export function SettingsPage() {
         {passkeyMsg && <p className="text-[13px] text-accent-green mt-2">{passkeyMsg}</p>}
         {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
       </div>
+
+      <AddToHomeScreenSettings />
 
       <section className="sm:hidden mb-4">
         <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">

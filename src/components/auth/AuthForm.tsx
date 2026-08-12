@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Flame, Fingerprint, KeyRound, Mail } from 'lucide-react'
+import { Fingerprint, KeyRound, Mail } from 'lucide-react'
+import { BrandIcon } from '@/components/BrandIcon'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -131,8 +132,8 @@ export function AuthForm({ mode }: AuthFormProps) {
     <div className="min-h-full flex items-center justify-center px-5 py-10 safe-top safe-bottom">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="size-16 rounded-[22px] bg-gradient-to-br from-accent-orange to-accent-red flex items-center justify-center shadow-[0_12px_30px_-8px_rgba(255,69,58,0.5)] mb-4">
-            <Flame className="size-8 text-white" fill="white" fillOpacity={0.3} />
+          <div className="size-16 rounded-[22px] bg-black/5 dark:bg-white/10 flex items-center justify-center mb-4 ring-1 ring-black/8 dark:ring-white/12">
+            <BrandIcon className="size-10 text-black dark:text-[#d6ecff]" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{mode === 'login' ? 'Welcome back' : 'Create account'}</h1>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-1">

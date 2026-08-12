@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
+import { BrandIcon } from '@/components/BrandIcon'
 import { cn } from '@/lib/utils'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
 
@@ -17,7 +18,7 @@ export function GlassNavbar() {
       <div className="mx-auto max-w-5xl px-6 pt-4 flex items-center gap-3">
         <div className="glass-surface rounded-full px-4 h-16 flex items-center justify-between flex-1 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px] pl-2">
-            <Flame className="size-5 text-accent-orange" fill="currentColor" fillOpacity={0.15} />
+            <BrandIcon className="size-6 text-black dark:text-[#d6ecff]" />
             Mashed Personal Dashboard
           </div>
           <nav className="flex items-center gap-1">
