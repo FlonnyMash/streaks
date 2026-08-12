@@ -54,6 +54,12 @@ If your timesheet entries were created before clock ranges were added, also run
 [`supabase/migrations/0010_timesheet_entry_time_range.sql`](supabase/migrations/0010_timesheet_entry_time_range.sql)
 to add nullable `start_time` and `end_time` columns.
 
+To collect a first name + date of birth and enforce the 16+ age minimum, also run
+[`supabase/migrations/0011_profiles.sql`](supabase/migrations/0011_profiles.sql). This creates a
+`profiles` table, a trigger that auto-creates a profile (and grandfathers existing accounts with
+`onboarding_required = false`), and a trigger that rejects a date of birth under 16 years old or
+any attempt to change one that's already set.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:

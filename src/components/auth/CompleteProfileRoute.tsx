@@ -4,19 +4,18 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { Spinner } from '@/components/ui/Spinner'
 
-export function ProtectedRoute({ children }: { children: ReactNode }) {
+/** Guards /complete-profile: only reachable while signed in and onboarding is still required. */
+export function CompleteProfileRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const { data: profile, isLoading: profileLoading, isError } = useProfile()
 
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
-  // Wait for the profile to load before deciding — avoids a flash of the app
-  // for accounts that still need to complete onboarding (new OAuth sign-ins).
   if (profileLoading) return <Spinner />
-  // Missing profile (race / trigger lag / fetch error) must not unlock the app.
-  // Treat it the same as unfinished onboarding.
-  if (isError || !profile || profile.onboarding_required) {
-    return <Navigate to="/complete-profile" replace />
+  // Only send users into the app once we have a real profile that finished onboarding.
+  // A null/error profile stays on this page so they can complete (upsert) it.
+  if (!isError && profile && !profile.onboarding_required) {
+    return <Navigate to="/streaks" replace />
   }
   return <>{children}</>
 }

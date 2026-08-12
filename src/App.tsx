@@ -2,8 +2,10 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { GuestRoute } from '@/components/auth/GuestRoute'
+import { CompleteProfileRoute } from '@/components/auth/CompleteProfileRoute'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
+import { CompleteProfilePage } from '@/pages/CompleteProfilePage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { StreakDetailPage } from '@/pages/StreakDetailPage'
@@ -34,6 +36,14 @@ export function App() {
         }
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route
+        path="/complete-profile"
+        element={
+          <CompleteProfileRoute>
+            <CompleteProfilePage />
+          </CompleteProfileRoute>
+        }
+      />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/imprint" element={<LegalPage />} />
       <Route path="/legal" element={<Navigate to="/imprint" replace />} />

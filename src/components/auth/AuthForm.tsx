@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { LegalFooterLinks } from '@/components/legal/LegalShared'
 import { isSupabaseConfigured } from '@/lib/supabaseClient'
+import { MIN_AGE_YEARS, isOldEnough, isValidPastDate } from '@/lib/profile'
 
 function GitHubIcon() {
   return (
@@ -47,6 +48,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [loading, setLoading] = useState(false)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,11 +60,27 @@ export function AuthForm({ mode }: AuthFormProps) {
     e.preventDefault()
     setError(null)
     setNotice(null)
+
+    if (mode === 'signup') {
+      if (!firstName.trim()) {
+        setError('Enter your first name.')
+        return
+      }
+      if (!isValidPastDate(dateOfBirth)) {
+        setError('Enter a valid date of birth.')
+        return
+      }
+      if (!isOldEnough(dateOfBirth)) {
+        setError(`You must be at least ${MIN_AGE_YEARS} years old to create an account.`)
+        return
+      }
+    }
+
     setLoading(true)
     const result =
       mode === 'login'
         ? await auth.signInWithPassword(email, password)
-        : await auth.signUpWithPassword(email, password)
+        : await auth.signUpWithPassword(email, password, { firstName: firstName.trim(), dateOfBirth })
     setLoading(false)
     if (result.error) {
       setError(result.error)
@@ -130,6 +149,17 @@ export function AuthForm({ mode }: AuthFormProps) {
 
         <div className="glass-panel rounded-[28px] p-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            {mode === 'signup' && (
+              <TextField
+                label="First name"
+                type="text"
+                autoComplete="given-name"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Alex"
+              />
+            )}
             <TextField
               label="Email"
               type="email"
@@ -149,6 +179,23 @@ export function AuthForm({ mode }: AuthFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+            {mode === 'signup' && (
+              <TextField
+                label="Date of birth"
+                type="date"
+                autoComplete="bday"
+                required
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+            )}
+            {mode === 'signup' && (
+              <p className="text-[12px] text-black/40 dark:text-white/40 -mt-2">
+                You must be at least {MIN_AGE_YEARS} to create an account. Your date of birth can't be
+                changed later.
+              </p>
+            )}
 
             {mode === 'login' && (
               <button

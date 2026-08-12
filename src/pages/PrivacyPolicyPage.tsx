@@ -65,7 +65,8 @@ export function PrivacyPolicyPage() {
         <LegalList
           items={[
             'Account data: email address, password hash (via Supabase Auth), user ID',
-            'OAuth (optional): identity / profile data provided by GitHub or Google, especially email',
+            'Profile data: first name and date of birth, used to confirm you meet the minimum age requirement',
+            'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
             'Content you create: streaks (name, emoji, color, frequency, time goals), daily entries (notes, mood, minutes), todos (title, notes, due date, importance), timesheet workspaces and entries (topics, notes, times)',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
@@ -84,6 +85,7 @@ export function PrivacyPolicyPage() {
         <LegalList
           items={[
             'Providing and operating your user account and sign-in (Art. 6(1)(b) GDPR)',
+            'Verifying you meet the minimum age of 16 to use the App (Art. 6(1)(c) GDPR)',
             'Storing and syncing your personal app content (Art. 6(1)(b) GDPR)',
             'Securing authentication (sessions, passkeys, password reset) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
@@ -146,9 +148,9 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="10. Requirement to provide data">
         <p>
-          Using the App requires an email address and — depending on the sign-in method — a password,
-          passkey, or a GitHub or Google account. Without this information, an account cannot be
-          provided.
+          Using the App requires an email address, a first name, and a date of birth, plus — depending
+          on the sign-in method — a password, passkey, or a GitHub or Google account. Without this
+          information, an account cannot be provided. Your date of birth cannot be changed once saved.
         </p>
       </LegalSection>
 
@@ -161,8 +163,10 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="12. Children">
         <p>
-          The App is not directed at children under 16. If you are a legal guardian and believe a child
-          has provided us with personal data, please contact us.
+          The App is not directed at children under 16. We collect your date of birth at sign-up
+          specifically to enforce this minimum age, and accounts that do not meet it are not created or
+          are deleted. If you are a legal guardian and believe a child has circumvented this check and
+          provided us with personal data, please contact us.
         </p>
       </LegalSection>
 

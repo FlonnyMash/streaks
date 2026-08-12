@@ -1,13 +1,42 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Fingerprint, LogOut, Mail, Monitor, Moon, Scale, Sun, Trash2, TriangleAlert } from 'lucide-react'
+import {
+  Cake,
+  ChevronRight,
+  Fingerprint,
+  LogOut,
+  Mail,
+  Monitor,
+  Moon,
+  Pencil,
+  Scale,
+  Sun,
+  Trash2,
+  TriangleAlert,
+  UserRound,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme, type ThemeMode } from '@/hooks/useTheme'
+import { useProfile, useSetDateOfBirth, useUpdateFirstName } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
+import { MIN_AGE_YEARS, isOAuthOnlyAccount, isOldEnough, isValidPastDate, primaryProviderLabel } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
 import { LegalPickerModal } from '@/components/legal/LegalPickerModal'
+
+function formatDateOfBirth(value: string) {
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return value
+  }
+}
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; hint: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', hint: 'Always light', icon: Sun },
@@ -37,7 +66,89 @@ function formatPasskeyDate(value: string) {
 export function SettingsPage() {
   const { user, signOut, registerPasskey, ensureSession } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { data: profile } = useProfile()
+  const updateFirstName = useUpdateFirstName()
+  const setDateOfBirth = useSetDateOfBirth()
   const navigate = useNavigate()
+
+  const oauthOnly = isOAuthOnlyAccount(user)
+
+  const [editingName, setEditingName] = useState(false)
+  const [firstNameDraft, setFirstNameDraft] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
+
+  const [editingEmail, setEditingEmail] = useState(false)
+  const [emailDraft, setEmailDraft] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailNotice, setEmailNotice] = useState<string | null>(null)
+
+  const [dobDraft, setDobDraft] = useState('')
+  const [dobError, setDobError] = useState<string | null>(null)
+
+  function startEditingName() {
+    setNameError(null)
+    setFirstNameDraft(profile?.first_name ?? '')
+    setEditingName(true)
+  }
+
+  async function handleSaveFirstName() {
+    const trimmed = firstNameDraft.trim()
+    if (!trimmed) {
+      setNameError('First name cannot be empty.')
+      return
+    }
+    setNameError(null)
+    try {
+      await updateFirstName.mutateAsync(trimmed)
+      setEditingName(false)
+    } catch (err) {
+      setNameError(getErrorMessage(err))
+    }
+  }
+
+  function startEditingEmail() {
+    setEmailError(null)
+    setEmailNotice(null)
+    setEmailDraft(user?.email ?? '')
+    setEditingEmail(true)
+  }
+
+  async function handleSaveEmail() {
+    const trimmed = emailDraft.trim()
+    if (!trimmed) {
+      setEmailError('Enter an email address.')
+      return
+    }
+    setEmailError(null)
+    setEmailSaving(true)
+    const { error } = await supabase.auth.updateUser({ email: trimmed })
+    setEmailSaving(false)
+    if (error) {
+      setEmailError(error.message)
+      return
+    }
+    setEditingEmail(false)
+    setEmailNotice('Check your inbox to confirm the new email address.')
+  }
+
+  async function handleSaveDateOfBirth() {
+    if (!isValidPastDate(dobDraft)) {
+      setDobError('Enter a valid date of birth.')
+      return
+    }
+    if (!isOldEnough(dobDraft)) {
+      setDobError(`You must be at least ${MIN_AGE_YEARS} years old to use this app.`)
+      return
+    }
+    setDobError(null)
+    try {
+      await setDateOfBirth.mutateAsync(dobDraft)
+    } catch (err) {
+      setDobError(getErrorMessage(err))
+    }
+  }
+
   const [passkeys, setPasskeys] = useState<PasskeyItem[]>([])
   const [passkeysLoading, setPasskeysLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
@@ -134,18 +245,117 @@ export function SettingsPage() {
       <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight mb-6">Settings</h1>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
+        <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 mb-4">Profile</p>
+
+        {/* First name */}
         <div className="flex items-center gap-3 mb-4">
           <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
-            <Mail className="size-5 text-accent-blue" />
+            <UserRound className="size-5 text-accent-blue" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-baseline justify-between gap-3 min-w-0">
-              <p className="text-[13px] text-black/45 dark:text-white/45">Signed in as</p>
-              <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 shrink-0">Profile</p>
-            </div>
-            <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
+            <p className="text-[13px] text-black/45 dark:text-white/45">First name</p>
+            {editingName ? (
+              <div className="flex items-center gap-2 mt-1">
+                <TextField
+                  value={firstNameDraft}
+                  onChange={(e) => setFirstNameDraft(e.target.value)}
+                  className="h-10 flex-1"
+                  autoFocus
+                />
+                <Button size="sm" loading={updateFirstName.isPending} onClick={handleSaveFirstName}>
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <p className="font-medium truncate">{profile?.first_name || 'Not set'}</p>
+            )}
+          </div>
+          {!editingName && (
+            <Button variant="ghost" size="sm" onClick={startEditingName} aria-label="Edit first name">
+              <Pencil className="size-4" />
+            </Button>
+          )}
+        </div>
+        {editingName && nameError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{nameError}</p>}
+
+        {/* Email */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="size-12 rounded-2xl bg-accent-orange/15 flex items-center justify-center shrink-0">
+            <Mail className="size-5 text-accent-orange" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-black/45 dark:text-white/45">Email</p>
+            {editingEmail ? (
+              <div className="flex items-center gap-2 mt-1">
+                <TextField
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                  className="h-10 flex-1"
+                  autoFocus
+                />
+                <Button size="sm" loading={emailSaving} onClick={handleSaveEmail}>
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditingEmail(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
+            )}
+          </div>
+          {!editingEmail && !oauthOnly && (
+            <Button variant="ghost" size="sm" onClick={startEditingEmail} aria-label="Edit email">
+              <Pencil className="size-4" />
+            </Button>
+          )}
+        </div>
+        {!editingEmail && oauthOnly && (
+          <p className="text-[12px] text-black/40 dark:text-white/40 mb-4 -mt-2">
+            Managed by {primaryProviderLabel(user)} — sign-in email can't be changed here.
+          </p>
+        )}
+        {editingEmail && emailError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{emailError}</p>}
+        {!editingEmail && emailNotice && (
+          <p className="text-[13px] text-accent-green mb-4 -mt-2">{emailNotice}</p>
+        )}
+
+        {/* Date of birth */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="size-12 rounded-2xl bg-accent-pink/15 flex items-center justify-center shrink-0">
+            <Cake className="size-5 text-accent-pink" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-black/45 dark:text-white/45">Date of birth</p>
+            {profile?.date_of_birth ? (
+              <p className="font-medium truncate">{formatDateOfBirth(profile.date_of_birth)}</p>
+            ) : (
+              <div className="flex items-center gap-2 mt-1">
+                <TextField
+                  type="date"
+                  value={dobDraft}
+                  onChange={(e) => setDobDraft(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  className="h-10 flex-1"
+                />
+                <Button size="sm" loading={setDateOfBirth.isPending} onClick={handleSaveDateOfBirth}>
+                  Save
+                </Button>
+              </div>
+            )}
           </div>
         </div>
+        {!profile?.date_of_birth && (
+          <p className="text-[12px] text-black/40 dark:text-white/40 mb-4 -mt-2">
+            You must be at least {MIN_AGE_YEARS}. This can't be changed once saved.
+          </p>
+        )}
+        {dobError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{dobError}</p>}
+
         <Button variant="secondary" size="md" className="w-full justify-start" onClick={() => signOut()}>
           <LogOut className="size-4" />
           Sign out

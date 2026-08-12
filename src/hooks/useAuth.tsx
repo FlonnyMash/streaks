@@ -8,7 +8,11 @@ interface AuthContextValue {
   user: User | null
   loading: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
+  signUpWithPassword: (
+    email: string,
+    password: string,
+    profile: { firstName: string; dateOfBirth: string },
+  ) => Promise<{ error: string | null }>
   signInWithGitHub: () => Promise<{ error: string | null }>
   signInWithGoogle: () => Promise<{ error: string | null }>
   signInWithPasskey: () => Promise<{ error: string | null }>
@@ -69,11 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!data?.session) return { error: 'Sign-in succeeded but no session was returned.' }
         return { error: null }
       },
-      async signUpWithPassword(email, password) {
+      async signUpWithPassword(email, password, profile) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectTo('/auth/callback') },
+          options: {
+            emailRedirectTo: redirectTo('/auth/callback'),
+            data: {
+              first_name: profile.firstName,
+              date_of_birth: profile.dateOfBirth,
+            },
+          },
         })
         return { error: error?.message ?? null }
       },

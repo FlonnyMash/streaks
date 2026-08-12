@@ -1,0 +1,101 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabaseClient'
+import type { Profile } from '@/lib/types'
+import { useAuth } from '@/hooks/useAuth'
+
+const PROFILE_KEY = ['profile'] as const
+
+export function useProfile() {
+  const { user } = useAuth()
+
+  return useQuery({
+    queryKey: [...PROFILE_KEY, user?.id],
+    enabled: Boolean(user),
+    queryFn: async (): Promise<Profile | null> => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle()
+      if (error) throw error
+      return data as Profile | null
+    },
+  })
+}
+
+export function useUpdateFirstName() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (firstName: string) => {
+      if (!user) throw new Error('Not signed in')
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ first_name: firstName })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}
+
+/** Sets date_of_birth once. The DB trigger rejects this if it's already set or under 16. */
+export function useSetDateOfBirth() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (dateOfBirth: string) => {
+      if (!user) throw new Error('Not signed in')
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ date_of_birth: dateOfBirth })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}
+
+/** Used by the post-OAuth /complete-profile screen: confirms name + sets DOB in one step. */
+export function useCompleteOnboarding() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: { firstName: string; dateOfBirth: string }) => {
+      if (!user) throw new Error('Not signed in')
+      // Upsert covers race cases where the auth.users trigger hasn't created a
+      // profile row yet (or the earlier fetch returned null).
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            first_name: input.firstName,
+            date_of_birth: input.dateOfBirth,
+            onboarding_required: false,
+          },
+          { onConflict: 'user_id' },
+        )
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}

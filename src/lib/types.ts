@@ -124,6 +124,15 @@ export interface TimesheetEntryInput {
   note: string | null
 }
 
+export interface Profile {
+  user_id: string
+  first_name: string | null
+  date_of_birth: string | null
+  onboarding_required: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface StreakStats {
   currentStreak: number
   longestStreak: number
