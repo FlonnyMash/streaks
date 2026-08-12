@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Flame, Fingerprint, KeyRound, Mail } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
@@ -20,9 +20,11 @@ interface AuthFormProps {
 
 export function AuthForm({ mode }: AuthFormProps) {
   const auth = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [showReset, setShowReset] = useState(false)
@@ -39,9 +41,13 @@ export function AuthForm({ mode }: AuthFormProps) {
     setLoading(false)
     if (result.error) {
       setError(result.error)
-    } else if (mode === 'signup') {
-      setNotice('Check your inbox to confirm your email, then sign in.')
+      return
     }
+    if (mode === 'signup') {
+      setNotice('Check your inbox to confirm your email, then sign in.')
+      return
+    }
+    navigate('/', { replace: true })
   }
 
   async function handleReset() {
@@ -62,8 +68,14 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   async function handlePasskey() {
     setError(null)
+    setPasskeyLoading(true)
     const result = await auth.signInWithPasskey()
-    if (result.error) setError(result.error)
+    setPasskeyLoading(false)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    navigate('/', { replace: true })
   }
 
   return (
@@ -148,7 +160,13 @@ export function AuthForm({ mode }: AuthFormProps) {
               GitHub
             </Button>
             {mode === 'login' && (
-              <Button variant="secondary" size="md" className="w-full" onClick={handlePasskey}>
+              <Button
+                variant="secondary"
+                size="md"
+                className="w-full"
+                loading={passkeyLoading}
+                onClick={handlePasskey}
+              >
                 <Fingerprint className="size-4" />
                 Sign in with a Passkey
               </Button>

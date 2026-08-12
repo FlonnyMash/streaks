@@ -1,31 +1,108 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Fingerprint, LogOut, Mail, Trash2, TriangleAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabaseClient'
+import { getErrorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
 
+type PasskeyItem = {
+  id: string
+  friendly_name?: string
+  created_at: string
+  last_used_at?: string
+}
+
+function formatPasskeyDate(value: string) {
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return value
+  }
+}
+
 export function SettingsPage() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, registerPasskey, ensureSession } = useAuth()
   const navigate = useNavigate()
+  const [passkeys, setPasskeys] = useState<PasskeyItem[]>([])
+  const [passkeysLoading, setPasskeysLoading] = useState(true)
+  const [registering, setRegistering] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [passkeyMsg, setPasskeyMsg] = useState<string | null>(null)
+  const [passkeyError, setPasskeyError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  async function registerPasskeyForDevice() {
+  const loadPasskeys = useCallback(async () => {
+    setPasskeysLoading(true)
+    setPasskeyError(null)
     try {
-      const { error } = await supabase.auth.registerPasskey()
-      return { error: error?.message ?? null }
+      const ensured = await ensureSession()
+      if (ensured.error) {
+        setPasskeyError(ensured.error)
+        setPasskeys([])
+        return
+      }
+      const { data, error } = await supabase.auth.passkey.list()
+      if (error) {
+        setPasskeyError(error.message)
+        setPasskeys([])
+        return
+      }
+      setPasskeys(data ?? [])
     } catch (err) {
-      return { error: err instanceof Error ? err.message : 'Passkeys are not enabled on this project yet.' }
+      setPasskeyError(getErrorMessage(err, 'Could not load passkeys.'))
+      setPasskeys([])
+    } finally {
+      setPasskeysLoading(false)
     }
-  }
+  }, [ensureSession])
+
+  useEffect(() => {
+    void loadPasskeys()
+  }, [loadPasskeys])
 
   async function handleRegisterPasskey() {
     setPasskeyMsg(null)
-    const { error } = await registerPasskeyForDevice()
-    setPasskeyMsg(error ?? 'Passkey registered! You can now sign in with it.')
+    setPasskeyError(null)
+    setRegistering(true)
+    const { error } = await registerPasskey()
+    setRegistering(false)
+    if (error) {
+      setPasskeyError(error)
+      return
+    }
+    setPasskeyMsg('Passkey registered! You can now sign in with it.')
+    await loadPasskeys()
+  }
+
+  async function handleDeletePasskey(passkeyId: string) {
+    setPasskeyMsg(null)
+    setPasskeyError(null)
+    setDeletingId(passkeyId)
+    try {
+      const ensured = await ensureSession()
+      if (ensured.error) {
+        setPasskeyError(ensured.error)
+        return
+      }
+      const { error } = await supabase.auth.passkey.delete({ passkeyId })
+      if (error) {
+        setPasskeyError(error.message)
+        return
+      }
+      setPasskeyMsg('Passkey removed.')
+      await loadPasskeys()
+    } catch (err) {
+      setPasskeyError(getErrorMessage(err, 'Could not delete passkey.'))
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   async function handleDeleteAccount() {
@@ -65,14 +142,51 @@ export function SettingsPage() {
           <div className="min-w-0">
             <p className="font-medium">Passkeys</p>
             <p className="text-[13px] text-black/45 dark:text-white/45">
-              Register this device for faster, passwordless sign-in.
+              Register devices for faster, passwordless sign-in. You can remove any passkey below.
             </p>
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleRegisterPasskey}>
+
+        <div className="flex flex-col gap-2 mb-3">
+          {passkeysLoading && (
+            <p className="text-[13px] text-black/45 dark:text-white/45">Loading passkeys…</p>
+          )}
+          {!passkeysLoading && passkeys.length === 0 && (
+            <p className="text-[13px] text-black/45 dark:text-white/45">No passkeys registered yet.</p>
+          )}
+          {passkeys.map((passkey) => (
+            <div
+              key={passkey.id}
+              className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium truncate">
+                  {passkey.friendly_name?.trim() || 'Passkey'}
+                </p>
+                <p className="text-[12px] text-black/45 dark:text-white/45">
+                  Added {formatPasskeyDate(passkey.created_at)}
+                  {passkey.last_used_at ? ` · Last used ${formatPasskeyDate(passkey.last_used_at)}` : ''}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={deletingId === passkey.id}
+                onClick={() => handleDeletePasskey(passkey.id)}
+                aria-label={`Delete ${passkey.friendly_name || 'passkey'}`}
+                className="text-accent-red shrink-0"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <Button variant="secondary" size="sm" loading={registering} onClick={handleRegisterPasskey}>
           Register a passkey
         </Button>
-        {passkeyMsg && <p className="text-[13px] text-black/60 dark:text-white/60 mt-2">{passkeyMsg}</p>}
+        {passkeyMsg && <p className="text-[13px] text-accent-green mt-2">{passkeyMsg}</p>}
+        {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
       </div>
 
       <Button variant="secondary" size="md" className="w-full justify-start mb-4" onClick={() => signOut()}>

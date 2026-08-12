@@ -7,6 +7,7 @@ import { ACCENT_COLORS, type AccentColor, type FrequencyType, type Streak } from
 import { WEEKDAY_LABELS, jsDayToWeekdayIndex, weekdayIndexToJsDay } from '@/lib/streakLogic'
 import { useCreateStreak, useUpdateStreak } from '@/hooks/useStreaks'
 import { cn } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/errors'
 import { Minus, Plus } from 'lucide-react'
 
 interface CreateStreakModalProps {
@@ -94,7 +95,7 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save streak.')
+      setError(getErrorMessage(err, 'Could not save streak.'))
     }
   }
 

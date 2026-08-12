@@ -94,3 +94,9 @@ end;
 $$;
 
 grant execute on function public.delete_own_account() to authenticated;
+
+-- Table privileges for the API roles. RLS still enforces per-user row access.
+grant select, insert, update, delete on table public.streaks to authenticated;
+grant select, insert, update, delete on table public.streak_entries to authenticated;
+grant all on table public.streaks to service_role;
+grant all on table public.streak_entries to service_role;

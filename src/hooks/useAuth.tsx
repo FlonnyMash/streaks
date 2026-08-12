@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import { getErrorMessage } from '@/lib/errors'
 
 interface AuthContextValue {
   session: Session | null
@@ -12,6 +13,7 @@ interface AuthContextValue {
   signInWithPasskey: () => Promise<{ error: string | null }>
   registerPasskey: () => Promise<{ error: string | null }>
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>
+  ensureSession: () => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
 
@@ -21,9 +23,19 @@ function redirectTo(path: string) {
   return `${window.location.origin}${path}`
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
-  return 'Something went wrong. Please try again.'
+async function ensureFreshSession(): Promise<{ error: string | null }> {
+  const { data: current, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) return { error: sessionError.message }
+  if (current?.session) {
+    // Validate the JWT with the server so registration/list/delete don't race a stale token.
+    const { error: userError } = await supabase.auth.getUser()
+    if (!userError) return { error: null }
+  }
+
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+  if (refreshError) return { error: refreshError.message }
+  if (!refreshed?.session) return { error: 'Auth session missing! Please sign out and sign in again.' }
+  return { error: null }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -32,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+      setSession(data?.session ?? null)
       setLoading(false)
     })
 
@@ -49,9 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       loading,
+      ensureSession: ensureFreshSession,
       async signInWithPassword(email, password) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        return { error: error?.message ?? null }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) return { error: error.message }
+        if (!data?.session) return { error: 'Sign-in succeeded but no session was returned.' }
+        return { error: null }
       },
       async signUpWithPassword(email, password) {
         const { error } = await supabase.auth.signUp({
@@ -69,23 +84,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           return { error: error?.message ?? null }
         } catch (err) {
-          return { error: errorMessage(err) }
+          return { error: getErrorMessage(err) }
         }
       },
       async signInWithPasskey() {
         try {
-          const { error } = await supabase.auth.signInWithPasskey()
-          return { error: error?.message ?? null }
+          const { data, error } = await supabase.auth.signInWithPasskey()
+          if (error) return { error: error.message }
+          if (!data?.session) {
+            return { error: 'Passkey verified, but no session was created. Check Passkeys are enabled and your Relying Party origins include this site.' }
+          }
+          return { error: null }
         } catch (err) {
-          return { error: errorMessage(err) }
+          return { error: getErrorMessage(err) }
         }
       },
       async registerPasskey() {
         try {
+          const ensured = await ensureFreshSession()
+          if (ensured.error) return ensured
           const { error } = await supabase.auth.registerPasskey()
           return { error: error?.message ?? null }
         } catch (err) {
-          return { error: errorMessage(err) }
+          return { error: getErrorMessage(err) }
         }
       },
       async sendPasswordReset(email) {
