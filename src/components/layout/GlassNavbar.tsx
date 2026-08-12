@@ -18,7 +18,7 @@ export function GlassNavbar() {
       <div className="mx-auto max-w-5xl px-6 pt-4 flex items-center gap-3">
         <div className="glass-surface rounded-full px-4 h-16 flex items-center justify-between flex-1 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-2 font-semibold tracking-tight text-[17px] pl-2">
-            <BrandIcon className="size-6" />
+            <BrandIcon className="size-7" />
             Mashed Personal Dashboard
           </div>
           <nav className="flex items-center gap-1">

@@ -1,4 +1,5 @@
-import brandIcon from '@/assets/brand-icon.png'
+import brandIconBlack from '@/assets/brand-icon-black.png'
+import brandIconWhite from '@/assets/brand-icon-white.png'
 import { cn } from '@/lib/utils'
 
 interface BrandIconProps {
@@ -6,15 +7,24 @@ interface BrandIconProps {
   title?: string
 }
 
-/** App mark — white silhouette, inverted for light mode. */
+/** App mark — black artwork in light mode, white artwork in dark mode. */
 export function BrandIcon({ className, title }: BrandIconProps) {
   return (
-    <img
-      src={brandIcon}
-      alt={title ?? ''}
-      aria-hidden={title ? undefined : true}
-      className={cn('shrink-0 invert dark:invert-0', className)}
-      draggable={false}
-    />
+    <>
+      <img
+        src={brandIconBlack}
+        alt={title ?? ''}
+        aria-hidden={title ? undefined : true}
+        className={cn('shrink-0 dark:hidden', className)}
+        draggable={false}
+      />
+      <img
+        src={brandIconWhite}
+        alt={title ?? ''}
+        aria-hidden={title ? undefined : true}
+        className={cn('shrink-0 hidden dark:block', className)}
+        draggable={false}
+      />
+    </>
   )
 }
