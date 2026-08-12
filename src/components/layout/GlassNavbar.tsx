@@ -14,9 +14,8 @@ const links = [
 
 export function GlassNavbar() {
   return (
-    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/75 dark:bg-black/70 backdrop-blur-xl">
-      <div className="mx-auto max-w-5xl px-6 py-3 flex items-center gap-3 min-w-0">
-        {/* Backdrop on its own layer — backdrop-filter clips children to the pill radius otherwise. */}
+    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top pointer-events-none">
+      <div className="mx-auto max-w-5xl px-6 pt-4 flex items-center gap-3 min-w-0 pointer-events-auto">
         <div className="relative flex-1 min-w-0 h-14">
           <div
             aria-hidden
@@ -60,15 +59,7 @@ export function GlassNavbar() {
             </nav>
           </div>
         </div>
-        <div className="relative size-14 shrink-0">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 glass-surface rounded-full shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]"
-          />
-          <div className="relative z-10 size-full flex items-center justify-center">
-            <ProfileAvatarButton size="md" />
-          </div>
-        </div>
+        <ProfileAvatarButton size="md" />
       </div>
     </header>
   )
