@@ -38,8 +38,9 @@ export function PrivacyPolicyPage() {
         <p>
           {LEGAL.appName} (“the App”) is a personal web application for managing habits (streaks),
           tasks (todos), and time tracking (timesheet). The App is provided as a Progressive Web App
-          (PWA) and stores your content in a database operated by our processor Supabase. There are no
-          payments, file uploads, analytics, advertising, or marketing tools in the App.
+          (PWA) and stores your content in a database and object storage operated by our processor
+          Supabase. There are no payments, analytics, advertising, or marketing tools in the App.
+          Optional profile photo uploads are the only file uploads supported.
         </p>
       </LegalSection>
 
@@ -47,7 +48,7 @@ export function PrivacyPolicyPage() {
         <p>We use the following service providers to operate the App:</p>
         <LegalList
           items={[
-            'Supabase Inc. — authentication, database, and where applicable confirmation / password-reset emails',
+            'Supabase Inc. — authentication, database, object storage (including optional profile photos), and where applicable confirmation / password-reset emails',
             'Cloudflare, Inc. — hosting of the static web app (Cloudflare Pages) and CDN delivery',
             'GitHub, Inc. — only if you sign in with “Continue with GitHub” (OAuth)',
             'Google LLC — only if you sign in with “Continue with Google” (OAuth)',
@@ -66,17 +67,20 @@ export function PrivacyPolicyPage() {
           items={[
             'Account data: email address, password hash (via Supabase Auth), user ID',
             'Profile data: first name and date of birth, used to confirm you meet the minimum age requirement',
-            'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name',
+            'Profile photo (optional): an image you upload (up to 5 MB), stored in Supabase Storage under your user ID, with a publicly accessible URL saved on your profile so the App can display it',
+            'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
             'Content you create: streaks (name, emoji, color, frequency, time goals), daily entries (notes, mood, minutes), todos (title, notes, due date, importance), timesheet workspaces and entries (topics, notes, times)',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
-            'UI preference: whether the passkey setup prompt was dismissed or completed (local storage, keyed to your user ID)',
+            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), and whether the “Add to Home Screen” tip was dismissed',
           ]}
         />
         <p>
           We do not set cookies for tracking, advertising, or analytics. No analytics or marketing
-          tools are integrated into the App.
+          tools are integrated into the App. The App does not request camera, microphone, location, or
+          push-notification permissions. Installing the App as a PWA does not collect additional
+          personal data beyond the preferences described above.
         </p>
       </LegalSection>
 
@@ -87,9 +91,10 @@ export function PrivacyPolicyPage() {
             'Providing and operating your user account and sign-in (Art. 6(1)(b) GDPR)',
             'Verifying you meet the minimum age of 16 to use the App (Art. 6(1)(c) GDPR)',
             'Storing and syncing your personal app content (Art. 6(1)(b) GDPR)',
+            'Displaying your optional profile photo in the App (Art. 6(1)(b) GDPR)',
             'Securing authentication (sessions, passkeys, password reset) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
-            'Storing the theme preference and passkey-prompt status for a comfortable display (Art. 6(1)(f) GDPR)',
+            'Storing theme, passkey-prompt, and install-tip preferences for a comfortable display (Art. 6(1)(f) GDPR)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
           ]}
         />
@@ -97,28 +102,32 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="6. Retention">
         <p>
-          Account data and app content are stored for as long as your account exists or until you
-          delete individual records or the entire account. The auth session remains until you sign out
-          or the tokens expire. Theme and passkey-prompt preferences remain in local storage until you
-          change them or clear browser storage. Server and access logs of hosting / auth providers may
-          be retained briefly according to their own retention policies.
+          Account data, app content, and any uploaded profile photo are stored for as long as your
+          account exists or until you delete individual records, replace or clear your photo, or delete
+          the entire account. The auth session remains until you sign out or the tokens expire. Theme,
+          passkey-prompt, and install-tip preferences remain in local storage until you change them or
+          clear browser storage. Server and access logs of hosting / auth providers may be retained
+          briefly according to their own retention policies.
         </p>
       </LegalSection>
 
       <LegalSection title="7. Storage on your device (local storage)">
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
-          the theme preference, and the passkey setup prompt status. These are not tracking cookies.
-          Without storing the session, persistent sign-in would not be possible.
+          the theme preference, the passkey setup prompt status, and the “Add to Home Screen” tip
+          dismissal. These are not tracking cookies. Without storing the session, persistent sign-in
+          would not be possible.
         </p>
       </LegalSection>
 
       <LegalSection title="8. Recipients and international transfers">
         <p>
           Recipients are the processors listed in section 3 and — if you use GitHub or Google login —
-          the respective identity provider. Where personal data is transferred outside the EEA, this is
-          based on appropriate safeguards (in particular EU Standard Contractual Clauses) of the
-          respective providers.
+          the respective identity provider. Uploaded profile photos are stored with a publicly
+          accessible URL so the App can load them; only your account can upload, replace, or delete
+          your own photo files. Where personal data is transferred outside the EEA, this is based on
+          appropriate safeguards (in particular EU Standard Contractual Clauses) of the respective
+          providers.
         </p>
       </LegalSection>
 
@@ -140,9 +149,9 @@ export function PrivacyPolicyPage() {
           <a className="text-accent-blue" href={LEGAL.emailHref}>
             {LEGAL.email}
           </a>
-          . In the App you can edit or delete your own content, and under Settings you can permanently
-          delete your account (“Delete account”). Doing so removes your user data and related app
-          content as provided for in our systems.
+          . In the App you can edit or delete your own content and profile photo, and under Settings
+          you can permanently delete your account (“Delete account”). Doing so removes your user data
+          and related app content as provided for in our systems.
         </p>
       </LegalSection>
 
@@ -151,6 +160,7 @@ export function PrivacyPolicyPage() {
           Using the App requires an email address, a first name, and a date of birth, plus — depending
           on the sign-in method — a password, passkey, or a GitHub or Google account. Without this
           information, an account cannot be provided. Your date of birth cannot be changed once saved.
+          A profile photo is optional.
         </p>
       </LegalSection>
 

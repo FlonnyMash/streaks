@@ -6,24 +6,15 @@ interface BrandIconProps {
   title?: string
 }
 
-/** App mark — color via `currentColor` / Tailwind text classes (light & dark). */
+/** App mark — white silhouette, inverted for light mode. */
 export function BrandIcon({ className, title }: BrandIconProps) {
   return (
-    <span
-      role={title ? 'img' : undefined}
-      aria-label={title}
+    <img
+      src={brandIcon}
+      alt={title ?? ''}
       aria-hidden={title ? undefined : true}
-      className={cn('inline-block shrink-0 bg-current', className)}
-      style={{
-        maskImage: `url(${brandIcon})`,
-        WebkitMaskImage: `url(${brandIcon})`,
-        maskSize: 'contain',
-        WebkitMaskSize: 'contain',
-        maskRepeat: 'no-repeat',
-        WebkitMaskRepeat: 'no-repeat',
-        maskPosition: 'center',
-        WebkitMaskPosition: 'center',
-      }}
+      className={cn('shrink-0 invert dark:invert-0', className)}
+      draggable={false}
     />
   )
 }

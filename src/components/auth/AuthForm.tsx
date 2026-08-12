@@ -133,7 +133,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="size-16 rounded-[22px] bg-black/5 dark:bg-white/10 flex items-center justify-center mb-4 ring-1 ring-black/8 dark:ring-white/12">
-            <BrandIcon className="size-10 text-black dark:text-[#d6ecff]" />
+            <BrandIcon className="size-10" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{mode === 'login' ? 'Welcome back' : 'Create account'}</h1>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-1">
