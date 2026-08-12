@@ -98,7 +98,7 @@ export function TimesheetPage() {
       <button
         onClick={() => setCreateOpen(true)}
         aria-label="New workspace"
-        className="sm:hidden fixed right-5 bottom-[104px] z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
+        className="sm:hidden fixed right-5 bottom-[calc(104px+env(safe-area-inset-bottom,0px))] z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
       >
         <Plus className="size-6" />
       </button>
