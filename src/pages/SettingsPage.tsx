@@ -132,15 +132,22 @@ export function SettingsPage() {
       <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight mb-6">Settings</h1>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
             <Mail className="size-5 text-accent-blue" />
           </div>
-          <div className="min-w-0">
-            <p className="text-[13px] text-black/45 dark:text-white/45">Signed in as</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-3 min-w-0">
+              <p className="text-[13px] text-black/45 dark:text-white/45">Signed in as</p>
+              <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 shrink-0">Profile</p>
+            </div>
             <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
           </div>
         </div>
+        <Button variant="secondary" size="md" className="w-full justify-start" onClick={() => signOut()}>
+          <LogOut className="size-4" />
+          Sign out
+        </Button>
       </div>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
@@ -238,43 +245,43 @@ export function SettingsPage() {
         {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
       </div>
 
-      <Button variant="secondary" size="md" className="w-full justify-start mb-4" onClick={() => signOut()}>
-        <LogOut className="size-4" />
-        Sign out
-      </Button>
-
-      <div className="glass-panel rounded-[24px] p-5 border border-accent-red/20">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center">
-            <TriangleAlert className="size-5 text-accent-red" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium">Delete account</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45">
-              Permanently deletes your account and every streak. This can't be undone.
-            </p>
-          </div>
-        </div>
-
-        {!confirmDelete ? (
-          <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="size-4" />
-            Delete my account
-          </Button>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {deleteError && <p className="text-[13px] text-accent-red">{deleteError}</p>}
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </Button>
-              <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount}>
-                Yes, delete everything
-              </Button>
+      <section>
+        <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
+          Danger zone
+        </h2>
+        <div className="glass-panel rounded-[24px] p-5 border border-accent-red/20">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center">
+              <TriangleAlert className="size-5 text-accent-red" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium">Delete account</p>
+              <p className="text-[13px] text-black/45 dark:text-white/45">
+                Permanently deletes your account and every streak. This can't be undone.
+              </p>
             </div>
           </div>
-        )}
-      </div>
+
+          {!confirmDelete ? (
+            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="size-4" />
+              Delete my account
+            </Button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {deleteError && <p className="text-[13px] text-accent-red">{deleteError}</p>}
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </Button>
+                <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount}>
+                  Yes, delete everything
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   )
 }
