@@ -73,7 +73,7 @@ export function CelebrationOverlay({ open, milestone, color, onDismiss }: Celebr
           ))}
 
           <motion.div
-            className="pointer-events-auto glass-panel rounded-[28px] px-7 py-6 flex flex-col items-center gap-2 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.4)]"
+            className="pointer-events-auto glass-panel rounded-[28px] px-7 py-6 flex flex-col items-center gap-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]"
             initial={{ opacity: 0, scale: 0.7, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 8 }}

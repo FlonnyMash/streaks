@@ -10,6 +10,7 @@ interface AuthContextValue {
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   signInWithGitHub: () => Promise<{ error: string | null }>
+  signInWithGoogle: () => Promise<{ error: string | null }>
   signInWithPasskey: () => Promise<{ error: string | null }>
   registerPasskey: () => Promise<{ error: string | null }>
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>
@@ -80,6 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { error } = await supabase.auth.signInWithOAuth({
             provider: 'github',
+            options: { redirectTo: redirectTo('/auth/callback') },
+          })
+          return { error: error?.message ?? null }
+        } catch (err) {
+          return { error: getErrorMessage(err) }
+        }
+      },
+      async signInWithGoogle() {
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
             options: { redirectTo: redirectTo('/auth/callback') },
           })
           return { error: error?.message ?? null }

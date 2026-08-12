@@ -107,16 +107,27 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.glass-surface {
-  background: light-dark(rgba(255, 255, 255, 0.6), rgba(28, 28, 30, 0.55));
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border: 1px solid light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08));
-}
+/*
+ * Declared inside Tailwind's `components` layer (see the layer order Tailwind
+ * registers via `@import "tailwindcss"`) so that any `shadow-*` utility class
+ * applied alongside `glass-surface`/`glass-panel` on an element still wins.
+ * Custom CSS written outside a layer is unlayered, and unlayered rules always
+ * beat layered ones (including `utilities`) regardless of specificity or
+ * source order - without this, per-component shadow overrides throughout the
+ * app would be silently ignored.
+ */
+@layer components {
+  .glass-surface,
+  .glass-panel {
+    --glass-bg: light-dark(rgba(255, 255, 255, 0.2), rgba(28, 28, 30, 0.25));
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-blur: 20px;
+    --glass-shadow: light-dark(0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 24px rgba(0, 0, 0, 0.35));
 
-.glass-panel {
-  background: light-dark(rgba(255, 255, 255, 0.72), rgba(44, 44, 46, 0.6));
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border: 1px solid light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.08));
+    background: var(--glass-bg);
+    backdrop-filter: saturate(180%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(180%) blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
 }

@@ -33,7 +33,7 @@ export function GlassModal({ open, onClose, title, children, className }: GlassM
               'relative w-full sm:max-w-md max-h-[88vh] overflow-y-auto',
               'glass-panel rounded-t-[28px] sm:rounded-[28px]',
               'p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
-              'shadow-[0_24px_60px_-12px_rgba(0,0,0,0.35)]',
+              'shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]',
               className,
             )}
           >

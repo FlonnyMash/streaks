@@ -78,7 +78,7 @@ export function TimesheetWorkspacePage() {
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-12 z-20 w-48 glass-panel rounded-2xl p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.4)]">
+              <div className="absolute right-0 top-12 z-20 w-48 glass-panel rounded-2xl p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]">
                 <button
                   onClick={() => {
                     setMenuOpen(false)
