@@ -23,7 +23,7 @@ export function TimesheetPage() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries } = useAllTimesheetEntries(workspaceIds)
-  const { sessions, start, runningWorkspaceIds: busyIds } = useTimesheetTimer()
+  const { start, runningWorkspaceIds: busyIds } = useTimesheetTimer()
   const [createOpen, setCreateOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
