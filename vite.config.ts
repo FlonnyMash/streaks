@@ -11,7 +11,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // Register immediately (not on window load) so auditors like PWABuilder detect the SW.
+      injectRegister: null,
       manifest: false,
       includeAssets: [
         'favicon-32.png',

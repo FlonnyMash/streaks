@@ -220,7 +220,7 @@ Suggested Android package name (change it in PWABuilder if you prefer a domain y
 | File | Current pixels | Form factor |
 | --- | --- | --- |
 | `public/screenshots/narrow-1080x1920.png` | 1290×2796 | Phone portrait |
-| `public/screenshots/wide-1920x1080.png` | 2796×1290 | Desktop / tablet landscape |
+| `public/screenshots/wide-1920x1080.png` | 1920×1080 | Desktop / tablet landscape |
 
 Keep the filenames. If you replace the images, update the matching `sizes` values in [`public/manifest.json`](public/manifest.json) — PWABuilder rejects screenshots when `sizes` doesn’t match the real pixel dimensions.
 

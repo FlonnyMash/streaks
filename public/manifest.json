@@ -12,10 +12,10 @@
   "orientation": "any",
   "background_color": "#000000",
   "theme_color": "#000000",
-  "categories": ["productivity", "utilities"],
+  "categories": ["productivity", "utilities", "lifestyle"],
   "prefer_related_applications": false,
   "related_applications": [],
-  "display_override": ["standalone"],
+  "display_override": ["window-controls-overlay", "standalone"],
   "launch_handler": {
     "client_mode": ["navigate-existing", "auto"]
   },
@@ -79,7 +79,7 @@
     },
     {
       "src": "/screenshots/wide-1920x1080.png",
-      "sizes": "2796x1290",
+      "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Dashboard on desktop"
