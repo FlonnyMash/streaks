@@ -79,9 +79,11 @@ For todo topics (tags), also run
 `todo_topics` and `todo_topic_links` with RLS so each user can tag their own tasks.
 
 For Web Push reminders, also run
-[`supabase/migrations/0022_push_notifications.sql`](supabase/migrations/0022_push_notifications.sql).
-This adds `push_enabled` / `timezone` on profiles, per-item notify flags on streaks/todos,
-`push_subscriptions`, and `push_delivery_log`. Then complete **§10. Web Push** below.
+[`supabase/migrations/0022_push_notifications.sql`](supabase/migrations/0022_push_notifications.sql)
+and [`supabase/migrations/0023_push_dispatch_cron.sql`](supabase/migrations/0023_push_dispatch_cron.sql)
+(or `supabase db push`). Migration `0022` adds tables/columns; `0023` enables `pg_cron` / `pg_net` and
+schedules the 15‑minute dispatch job. Then complete **§10. Web Push** (VAPID keys, function secrets,
+and the one Vault secret for the cron Bearer token).
 
 ## 3. Configure Auth URLs
 
@@ -275,34 +277,26 @@ supabase secrets set \
 
 ### Schedule automatic dispatch (every 15 minutes)
 
-In the Supabase SQL editor (once per project), enable extensions and schedule a cron job. Replace
-`YOUR-PROJECT-REF` and `YOUR_PUSH_DISPATCH_SECRET`:
+Migration [`0023_push_dispatch_cron.sql`](supabase/migrations/0023_push_dispatch_cron.sql) enables
+`pg_cron` + `pg_net`, stores the project URL in Vault, and schedules
+`push-dispatch-every-15m`. Apply it with:
 
-```sql
-create extension if not exists pg_net with schema extensions;
-create extension if not exists pg_cron with schema extensions;
-
-select
-  cron.schedule(
-    'push-dispatch-every-15m',
-    '*/15 * * * *',
-    $$
-    select net.http_post(
-      url := 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/push-dispatch',
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'Authorization', 'Bearer YOUR_PUSH_DISPATCH_SECRET'
-      ),
-      body := '{"mode":"cron"}'::jsonb,
-      timeout_milliseconds := 60000
-    );
-    $$
-  );
+```bash
+supabase db push
 ```
 
-Re-running `cron.schedule` with the same job name replaces the previous schedule.
-Prefer storing the URL and secret in [Vault](https://supabase.com/docs/guides/database/vault) in
-production instead of hardcoding them in the cron command.
+**One extra step (cannot live in git):** put the same value as `PUSH_DISPATCH_SECRET` into Vault so
+the cron job can authorize the Edge Function:
+
+```sql
+-- Run once in the SQL editor (use your real secret string):
+select vault.create_secret('your-long-random-string', 'push_dispatch_secret');
+```
+
+If you already created that Vault secret under a different name, either recreate it as
+`push_dispatch_secret` or change the cron command in a follow-up migration.
+
+Confirm the job under **Integrations → Cron** (or `select * from cron.job`).
 
 ### Manual send (operator)
 
