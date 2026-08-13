@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 interface ProfileAvatarButtonProps {
   className?: string
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
 /** Circular nav link to Settings showing the user's avatar — replaces the old text "Settings" link. */
