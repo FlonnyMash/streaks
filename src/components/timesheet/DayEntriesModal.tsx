@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { format } from 'date-fns'
-import { Check, Frown, Meh, Minus, Play, Plus, Smile, Square, Trash2 } from 'lucide-react'
+import { Check, Frown, Meh, Minus, Pause, Play, Plus, Smile, Trash2 } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
@@ -15,6 +15,7 @@ import {
   toTimeInputValue,
 } from '@/lib/timesheetLogic'
 import { cn, formatMinutes, fromDateKey, toDateKey } from '@/lib/utils'
+import { minutesFromSeconds } from '@/lib/todoTimerLogic'
 import type { Mood, TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
@@ -103,7 +104,8 @@ export function DayEntriesModal({
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [clockInOpen, setClockInOpen] = useState(false)
-  const { sessionForWorkspace, elapsedMsFor, start, requestStop, isSyncing } = useTimesheetTimer()
+  const { sessionForWorkspace, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume } =
+    useTimesheetTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
   const hasRange = Boolean(draft.startTime && draft.endTime)
@@ -260,27 +262,52 @@ export function DayEntriesModal({
           timerForThisWorkspace ? (
             <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-3 flex flex-col gap-3">
               <p className="text-[12px] text-black/50 dark:text-white/50 text-center">
-                Only one timer per workspace is allowed.
+                {timerForThisWorkspace.runningSince
+                  ? 'Timer is running for this workspace.'
+                  : 'Timer is paused. Resume or clock out to save.'}
               </p>
               <div className="flex items-center gap-3">
                 <span className="relative flex size-2.5 shrink-0">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
-                  <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+                  {timerForThisWorkspace.runningSince && (
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+                  )}
+                  <span
+                    className={`relative inline-flex size-2.5 rounded-full ${timerForThisWorkspace.runningSince ? 'bg-accent-teal' : 'bg-black/25 dark:bg-white/30'}`}
+                  />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium">Tracking</p>
+                  <p className="text-[13px] font-medium">
+                    {timerForThisWorkspace.runningSince ? 'Tracking' : 'Paused'}
+                  </p>
                   <p className="text-[18px] font-bold tabular-nums">
-                    {formatElapsedClock(elapsedMsFor(timerForThisWorkspace.id))}
+                    {timerForThisWorkspace.runningSince
+                      ? formatElapsedClock(elapsedMsFor(timerForThisWorkspace.id))
+                      : formatMinutes(
+                          minutesFromSeconds(
+                            storedSecondsFor(workspaceId) ||
+                              Math.round(elapsedMsFor(timerForThisWorkspace.id) / 1000),
+                          ),
+                        )}
                   </p>
                 </div>
-                <Button type="button" size="sm" onClick={() => requestStop(timerForThisWorkspace.id)}>
-                  <Square className="size-3.5 fill-current" />
-                  Stop
+                {timerForThisWorkspace.runningSince ? (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void pause(workspaceId)}>
+                    <Pause className="size-3.5 fill-current" />
+                    Pause
+                  </Button>
+                ) : (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void resume(workspaceId)}>
+                    <Play className="size-3.5 fill-current" />
+                    Resume
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => void requestStop(timerForThisWorkspace.id)}>
+                  Clock out
                 </Button>
               </div>
             </div>
           ) : (
-            <Button type="button" size="lg" className="w-full" onClick={() => setClockInOpen(true)} loading={isSyncing}>
+            <Button type="button" size="lg" className="w-full" onClick={() => setClockInOpen(true)}>
               <Play className="size-4 fill-current" />
               Start tracking
             </Button>

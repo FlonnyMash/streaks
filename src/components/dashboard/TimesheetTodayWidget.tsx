@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, Clock, Play, Square } from 'lucide-react'
+import { CalendarClock, Clock, Pause, Play } from 'lucide-react'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useAllTimesheetEntries } from '@/hooks/useTimesheetEntries'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
 import { todayWeekMonthTotals, formatElapsedClock } from '@/lib/timesheetLogic'
+import { minutesFromSeconds } from '@/lib/todoTimerLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { formatMinutes, toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
@@ -15,7 +16,7 @@ export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
-  const { sessions, elapsedMsFor, start, requestStop, isSyncing } = useTimesheetTimer()
+  const { sessions, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume } = useTimesheetTimer()
   const [pickerOpen, setPickerOpen] = useState(false)
   // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
   const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
@@ -71,12 +72,18 @@ export function TimesheetTodayWidget() {
               {sessions.map((session) => {
                 const workspace = workspaces?.find((w) => w.id === session.workspaceId)
                 const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
+                const running = Boolean(session.runningSince)
+                const stored = storedSecondsFor(session.workspaceId)
                 return (
                   <div key={session.id} className="rounded-2xl bg-accent-teal/10 px-3.5 py-3 flex flex-col gap-2">
                     <div className="flex items-center gap-3">
                       <span className="relative flex size-2.5 shrink-0">
-                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
-                        <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+                        {running && (
+                          <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+                        )}
+                        <span
+                          className={`relative inline-flex size-2.5 rounded-full ${running ? 'bg-accent-teal' : 'bg-black/25 dark:bg-white/30'}`}
+                        />
                       </span>
                       {workspace ? (
                         <>
@@ -89,17 +96,33 @@ export function TimesheetTodayWidget() {
                           <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{workspace.name}</span>
                         </>
                       ) : (
-                        <span className="flex-1 min-w-0 truncate text-[13px] font-medium">Timer running</span>
+                        <span className="flex-1 min-w-0 truncate text-[13px] font-medium">
+                          {running ? 'Timer running' : 'Timer paused'}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-2xl font-bold tabular-nums tracking-tight">
-                        {formatElapsedClock(elapsedMsFor(session.id))}
+                        {running
+                          ? formatElapsedClock(elapsedMsFor(session.id))
+                          : formatMinutes(minutesFromSeconds(stored || Math.round(elapsedMsFor(session.id) / 1000)))}
                       </span>
-                      <Button type="button" size="sm" onClick={() => requestStop(session.id)}>
-                        <Square className="size-3.5 fill-current" />
-                        Clock out
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        {running ? (
+                          <Button type="button" size="sm" variant="secondary" onClick={() => void pause(session.workspaceId)}>
+                            <Pause className="size-3.5 fill-current" />
+                            Pause
+                          </Button>
+                        ) : (
+                          <Button type="button" size="sm" variant="secondary" onClick={() => void resume(session.workspaceId)}>
+                            <Play className="size-3.5 fill-current" />
+                            Resume
+                          </Button>
+                        )}
+                        <Button type="button" size="sm" onClick={() => void requestStop(session.id)}>
+                          Clock out
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -108,13 +131,7 @@ export function TimesheetTodayWidget() {
           )}
 
           {available.length > 0 && (
-            <Button
-              type="button"
-              size="md"
-              className="w-full mb-3"
-              onClick={handleClockIn}
-              loading={isSyncing}
-            >
+            <Button type="button" size="md" className="w-full mb-3" onClick={handleClockIn}>
               <Play className="size-4 fill-current" />
               Clock in
             </Button>

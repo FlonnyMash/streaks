@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom'
+import { Pause, Play } from 'lucide-react'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { formatElapsedClock } from '@/lib/timesheetLogic'
+import { minutesFromSeconds } from '@/lib/todoTimerLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import { formatMinutes } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 
 export function ActiveTimerBanner() {
-  const { sessions, elapsedMsFor, requestStop } = useTimesheetTimer()
+  const { sessions, elapsedMsFor, storedSecondsFor, requestStop, pause, resume } = useTimesheetTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
 
   if (sessions.length === 0) return null
@@ -16,11 +19,17 @@ export function ActiveTimerBanner() {
       {sessions.map((session) => {
         const workspace = workspaces?.find((w) => w.id === session.workspaceId)
         const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
+        const running = Boolean(session.runningSince)
+        const stored = storedSecondsFor(session.workspaceId)
         return (
           <div key={session.id} className="glass-panel rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="relative flex size-2.5 shrink-0">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-accent-teal" />
+              {running && (
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-teal opacity-60" />
+              )}
+              <span
+                className={`relative inline-flex size-2.5 rounded-full ${running ? 'bg-accent-teal' : 'bg-black/25 dark:bg-white/30'}`}
+              />
             </span>
             {workspace ? (
               <Link to={`/timesheet/${workspace.id}`} className="min-w-0 flex-1 flex items-center gap-2">
@@ -33,12 +42,39 @@ export function ActiveTimerBanner() {
                 <span className="min-w-0 truncate text-[14px] font-medium">{workspace.name}</span>
               </Link>
             ) : (
-              <span className="min-w-0 flex-1 text-[14px] font-medium truncate">Timer running</span>
+              <span className="min-w-0 flex-1 text-[14px] font-medium truncate">
+                {running ? 'Timer running' : 'Timer paused'}
+              </span>
             )}
             <span className="text-[15px] font-bold tabular-nums shrink-0">
-              {formatElapsedClock(elapsedMsFor(session.id))}
+              {running
+                ? formatElapsedClock(elapsedMsFor(session.id))
+                : formatMinutes(minutesFromSeconds(stored || Math.round(elapsedMsFor(session.id) / 1000)))}
             </span>
-            <Button type="button" size="sm" className="shrink-0" onClick={() => requestStop(session.id)}>
+            {running ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="shrink-0"
+                onClick={() => void pause(session.workspaceId)}
+              >
+                <Pause className="size-3.5 fill-current" />
+                Pause
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="shrink-0"
+                onClick={() => void resume(session.workspaceId)}
+              >
+                <Play className="size-3.5 fill-current" />
+                Resume
+              </Button>
+            )}
+            <Button type="button" size="sm" className="shrink-0" onClick={() => void requestStop(session.id)}>
               Clock out
             </Button>
           </div>

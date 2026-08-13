@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, MoreHorizontal, Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
@@ -33,7 +33,7 @@ export function TimesheetWorkspacePage() {
   const updateEntry = useUpdateTimesheetEntry(id ?? '')
   const deleteEntry = useDeleteTimesheetEntry(id ?? '')
   const deleteWorkspace = useDeleteTimesheetWorkspace()
-  const { sessionForWorkspace, start } = useTimesheetTimer()
+  const { sessionForWorkspace, start, resume, pause } = useTimesheetTimer()
 
   const now = new Date()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
@@ -53,6 +53,7 @@ export function TimesheetWorkspacePage() {
   const selectedDayEntries = (entries ?? []).filter((e) => e.entry_date === selectedDayKey)
   const activeSession = sessionForWorkspace(workspace.id)
   const canClockIn = !activeSession
+  const canResume = Boolean(activeSession && !activeSession.runningSince)
 
   async function handleDelete() {
     if (!id) return
@@ -85,6 +86,26 @@ export function TimesheetWorkspacePage() {
               title="Clock in"
             >
               <Play className="size-4 fill-current" />
+            </button>
+          )}
+          {canResume && (
+            <button
+              onClick={() => void resume(workspace.id)}
+              className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
+              aria-label="Resume timer"
+              title="Resume timer"
+            >
+              <Play className="size-4 fill-current" />
+            </button>
+          )}
+          {activeSession?.runningSince && (
+            <button
+              onClick={() => void pause(workspace.id)}
+              className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
+              aria-label="Pause timer"
+              title="Pause timer"
+            >
+              <Pause className="size-4 fill-current" />
             </button>
           )}
 

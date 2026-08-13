@@ -142,11 +142,12 @@ export interface TimesheetEntryInput {
   mood: Mood | null
 }
 
-/** Running clock-in session (persisted in timesheet_sessions). */
+/** Open workspace timer session (persisted in timesheet_sessions). */
 export interface TimesheetTimerSession {
   id: string
   workspaceId: string
-  startedAt: string
+  /** Null when paused. */
+  runningSince: string | null
   topic?: string
 }
 
@@ -154,9 +155,15 @@ export interface TimesheetSessionRow {
   id: string
   user_id: string
   workspace_id: string
-  started_at: string
+  running_since: string | null
   topic: string | null
   created_at: string
+}
+
+export interface TimesheetSessionDay {
+  workspaceId: string
+  workDate: string
+  seconds: number
 }
 
 export interface TodoTimer {
