@@ -124,6 +124,15 @@ export function useRemoveAvatar() {
   })
 }
 
+/** Used by Settings after enablePush / disablePush succeeds (or to refresh prefs). */
+export function useInvalidateProfile() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+  }
+}
+
 /** Used by the post-OAuth /complete-profile screen: confirms name + sets DOB in one step. */
 export function useCompleteOnboarding() {
   const { user } = useAuth()

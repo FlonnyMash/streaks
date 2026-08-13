@@ -78,6 +78,11 @@ For todo topics (tags), also run
 [`supabase/migrations/0015_todo_topics.sql`](supabase/migrations/0015_todo_topics.sql). This creates
 `todo_topics` and `todo_topic_links` with RLS so each user can tag their own tasks.
 
+For Web Push reminders, also run
+[`supabase/migrations/0022_push_notifications.sql`](supabase/migrations/0022_push_notifications.sql).
+This adds `push_enabled` / `timezone` on profiles, per-item notify flags on streaks/todos,
+`push_subscriptions`, and `push_delivery_log`. Then complete **§10. Web Push** below.
+
 ## 3. Configure Auth URLs
 
 In **Authentication → URL Configuration**:
@@ -159,6 +164,7 @@ Since this is a beta API, it may change without notice — if it breaks, the res
    ```
    VITE_SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
    VITE_SUPABASE_ANON_KEY=YOUR-ANON-PUBLIC-KEY
+   VITE_VAPID_PUBLIC_KEY=YOUR_VAPID_PUBLIC_KEY
    ```
 
 2. Install dependencies and run the dev server:
@@ -188,6 +194,7 @@ Since this is a beta API, it may change without notice — if it breaks, the res
    | --- | --- |
    | `VITE_SUPABASE_URL` | your Supabase project URL |
    | `VITE_SUPABASE_ANON_KEY` | your Supabase anon public key |
+   | `VITE_VAPID_PUBLIC_KEY` | VAPID **public** key (see §10) |
 
    These are baked into the JS bundle at build time, so Cloudflare needs them set *before* it builds — not just at runtime.
 
@@ -235,6 +242,88 @@ Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/
 5. Redeploy, then verify at `https://mashedstreaks.pages.dev/.well-known/assetlinks.json`.
 
 iOS App Store packaging is a later step (PWABuilder iOS wrapper or Capacitor). This setup is for the web PWA and Google Play.
+
+## 10. Web Push (reminders)
+
+Push uses the Web Push protocol (VAPID) and the `push-dispatch` Edge Function. Users allow
+notifications on the **device** (browser/OS permission), then enable **Notify me** on individual
+streaks/todos. The app reads `Notification.permission` and refreshes the user’s timezone from the
+device whenever the app is opened (so travel updates reminder times).
+
+### Generate VAPID keys
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+- Put the **public** key in `VITE_VAPID_PUBLIC_KEY` (local `.env.local` and Cloudflare Pages).
+- Put the **private** key only in Supabase function secrets (never in the frontend).
+
+### Deploy the Edge Function
+
+```bash
+supabase functions deploy push-dispatch
+supabase secrets set \
+  VAPID_PUBLIC_KEY="..." \
+  VAPID_PRIVATE_KEY="..." \
+  VAPID_SUBJECT="mailto:kontakt@lucabakan.de" \
+  PUSH_DISPATCH_SECRET="generate-a-long-random-string"
+```
+
+`supabase/config.toml` sets `verify_jwt = false` for this function because callers authenticate with
+`PUSH_DISPATCH_SECRET` instead of end-user JWTs. Keep that secret out of the browser.
+
+### Schedule automatic dispatch (every 15 minutes)
+
+In the Supabase SQL editor (once per project), enable extensions and schedule a cron job. Replace
+`YOUR-PROJECT-REF` and `YOUR_PUSH_DISPATCH_SECRET`:
+
+```sql
+create extension if not exists pg_net with schema extensions;
+create extension if not exists pg_cron with schema extensions;
+
+select
+  cron.schedule(
+    'push-dispatch-every-15m',
+    '*/15 * * * *',
+    $$
+    select net.http_post(
+      url := 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/push-dispatch',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer YOUR_PUSH_DISPATCH_SECRET'
+      ),
+      body := '{"mode":"cron"}'::jsonb,
+      timeout_milliseconds := 60000
+    );
+    $$
+  );
+```
+
+Re-running `cron.schedule` with the same job name replaces the previous schedule.
+Prefer storing the URL and secret in [Vault](https://supabase.com/docs/guides/database/vault) in
+production instead of hardcoding them in the cron command.
+
+### Manual send (operator)
+
+Send to all users with push enabled:
+
+```bash
+curl -X POST "https://YOUR-PROJECT-REF.supabase.co/functions/v1/push-dispatch" \
+  -H "Authorization: Bearer YOUR_PUSH_DISPATCH_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"manual","title":"Hello","body":"Test notification","url":"/"}'
+```
+
+Target one user by adding `"user_id":"<uuid>"`.
+
+### Automatic rules (summary)
+
+| Kind | When |
+| --- | --- |
+| Streak | Notify-me streaks, within ~15m of `notify_time` local, on a due day, not completed today |
+| Todo | Notify-me incomplete todos with `due_date` ≤ today, at/after 20:00 local, once per day until done |
+| Timer | Running timesheet or todo timer ≥ 8h, then every 2h; skipped 00:00–06:00 local |
 
 ## Notes
 

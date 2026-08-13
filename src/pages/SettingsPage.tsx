@@ -4,6 +4,7 @@ import {
   Cake,
   Camera,
   ChevronRight,
+  Bell,
   Fingerprint,
   KeyRound,
   LogOut,
@@ -20,7 +21,14 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme, type ThemeMode } from '@/hooks/useTheme'
-import { useProfile, useRemoveAvatar, useSetDateOfBirth, useUpdateAvatar, useUpdateFirstName } from '@/hooks/useProfile'
+import {
+  useProfile,
+  useRemoveAvatar,
+  useSetDateOfBirth,
+  useUpdateAvatar,
+  useUpdateFirstName,
+  useInvalidateProfile,
+} from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
 import {
@@ -33,6 +41,13 @@ import {
 } from '@/lib/profile'
 import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, validatePasswordStrength } from '@/lib/password'
 import { cn } from '@/lib/utils'
+import {
+  disablePush,
+  enablePush,
+  getLocalTimezone,
+  getNotificationPermission,
+  isPushSupported,
+} from '@/lib/push'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Avatar } from '@/components/ui/Avatar'
@@ -82,6 +97,7 @@ export function SettingsPage() {
   const { user, signOut, registerPasskey, ensureSession } = useAuth()
   const { theme, setTheme } = useTheme()
   const { data: profile } = useProfile()
+  const invalidateProfile = useInvalidateProfile()
   const updateFirstName = useUpdateFirstName()
   const setDateOfBirth = useSetDateOfBirth()
   const updateAvatar = useUpdateAvatar()
@@ -281,6 +297,48 @@ export function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [legalOpen, setLegalOpen] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState<string | null>(null)
+  const [pushMsg, setPushMsg] = useState<string | null>(null)
+  const [permissionTick, setPermissionTick] = useState(0)
+  const pushSupported = isPushSupported()
+  // Re-read when tick changes (after allow / focus).
+  void permissionTick
+  const pushPermission = getNotificationPermission()
+
+  async function handleAllowNotifications() {
+    if (!user) return
+    setPushError(null)
+    setPushMsg(null)
+    setPushBusy(true)
+    try {
+      await enablePush(user.id)
+      setPushMsg('Notifications are allowed on this device.')
+      setPermissionTick((n) => n + 1)
+      invalidateProfile()
+    } catch (err) {
+      setPushError(getErrorMessage(err, 'Could not enable notifications.'))
+      setPermissionTick((n) => n + 1)
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function handleStopThisDevice() {
+    if (!user) return
+    setPushError(null)
+    setPushMsg(null)
+    setPushBusy(true)
+    try {
+      await disablePush(user.id)
+      setPushMsg('This device will no longer receive pushes until you allow notifications again.')
+      invalidateProfile()
+    } catch (err) {
+      setPushError(getErrorMessage(err, 'Could not update notifications.'))
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const loadPasskeys = useCallback(async () => {
     setPasskeysLoading(true)
@@ -591,6 +649,79 @@ export function SettingsPage() {
           <LogOut className="size-4" />
           Sign out
         </Button>
+      </div>
+
+      <div className="glass-panel rounded-[24px] p-5 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center">
+            <Bell className="size-5 text-accent-blue" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium">Notifications</p>
+            <p className="text-[13px] text-black/45 dark:text-white/45">
+              Status comes from this device’s notification permission — not a separate app switch.
+            </p>
+          </div>
+        </div>
+
+        {!pushSupported ? (
+          <p className="text-[13px] text-black/50 dark:text-white/50">
+            Push notifications are not supported in this browser.
+          </p>
+        ) : (
+          <>
+            <div className="rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-3">
+              <p className="text-[14px] font-medium">
+                {pushPermission === 'granted'
+                  ? 'Allowed on this device'
+                  : pushPermission === 'denied'
+                    ? 'Blocked on this device'
+                    : 'Not decided yet'}
+              </p>
+              <p className="text-[12px] text-black/45 dark:text-white/45 mt-0.5">
+                {pushPermission === 'granted'
+                  ? `Reminders use your current local timezone (${getLocalTimezone()}). It updates when you open the app after traveling.`
+                  : pushPermission === 'denied'
+                    ? 'Enable notifications in your browser or system settings for this site, then return here.'
+                    : 'We’ll ask the browser when you allow notifications or turn on Notify me on a streak/todo.'}
+              </p>
+            </div>
+
+            {pushPermission === 'default' && (
+              <Button
+                className="w-full mt-3"
+                size="md"
+                loading={pushBusy}
+                onClick={() => void handleAllowNotifications()}
+              >
+                Allow notifications
+              </Button>
+            )}
+            {pushPermission === 'granted' && (
+              <Button
+                className="w-full mt-3"
+                variant="secondary"
+                size="md"
+                loading={pushBusy}
+                onClick={() => void handleStopThisDevice()}
+              >
+                Stop pushes on this device
+              </Button>
+            )}
+            {pushPermission === 'denied' && (
+              <p className="text-[13px] text-accent-orange mt-3">
+                Websites can’t open system settings for you. After you allow notifications there, reopen
+                the app and we’ll detect it.
+              </p>
+            )}
+            <p className="text-[12px] text-black/40 dark:text-white/40 mt-3">
+              We only send reminders for streaks and todos where you enable “Notify me”, plus nudges when a
+              timer has been running a long time. No marketing pushes.
+            </p>
+            {pushMsg && <p className="text-[13px] text-accent-green mt-2">{pushMsg}</p>}
+            {pushError && <p className="text-[13px] text-accent-red mt-2">{pushError}</p>}
+          </>
+        )}
       </div>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">

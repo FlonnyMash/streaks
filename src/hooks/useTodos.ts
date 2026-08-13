@@ -40,6 +40,7 @@ function mapTodo(row: TodoRow): Todo {
     created_at: row.created_at,
     workspace_id: row.workspace_id ?? null,
     tracked_minutes: row.tracked_minutes ?? null,
+    notify_enabled: Boolean(row.notify_enabled),
     topics,
   }
 }

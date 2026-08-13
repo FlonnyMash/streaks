@@ -7,12 +7,15 @@ import { LegalFooterLinks } from '@/components/legal/LegalShared'
 import { TimesheetTimerProvider } from '@/hooks/useTimesheetTimer'
 import { TodoTimerProvider } from '@/hooks/useTodoTimer'
 import { TodoTimePromptProvider } from '@/hooks/useTodoTimePrompt'
+import { useSyncPushWithDevice } from '@/hooks/useSyncPushWithDevice'
 import { ReplacePausedTimerModal } from '@/components/timesheet/ReplacePausedTimerModal'
 import { StopTimerModal } from '@/components/timesheet/StopTimerModal'
 import { TodoTimePromptModal } from '@/components/todos/TodoTimePromptModal'
 import { TodoTimerSwitchModal } from '@/components/todos/TodoTimerSwitchModal'
 
 export function AppShell() {
+  useSyncPushWithDevice()
+
   return (
     <TimesheetTimerProvider>
       <TodoTimerProvider>

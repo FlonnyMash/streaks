@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { ImportanceMeter, IMPORTANCE_OPTIONS } from '@/components/todos/ImportanceMeter'
 import { TopicChipList, TopicPicker } from '@/components/todos/TopicPicker'
+import { PushEnableHint } from '@/components/pwa/PushEnableHint'
+import { Switch } from '@/components/ui/Switch'
 import { useCreateTodo, useTodoTopics, useUpdateTodo } from '@/hooks/useTodos'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useTodoTimer } from '@/hooks/useTodoTimer'
@@ -38,6 +40,7 @@ function defaultState(initialTitle = '') {
     importance: 2 as TodoImportance,
     topicNames: [] as string[],
     workspaceId: '' as string,
+    notifyEnabled: false,
   }
 }
 
@@ -76,6 +79,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
         importance: todo.importance ?? 2,
         topicNames: (todo.topics ?? []).map((t) => t.name),
         workspaceId: todo.workspace_id ?? '',
+        notifyEnabled: Boolean(todo.notify_enabled),
       })
     } else {
       setState(defaultState(initialTitle ?? ''))
@@ -113,6 +117,10 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
       setError('Give your task a title.')
       return
     }
+    if (state.notifyEnabled && !state.dueDate) {
+      setError('Set a due date to enable reminders.')
+      return
+    }
     setError(null)
 
     const input = {
@@ -121,6 +129,7 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
       due_date: state.dueDate || null,
       importance: state.importance,
       workspace_id: state.workspaceId || null,
+      notify_enabled: state.notifyEnabled && Boolean(state.dueDate),
       topicNames: state.topicNames,
     }
 
@@ -170,6 +179,13 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
                 <span className="text-[15px] text-black/70 dark:text-white/70">{importanceLabel}</span>
               </div>
             </div>
+          </div>
+
+          <div>
+            <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Reminders</p>
+            <p className="text-[15px] text-black/70 dark:text-white/70">
+              {state.notifyEnabled ? 'On — 8pm on/after the due day until done' : 'Off'}
+            </p>
           </div>
 
           <div>
@@ -246,8 +262,30 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
             label="Due date"
             type="date"
             value={state.dueDate}
-            onChange={(e) => setState((s) => ({ ...s, dueDate: e.target.value }))}
+            onChange={(e) => {
+              const dueDate = e.target.value
+              setState((s) => ({
+                ...s,
+                dueDate,
+                notifyEnabled: dueDate ? s.notifyEnabled : false,
+              }))
+            }}
           />
+
+          <div className="glass-panel rounded-2xl p-4">
+            <Switch
+              checked={state.notifyEnabled}
+              disabled={!state.dueDate}
+              onChange={(checked) => setState((s) => ({ ...s, notifyEnabled: checked }))}
+              label="Notify me"
+              description={
+                state.dueDate
+                  ? 'We’ll remind you at 8pm on the due day, then daily until it’s done.'
+                  : 'Set a due date first to enable reminders.'
+              }
+            />
+            {state.notifyEnabled && <PushEnableHint />}
+          </div>
 
           <TopicPicker
             selected={state.topicNames}

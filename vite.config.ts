@@ -10,6 +10,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       // Register immediately (not on window load) so auditors like PWABuilder detect the SW.
       injectRegister: null,
@@ -28,38 +31,12 @@ export default defineConfig({
         'screenshots/narrow-1080x1920.png',
         'screenshots/wide-1920x1080.png',
       ],
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json,webp}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/\.well-known\//],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages',
-              networkTimeoutSeconds: 3,
-              expiration: {
-                maxEntries: 32,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-          {
-            urlPattern: ({ request }) =>
-              request.destination === 'style' ||
-              request.destination === 'script' ||
-              request.destination === 'worker',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'assets',
-              expiration: {
-                maxEntries: 64,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
-              },
-            },
-          },
-        ],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
       },
     }),
   ],

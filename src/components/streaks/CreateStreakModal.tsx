@@ -11,6 +11,7 @@ import { useCreateStreak, useUpdateStreak } from '@/hooks/useStreaks'
 import { cn, formatMinutes } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
 import { Minus, Plus } from 'lucide-react'
+import { PushEnableHint } from '@/components/pwa/PushEnableHint'
 
 const TIME_GOAL_PERIOD_OPTIONS: { value: TimeGoalPeriod; label: string }[] = [
   { value: 'day', label: 'Daily' },
@@ -55,7 +56,14 @@ function defaultState() {
     hasTimeGoal: false,
     timeGoalPeriod: 'day' as TimeGoalPeriod,
     timeGoalMinutes: 30,
+    notifyEnabled: false,
+    notifyTime: '20:00',
   }
+}
+
+function toTimeInputValue(value: string | null | undefined): string {
+  if (!value) return '20:00'
+  return value.slice(0, 5)
 }
 
 function clampGoalMinutes(value: number): number {
@@ -125,6 +133,8 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
         hasTimeGoal: editingStreak.time_goal_period != null,
         timeGoalPeriod: editingStreak.time_goal_period ?? 'day',
         timeGoalMinutes: parts.minutes,
+        notifyEnabled: Boolean(editingStreak.notify_enabled),
+        notifyTime: toTimeInputValue(editingStreak.notify_time),
       })
       setHoursText(parts.hoursText)
       setMinutesText(parts.minutesText)
@@ -156,6 +166,10 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
       setError('Pick at least one day.')
       return
     }
+    if (state.notifyEnabled && !state.notifyTime) {
+      setError('Pick a reminder time.')
+      return
+    }
     setError(null)
 
     const input = {
@@ -171,6 +185,8 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
       track_time: state.trackTime,
       time_goal_minutes: hasGoal ? resolveGoalFromInputs() : null,
       time_goal_period: hasGoal ? state.timeGoalPeriod : null,
+      notify_enabled: state.notifyEnabled,
+      notify_time: state.notifyEnabled ? state.notifyTime : null,
     }
 
     try {
@@ -410,6 +426,26 @@ export function CreateStreakModal({ open, onClose, editingStreak }: CreateStreak
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-panel rounded-2xl p-4">
+          <Switch
+            checked={state.notifyEnabled}
+            onChange={(checked) => setState((s) => ({ ...s, notifyEnabled: checked }))}
+            label="Notify me"
+            description="Remind me on days this streak is due"
+          />
+          {state.notifyEnabled && (
+            <div className="mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.08]">
+              <TextField
+                label="Remind at"
+                type="time"
+                value={state.notifyTime}
+                onChange={(e) => setState((s) => ({ ...s, notifyTime: e.target.value }))}
+              />
+              <PushEnableHint />
             </div>
           )}
         </div>

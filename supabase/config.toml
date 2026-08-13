@@ -1,0 +1,4 @@
+# Edge Functions — push-dispatch is invoked by pg_cron / curl with a shared secret
+# (not end-user JWTs), so disable the platform JWT gate.
+[functions.push-dispatch]
+verify_jwt = false

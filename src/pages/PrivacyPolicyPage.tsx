@@ -71,7 +71,8 @@ export function PrivacyPolicyPage() {
             'Profile photo (optional): an image you upload (up to 5 MB), stored in Supabase Storage under your user ID, with a publicly accessible URL saved on your profile so the App can display it',
             'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
-            'Content you create: streaks (name, emoji, color, frequency, archived status, time goals), daily streak entries (completion, notes, mood, minutes), todos (title, notes, due date, importance, topics, completion timestamps, optional linked timesheet workspace), timesheet workspaces (name, emoji, color, quick duration presets, archived status), running timesheet sessions (workspace, start time, optional topic), timesheet entries (topics, notes, start/end times, minutes, mood), todo timers (which todo is running and since when), and per-day todo timer totals (work date and seconds spent)',
+            'Content you create: streaks (name, emoji, color, frequency, archived status, time goals, optional reminder time), daily streak entries (completion, notes, mood, minutes), todos (title, notes, due date, importance, topics, completion timestamps, optional linked timesheet workspace, optional due reminders), timesheet workspaces (name, emoji, color, quick duration presets, archived status), running timesheet sessions (workspace, start time, optional topic), timesheet entries (topics, notes, start/end times, minutes, mood), todo timers (which todo is running and since when), and per-day todo timer totals (work date and seconds spent)',
+            'Push notifications (optional): browser / device notification permission, a Web Push subscription (endpoint URL and encryption keys for this device), your current device timezone (refreshed when you open the App, used for local reminder scheduling), and whether at least one device is subscribed; used only to deliver reminders you opt into',
             'Optional timesheet PDF export: generated on your device for download (may include your first name and timesheet content); the App does not upload the PDF to our servers',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
@@ -80,9 +81,11 @@ export function PrivacyPolicyPage() {
         />
         <p>
           We do not set cookies for tracking, advertising, or analytics. No analytics or marketing
-          tools are integrated into the App. The App does not request camera, microphone, location, or
-          push-notification permissions. Installing the App as a PWA does not collect additional
-          personal data beyond the preferences described above.
+          tools are integrated into the App. The App does not request camera, microphone, or location
+          permissions. Push-notification permission is requested by the browser/OS when you allow
+          notifications (for example from Settings or when enabling “Notify me”). The App reads the
+          current device permission rather than keeping a separate on/off preference. Installing the
+          App as a PWA does not collect additional personal data beyond the preferences described above.
         </p>
       </LegalSection>
 
@@ -96,6 +99,7 @@ export function PrivacyPolicyPage() {
             'Displaying your optional profile photo in the App (Art. 6(1)(b) GDPR)',
             'Securing authentication (sessions, passkeys, password reset, email change) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
+            'Optional push notifications for streak / todo reminders and long-running timer nudges you enable (Art. 6(1)(b) and (a) GDPR)',
             'Storing theme, passkey-prompt, install-tip, and active-timer-cache preferences for a comfortable display (Art. 6(1)(f) GDPR)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
           ]}
@@ -105,15 +109,16 @@ export function PrivacyPolicyPage() {
       <LegalSection title="6. Retention">
         <p>
           Account data, app content (including running timesheet sessions, todo timers, and per-day
-          todo timer totals), and any uploaded profile photo are stored for as long as your account
-          exists or until you delete individual records, stop, discard, or clear a timer, replace or
-          clear your photo, or delete the entire account. Clearing or replacing a profile photo
-          updates the URL used by the App; older photo files under your user ID may remain in storage
-          until you delete your account. The auth session remains until you sign out or the tokens
-          expire. Theme, passkey-prompt, install-tip, and active-timer-cache preferences remain in
-          local storage until you change them, the timesheet timer cache is cleared when no sessions
-          remain, or you clear browser storage. Server and access logs of hosting / auth providers may
-          be retained briefly according to their own retention policies.
+          todo timer totals), push subscription records, and any uploaded profile photo are stored for
+          as long as your account exists or until you delete individual records, turn off push
+          notifications (which removes stored device subscriptions), stop, discard, or clear a timer,
+          replace or clear your photo, or delete the entire account. Clearing or replacing a profile
+          photo updates the URL used by the App; older photo files under your user ID may remain in
+          storage until you delete your account. The auth session remains until you sign out or the
+          tokens expire. Theme, passkey-prompt, install-tip, and active-timer-cache preferences remain
+          in local storage until you change them, the timesheet timer cache is cleared when no
+          sessions remain, or you clear browser storage. Server and access logs of hosting / auth
+          providers may be retained briefly according to their own retention policies.
         </p>
       </LegalSection>
 

@@ -6,16 +6,29 @@ interface SwitchProps {
   label?: string
   description?: string
   className?: string
+  disabled?: boolean
 }
 
-export function Switch({ checked, onChange, label, description, className }: SwitchProps) {
+export function Switch({
+  checked,
+  onChange,
+  label,
+  description,
+  className,
+  disabled,
+}: SwitchProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn('w-full flex items-center justify-between gap-3 text-left', className)}
+      className={cn(
+        'w-full flex items-center justify-between gap-3 text-left',
+        disabled && 'opacity-50 cursor-not-allowed',
+        className,
+      )}
     >
       {(label || description) && (
         <span className="min-w-0">
