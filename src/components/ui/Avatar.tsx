@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+type AvatarSize = 'sm' | 'md' | 'lg' | 'xl'
 
 interface AvatarProps {
   src?: string | null
@@ -12,7 +12,6 @@ interface AvatarProps {
 }
 
 const sizeClasses: Record<AvatarSize, string> = {
-  xs: 'size-6 text-[10px]',
   sm: 'size-8 text-[12px]',
   md: 'size-10 text-[14px]',
   lg: 'size-16 text-[22px]',
@@ -20,7 +19,6 @@ const sizeClasses: Record<AvatarSize, string> = {
 }
 
 const iconSizeClasses: Record<AvatarSize, string> = {
-  xs: 'size-3.5',
   sm: 'size-4',
   md: 'size-5',
   lg: 'size-7',
