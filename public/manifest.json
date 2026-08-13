@@ -14,6 +14,8 @@
   "theme_color": "#000000",
   "categories": ["productivity", "utilities"],
   "prefer_related_applications": false,
+  "related_applications": [],
+  "display_override": ["standalone"],
   "launch_handler": {
     "client_mode": ["navigate-existing", "auto"]
   },

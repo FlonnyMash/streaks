@@ -217,12 +217,12 @@ Suggested Android package name (change it in PWABuilder if you prefer a domain y
 
 [`public/manifest.json`](public/manifest.json) expects these files (replace the placeholders with real signed-in captures before store submission):
 
-| File | Size | Form factor |
+| File | Current pixels | Form factor |
 | --- | --- | --- |
-| `public/screenshots/narrow-1080x1920.png` | 1080×1920 | Phone portrait |
-| `public/screenshots/wide-1920x1080.png` | 1920×1080 | Desktop / tablet landscape |
+| `public/screenshots/narrow-1080x1920.png` | 1290×2796 | Phone portrait |
+| `public/screenshots/wide-1920x1080.png` | 2796×1290 | Desktop / tablet landscape |
 
-Keep the filenames. PWABuilder and Play listings use them as-is.
+Keep the filenames. If you replace the images, update the matching `sizes` values in [`public/manifest.json`](public/manifest.json) — PWABuilder rejects screenshots when `sizes` doesn’t match the real pixel dimensions.
 
 ### Digital Asset Links
 
