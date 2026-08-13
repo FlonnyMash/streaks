@@ -39,6 +39,7 @@ function mapTodo(row: TodoRow): Todo {
     completed_at: row.completed_at,
     created_at: row.created_at,
     workspace_id: row.workspace_id ?? null,
+    tracked_minutes: row.tracked_minutes ?? null,
     topics,
   }
 }
@@ -215,18 +216,41 @@ export function useToggleTodo() {
   const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
-    mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
-      const { error } = await supabase
-        .from('todos')
-        .update({ done, completed_at: done ? new Date().toISOString() : null })
-        .eq('id', id)
+    mutationFn: async ({
+      id,
+      done,
+      tracked_minutes,
+    }: {
+      id: string
+      done: boolean
+      /** Set when completing with a timer; cleared when reopening. */
+      tracked_minutes?: number | null
+    }) => {
+      const payload: { done: boolean; completed_at: string | null; tracked_minutes?: number | null } = {
+        done,
+        completed_at: done ? new Date().toISOString() : null,
+      }
+      if (tracked_minutes !== undefined) payload.tracked_minutes = tracked_minutes
+      else if (!done) payload.tracked_minutes = null
+
+      const { error } = await supabase.from('todos').update(payload).eq('id', id)
       if (error) throw error
     },
-    onMutate: async ({ id, done }): Promise<ToggleContext> => {
+    onMutate: async ({ id, done, tracked_minutes }): Promise<ToggleContext> => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Todo[]>(key)
       queryClient.setQueryData<Todo[]>(key, (old) =>
-        old?.map((t) => (t.id === id ? { ...t, done, completed_at: done ? new Date().toISOString() : null } : t)),
+        old?.map((t) => {
+          if (t.id !== id) return t
+          const nextMinutes =
+            tracked_minutes !== undefined ? tracked_minutes : done ? t.tracked_minutes : null
+          return {
+            ...t,
+            done,
+            completed_at: done ? new Date().toISOString() : null,
+            tracked_minutes: nextMinutes ?? null,
+          }
+        }),
       )
       return { previous }
     },

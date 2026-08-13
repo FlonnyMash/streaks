@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useToggleTodo } from '@/hooks/useTodos'
 import { useTodoTimer } from '@/hooks/useTodoTimer'
-import { totalSeconds, type DaySeconds } from '@/lib/todoTimerLogic'
+import { minutesFromSeconds, totalSeconds, type DaySeconds } from '@/lib/todoTimerLogic'
 import { toDateKey } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
 
@@ -46,7 +46,7 @@ export function useCompleteTodoWithTime() {
   return useCallback(
     (todo: Todo, done: boolean) => {
       if (!done) {
-        toggleTodo.mutate({ id: todo.id, done })
+        toggleTodo.mutate({ id: todo.id, done: false, tracked_minutes: null })
         return
       }
 
@@ -55,7 +55,10 @@ export function useCompleteTodoWithTime() {
       if (totalSeconds(days) === 0 && elapsed > 0) {
         days = [{ dateKey: toDateKey(new Date()), seconds: Math.max(1, Math.round(elapsed / 1000) || 1) }]
       }
-      if (elapsed > 0 || totalSeconds(days) > 0) {
+      const trackedMinutes = minutesFromSeconds(totalSeconds(days))
+      const hasTime = elapsed > 0 || totalSeconds(days) > 0
+
+      if (hasTime) {
         openSummary({
           todoId: todo.id,
           workspaceId: todo.workspace_id,
@@ -63,9 +66,11 @@ export function useCompleteTodoWithTime() {
           days,
         })
         void flush(todo.id)
+        toggleTodo.mutate({ id: todo.id, done: true, tracked_minutes: trackedMinutes })
+        return
       }
 
-      toggleTodo.mutate({ id: todo.id, done: true })
+      toggleTodo.mutate({ id: todo.id, done: true, tracked_minutes: null })
     },
     [elapsedMsFor, flush, openSummary, previewDaysFor, toggleTodo],
   )

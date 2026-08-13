@@ -81,6 +81,8 @@ export interface Todo {
   created_at: string
   /** Optional timesheet workspace this task logs time to. */
   workspace_id: string | null
+  /** Total minutes tracked when the task was completed (from the todo timer). */
+  tracked_minutes: number | null
   topics: TodoTopic[]
 }
 

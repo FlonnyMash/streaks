@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
-import { Pencil } from 'lucide-react'
+import { Pencil, RotateCcw } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -9,8 +9,11 @@ import { ImportanceMeter, IMPORTANCE_OPTIONS } from '@/components/todos/Importan
 import { TopicChipList, TopicPicker } from '@/components/todos/TopicPicker'
 import { useCreateTodo, useTodoTopics, useUpdateTodo } from '@/hooks/useTodos'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
+import { useTodoTimer } from '@/hooks/useTodoTimer'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
-import { cn, fromDateKey } from '@/lib/utils'
+import { formatElapsedClock } from '@/lib/timesheetLogic'
+import { minutesFromSeconds } from '@/lib/todoTimerLogic'
+import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
 import type { Todo, TodoImportance } from '@/lib/types'
 
@@ -55,7 +58,9 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
   const updateTodo = useUpdateTodo()
   const { data: existingTopics } = useTodoTopics()
   const { data: workspaces } = useTimesheetWorkspaces()
-  const pending = createTodo.isPending || updateTodo.isPending
+  const { timerFor, elapsedMsFor, storedSecondsFor, clearTimer, isSyncing } = useTodoTimer()
+  const [resetting, setResetting] = useState(false)
+  const pending = createTodo.isPending || updateTodo.isPending || resetting
   const isView = mode === 'view'
   const isEditing = mode === 'edit'
 
@@ -77,6 +82,31 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
     }
     setError(null)
   }, [open, todo, initialTitle, modeProp])
+
+  const timer = todo ? timerFor(todo.id) : null
+  const elapsedMs = todo ? elapsedMsFor(todo.id) : 0
+  const storedSeconds = todo ? storedSecondsFor(todo.id) : 0
+  const hasTimer = Boolean(timer) || elapsedMs > 0 || storedSeconds > 0
+  const timerLabel = timer?.runningSince
+    ? formatElapsedClock(elapsedMs)
+    : storedSeconds > 0
+      ? formatMinutes(minutesFromSeconds(storedSeconds))
+      : elapsedMs > 0
+        ? formatElapsedClock(elapsedMs)
+        : null
+
+  async function handleResetTimer() {
+    if (!todo) return
+    setError(null)
+    setResetting(true)
+    try {
+      await clearTimer(todo.id)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not reset the timer.'))
+    } finally {
+      setResetting(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!state.title.trim()) {
@@ -169,7 +199,14 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
           </div>
 
           {todo?.done && (
-            <p className="text-[13px] font-medium text-accent-green">Completed</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-[13px] font-medium text-accent-green">Completed</p>
+              {todo.tracked_minutes != null && todo.tracked_minutes > 0 && (
+                <p className="text-[14px] text-black/55 dark:text-white/55">
+                  Tracked time · {formatMinutes(todo.tracked_minutes)}
+                </p>
+              )}
+            </div>
           )}
 
           <Button onClick={() => setMode('edit')} size="lg" className="w-full">
@@ -305,6 +342,20 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
           </div>
 
           {error && <p className="text-[13px] text-accent-red text-center -mb-2">{error}</p>}
+
+          {isEditing && todo && hasTimer && (
+            <button
+              type="button"
+              onClick={() => void handleResetTimer()}
+              disabled={pending || isSyncing}
+              className="h-11 rounded-2xl text-[14px] font-medium text-accent-red hover:bg-accent-red/10 active:scale-95 transition-all disabled:opacity-50"
+            >
+              <span className="inline-flex items-center justify-center gap-2">
+                <RotateCcw className="size-4" />
+                Reset timer{timerLabel ? ` (${timerLabel})` : ''}
+              </span>
+            </button>
+          )}
 
           <div className={cn('flex gap-2', isEditing && todo ? 'flex-col' : '')}>
             {isEditing && todo && (

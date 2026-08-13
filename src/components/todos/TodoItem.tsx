@@ -36,7 +36,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
   const { data: workspaces } = useTimesheetWorkspaces()
-  const { requestStart, pause, elapsedMsFor, storedSecondsFor, timerFor, isSyncing } = useTodoTimer()
+  const { requestStart, pause, elapsedMsFor, storedSecondsFor, timerFor } = useTodoTimer()
 
   const workspace = todo.workspace_id
     ? (workspaces ?? []).find((w) => w.id === todo.workspace_id) ?? null
@@ -87,7 +87,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             {todo.title}
           </p>
         </div>
-        {(due || notesPreview || (todo.topics ?? []).length > 0 || workspace) && (
+        {(due || notesPreview || (todo.topics ?? []).length > 0 || workspace || (todo.done && todo.tracked_minutes)) && (
           <div className="mt-0.5 min-w-0">
             {due && (
               <p
@@ -148,6 +148,11 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
       </button>
 
       <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
+        {todo.done && todo.tracked_minutes != null && todo.tracked_minutes > 0 && (
+          <span className="text-[11px] font-semibold tabular-nums text-black/40 dark:text-white/40 px-1">
+            {formatMinutes(todo.tracked_minutes)}
+          </span>
+        )}
         {showTimer && (running || storedSeconds > 0) && (
           <span className="text-[11px] font-semibold tabular-nums text-accent-blue px-1 min-w-[2.5rem] text-right">
             {running ? formatElapsedClock(elapsedMs) : formatMinutes(minutesFromSeconds(storedSeconds))}
@@ -157,9 +162,8 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
           <button
             type="button"
             onClick={() => void pause(todo.id)}
-            disabled={isSyncing}
             aria-label="Pause timer"
-            className="size-8 rounded-full flex items-center justify-center text-accent-orange hover:bg-accent-orange/10 transition-colors disabled:opacity-25"
+            className="size-8 rounded-full flex items-center justify-center text-accent-orange hover:bg-accent-orange/10 transition-colors"
           >
             <Pause className="size-3.5 fill-current" />
           </button>
@@ -168,10 +172,9 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
           <button
             type="button"
             onClick={() => void requestStart(todo.id)}
-            disabled={isSyncing}
             aria-label={storedSeconds > 0 ? 'Resume timer' : 'Start timer'}
             title={storedSeconds > 0 ? 'Resume timer' : 'Start timer'}
-            className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors disabled:opacity-25"
+            className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
           >
             <Play className="size-3.5 fill-current" />
           </button>
