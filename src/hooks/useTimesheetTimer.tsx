@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from '@/hooks/useAuth'
 import { hapticTick } from '@/lib/haptics'
 import { supabase } from '@/lib/supabaseClient'
-import { addDaySeconds, liveChunks, type DaySeconds } from '@/lib/todoTimerLogic'
+import { addDaySeconds, liveChunks, totalSeconds, type DaySeconds } from '@/lib/todoTimerLogic'
 import type { TimesheetSessionDay, TimesheetSessionRow, TimesheetTimerSession } from '@/lib/types'
 
 interface TimesheetSessionDayRow {
@@ -13,17 +13,26 @@ interface TimesheetSessionDayRow {
   seconds: number
 }
 
+export type PendingTimesheetReplace = {
+  workspaceId: string
+  options?: { topic?: string; startedAt?: Date }
+  days: DaySeconds[]
+  topic?: string
+}
+
 interface TimesheetTimerContextValue {
   sessions: TimesheetTimerSession[]
   days: TimesheetSessionDay[]
   endingSession: TimesheetTimerSession | null
   endDays: DaySeconds[]
   confirmOpen: boolean
+  pendingReplace: PendingTimesheetReplace | null
   isSyncing: boolean
   elapsedMsFor: (sessionId: string) => number
   storedSecondsFor: (workspaceId: string) => number
   previewDaysFor: (workspaceId: string) => DaySeconds[]
   sessionForWorkspace: (workspaceId: string) => TimesheetTimerSession | null
+  runningWorkspaceIds: string[]
   start: (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => void
   pause: (workspaceId: string) => Promise<void>
   resume: (workspaceId: string) => Promise<void>
@@ -31,6 +40,9 @@ interface TimesheetTimerContextValue {
   cancelStop: () => void
   discard: () => Promise<void>
   clearSession: (workspaceId: string) => Promise<void>
+  cancelReplace: () => void
+  confirmReplaceDiscard: () => Promise<void>
+  confirmReplaceAfterSave: () => Promise<void>
 }
 
 const TimesheetTimerContext = createContext<TimesheetTimerContextValue | null>(null)
@@ -179,7 +191,10 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
   const [endingSessionId, setEndingSessionId] = useState<string | null>(null)
   const [endDays, setEndDays] = useState<DaySeconds[]>([])
+  const [pendingReplace, setPendingReplace] = useState<PendingTimesheetReplace | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
+  const pendingReplaceRef = useRef<PendingTimesheetReplace | null>(null)
+  pendingReplaceRef.current = pendingReplace
   const opEpochRef = useRef(0)
   const sessionsRef = useRef(sessions)
   const daysRef = useRef(days)
@@ -399,13 +414,38 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     [applyState, refreshFromServer, serverOffsetMs, userId],
   )
 
-  const start = useCallback(
+  const clearSession = useCallback(
+    async (workspaceId: string) => {
+      if (!userId) return
+      const ending = sessionsRef.current.find((s) => s.id === endingSessionId)
+      applyState(
+        sessionsRef.current.filter((s) => s.workspaceId !== workspaceId),
+        daysRef.current.filter((d) => d.workspaceId !== workspaceId),
+      )
+      if (ending?.workspaceId === workspaceId) {
+        setEndingSessionId(null)
+        setEndDays([])
+      }
+      if (pendingReplaceRef.current?.workspaceId === workspaceId) {
+        setPendingReplace(null)
+      }
+      const { error: daysError } = await supabase
+        .from('timesheet_session_days')
+        .delete()
+        .eq('workspace_id', workspaceId)
+      if (daysError) throw daysError
+      const { error: sessionError } = await supabase
+        .from('timesheet_sessions')
+        .delete()
+        .eq('workspace_id', workspaceId)
+      if (sessionError) throw sessionError
+    },
+    [applyState, endingSessionId, userId],
+  )
+
+  const beginRunning = useCallback(
     (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => {
       if (!userId) return
-      if (sessionsRef.current.some((s) => s.workspaceId === workspaceId)) {
-        void resume(workspaceId)
-        return
-      }
       hapticTick()
 
       const epoch = ++opEpochRef.current
@@ -421,7 +461,10 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
         runningSince: startedAt,
         topic: trimmedTopic,
       }
-      applyState([...sessionsRef.current, optimistic], daysRef.current)
+      applyState(
+        [...sessionsRef.current.filter((s) => s.workspaceId !== workspaceId), optimistic],
+        daysRef.current.filter((d) => d.workspaceId !== workspaceId),
+      )
       setIsSyncing(true)
 
       void (async () => {
@@ -452,7 +495,7 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
               ...sessionsRef.current.filter((s) => s.id !== optimistic.id && s.workspaceId !== workspaceId),
               fromRow(data as TimesheetSessionRow),
             ],
-            daysRef.current,
+            daysRef.current.filter((d) => d.workspaceId !== workspaceId),
           )
         } catch {
           if (epoch === opEpochRef.current) {
@@ -466,34 +509,67 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
         }
       })()
     },
-    [applyState, refreshFromServer, resume, serverOffsetMs, userId],
+    [applyState, refreshFromServer, serverOffsetMs, userId],
   )
 
-  const clearSession = useCallback(
-    async (workspaceId: string) => {
+  const start = useCallback(
+    (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => {
       if (!userId) return
-      const ending = sessionsRef.current.find((s) => s.id === endingSessionId)
-      applyState(
-        sessionsRef.current.filter((s) => s.workspaceId !== workspaceId),
-        daysRef.current.filter((d) => d.workspaceId !== workspaceId),
-      )
-      if (ending?.workspaceId === workspaceId) {
-        setEndingSessionId(null)
-        setEndDays([])
+      const existing = sessionsRef.current.find((s) => s.workspaceId === workspaceId)
+      if (existing?.runningSince) return
+      if (existing) {
+        const pausedDays = daysToChunks(daysRef.current, workspaceId)
+        if (totalSeconds(pausedDays) > 0) {
+          setPendingReplace({
+            workspaceId,
+            options,
+            days: pausedDays,
+            topic: existing.topic,
+          })
+          return
+        }
+        void (async () => {
+          try {
+            await clearSession(workspaceId)
+            beginRunning(workspaceId, options)
+          } catch {
+            await refreshFromServer()
+          }
+        })()
+        return
       }
-      const { error: daysError } = await supabase
-        .from('timesheet_session_days')
-        .delete()
-        .eq('workspace_id', workspaceId)
-      if (daysError) throw daysError
-      const { error: sessionError } = await supabase
-        .from('timesheet_sessions')
-        .delete()
-        .eq('workspace_id', workspaceId)
-      if (sessionError) throw sessionError
+      beginRunning(workspaceId, options)
     },
-    [applyState, endingSessionId, userId],
+    [beginRunning, clearSession, refreshFromServer, userId],
   )
+
+  const cancelReplace = useCallback(() => {
+    setPendingReplace(null)
+  }, [])
+
+  const confirmReplaceDiscard = useCallback(async () => {
+    const pending = pendingReplaceRef.current
+    if (!pending) return
+    try {
+      await clearSession(pending.workspaceId)
+      setPendingReplace(null)
+      beginRunning(pending.workspaceId, pending.options)
+    } catch {
+      await refreshFromServer()
+    }
+  }, [beginRunning, clearSession, refreshFromServer])
+
+  const confirmReplaceAfterSave = useCallback(async () => {
+    const pending = pendingReplaceRef.current
+    if (!pending) return
+    try {
+      await clearSession(pending.workspaceId)
+      setPendingReplace(null)
+      beginRunning(pending.workspaceId, pending.options)
+    } catch {
+      await refreshFromServer()
+    }
+  }, [beginRunning, clearSession, refreshFromServer])
 
   const requestStop = useCallback(
     async (sessionId: string) => {
@@ -541,6 +617,11 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     [endingSessionId, sessions],
   )
 
+  const runningWorkspaceIds = useMemo(
+    () => sessions.filter((s) => s.runningSince).map((s) => s.workspaceId),
+    [sessions],
+  )
+
   const value = useMemo<TimesheetTimerContextValue>(
     () => ({
       sessions,
@@ -548,11 +629,13 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       endingSession,
       endDays,
       confirmOpen: Boolean(endingSessionId),
+      pendingReplace,
       isSyncing,
       elapsedMsFor,
       storedSecondsFor,
       previewDaysFor,
       sessionForWorkspace,
+      runningWorkspaceIds,
       start,
       pause,
       resume,
@@ -560,10 +643,16 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       cancelStop,
       discard,
       clearSession,
+      cancelReplace,
+      confirmReplaceDiscard,
+      confirmReplaceAfterSave,
     }),
     [
+      cancelReplace,
       cancelStop,
       clearSession,
+      confirmReplaceAfterSave,
+      confirmReplaceDiscard,
       days,
       discard,
       elapsedMsFor,
@@ -572,9 +661,11 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       endingSessionId,
       isSyncing,
       pause,
+      pendingReplace,
       previewDaysFor,
       requestStop,
       resume,
+      runningWorkspaceIds,
       sessionForWorkspace,
       sessions,
       start,

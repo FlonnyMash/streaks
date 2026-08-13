@@ -104,7 +104,7 @@ export function DayEntriesModal({
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [clockInOpen, setClockInOpen] = useState(false)
-  const { sessionForWorkspace, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume } =
+  const { sessionForWorkspace, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume, runningWorkspaceIds } =
     useTimesheetTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
   const presets = normalizeQuickPresets(quickPresets ?? DEFAULT_QUICK_PRESETS)
@@ -573,9 +573,7 @@ export function DayEntriesModal({
         open={clockInOpen}
         onClose={() => setClockInOpen(false)}
         workspaces={workspaces ?? []}
-        busyWorkspaceIds={(workspaces ?? [])
-          .filter((w) => sessionForWorkspace(w.id))
-          .map((w) => w.id)}
+        busyWorkspaceIds={runningWorkspaceIds}
         preselectedWorkspaceId={workspaceId}
         onStart={(id, options) => start(id, options)}
       />

@@ -13,7 +13,7 @@ interface ClockInPickerModalProps {
   open: boolean
   onClose: () => void
   workspaces: TimesheetWorkspace[]
-  /** Workspace ids that already have a running timer. */
+  /** Workspace ids that already have a running (not paused) timer. */
   busyWorkspaceIds?: string[]
   /** Skip workspace list and start for this workspace. */
   preselectedWorkspaceId?: string | null

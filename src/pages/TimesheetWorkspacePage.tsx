@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, MoreHorizontal, Pause, Pencil, Play, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, MoreHorizontal, Pause, Pencil, Play, Timer, Trash2 } from 'lucide-react'
 import {
   useDeleteTimesheetWorkspace,
   useTimesheetWorkspaces,
@@ -52,8 +52,10 @@ export function TimesheetWorkspacePage() {
   const totals = todayWeekMonthTotals(entries ?? [])
   const selectedDayEntries = (entries ?? []).filter((e) => e.entry_date === selectedDayKey)
   const activeSession = sessionForWorkspace(workspace.id)
-  const canClockIn = !activeSession
-  const canResume = Boolean(activeSession && !activeSession.runningSince)
+  const isRunning = Boolean(activeSession?.runningSince)
+  const isPaused = Boolean(activeSession && !activeSession.runningSince)
+  const canClockIn = !isRunning
+  const canResume = isPaused
 
   async function handleDelete() {
     if (!id) return
@@ -82,10 +84,10 @@ export function TimesheetWorkspacePage() {
             <button
               onClick={() => setClockInOpen(true)}
               className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
-              aria-label="Clock in"
-              title="Clock in"
+              aria-label={isPaused ? 'Start new timer' : 'Clock in'}
+              title={isPaused ? 'Start new timer' : 'Clock in'}
             >
-              <Play className="size-4 fill-current" />
+              {isPaused ? <Timer className="size-4" /> : <Play className="size-4 fill-current" />}
             </button>
           )}
           {canResume && (
@@ -98,7 +100,7 @@ export function TimesheetWorkspacePage() {
               <Play className="size-4 fill-current" />
             </button>
           )}
-          {activeSession?.runningSince && (
+          {isRunning && (
             <button
               onClick={() => void pause(workspace.id)}
               className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
@@ -211,7 +213,7 @@ export function TimesheetWorkspacePage() {
         open={clockInOpen}
         onClose={() => setClockInOpen(false)}
         workspaces={[workspace]}
-        busyWorkspaceIds={activeSession ? [workspace.id] : []}
+        busyWorkspaceIds={isRunning ? [workspace.id] : []}
         preselectedWorkspaceId={workspace.id}
         onStart={(workspaceId, options) => start(workspaceId, options)}
       />

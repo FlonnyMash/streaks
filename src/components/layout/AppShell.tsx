@@ -7,6 +7,7 @@ import { LegalFooterLinks } from '@/components/legal/LegalShared'
 import { TimesheetTimerProvider } from '@/hooks/useTimesheetTimer'
 import { TodoTimerProvider } from '@/hooks/useTodoTimer'
 import { TodoTimePromptProvider } from '@/hooks/useTodoTimePrompt'
+import { ReplacePausedTimerModal } from '@/components/timesheet/ReplacePausedTimerModal'
 import { StopTimerModal } from '@/components/timesheet/StopTimerModal'
 import { TodoTimePromptModal } from '@/components/todos/TodoTimePromptModal'
 import { TodoTimerSwitchModal } from '@/components/todos/TodoTimerSwitchModal'
@@ -28,6 +29,7 @@ export function AppShell() {
             </main>
             <GlassTabBar />
             <StopTimerModal />
+            <ReplacePausedTimerModal />
             <TodoTimerSwitchModal />
             <TodoTimePromptModal />
           </div>

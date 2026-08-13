@@ -16,14 +16,14 @@ export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries, isLoading: entriesLoading } = useAllTimesheetEntries(workspaceIds)
-  const { sessions, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume } = useTimesheetTimer()
+  const { sessions, elapsedMsFor, storedSecondsFor, start, requestStop, pause, resume, runningWorkspaceIds: busyIds } =
+    useTimesheetTimer()
   const [pickerOpen, setPickerOpen] = useState(false)
   // Wait for entries whenever there are workspaces — otherwise totals briefly show 0m.
   const isLoading = workspacesLoading || (workspaceIds.length > 0 && entriesLoading)
 
   const totals = todayWeekMonthTotals(entries ?? [])
   const todayKey = toDateKey(new Date())
-  const busyIds = sessions.map((s) => s.workspaceId)
   const available = (workspaces ?? []).filter((w) => !busyIds.includes(w.id))
 
   const perWorkspaceToday = (workspaces ?? [])

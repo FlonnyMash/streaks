@@ -23,7 +23,7 @@ export function TimesheetPage() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
   const workspaceIds = workspaces?.map((w) => w.id) ?? []
   const { data: entries } = useAllTimesheetEntries(workspaceIds)
-  const { sessions, start } = useTimesheetTimer()
+  const { sessions, start, runningWorkspaceIds: busyIds } = useTimesheetTimer()
   const [createOpen, setCreateOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -35,7 +35,6 @@ export function TimesheetPage() {
 
   const isEmpty = !workspacesLoading && workspaces?.length === 0
   const showHelpIcon = Boolean(workspaces && workspaces.length > 0)
-  const busyIds = sessions.map((s) => s.workspaceId)
   const canClockIn = Boolean(workspaces?.some((w) => !busyIds.includes(w.id)))
   const entriesByWorkspace = (workspaceId: string) => entries?.filter((e) => e.workspace_id === workspaceId) ?? []
 
