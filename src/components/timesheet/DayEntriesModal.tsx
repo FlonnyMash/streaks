@@ -36,6 +36,38 @@ function moodIcon(mood: Mood | null | undefined) {
   return null
 }
 
+function DurationIcon({
+  minutes,
+  accentHex,
+  size,
+}: {
+  minutes: number
+  accentHex: string
+  size: 'sm' | 'lg'
+}) {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  const twoLine = hours > 0 && mins > 0
+  return (
+    <div
+      className={cn(
+        'shrink-0 flex flex-col items-center justify-center text-center font-bold tabular-nums leading-none text-white',
+        size === 'sm' ? 'size-9 rounded-xl text-[11px] gap-px' : 'size-14 rounded-2xl text-[15px] gap-0.5',
+      )}
+      style={{ backgroundColor: accentHex }}
+    >
+      {twoLine ? (
+        <>
+          <span>{hours}h</span>
+          <span>{mins}m</span>
+        </>
+      ) : (
+        <span>{hours > 0 ? `${hours}h` : `${mins}m`}</span>
+      )}
+    </div>
+  )
+}
+
 type EntryDraftInput = Omit<TimesheetEntryInput, 'entry_date'>
 
 type View =
@@ -390,12 +422,7 @@ export function DayEntriesModal({
                         aria-label={`View ${entry.topic || 'time block'}`}
                         className="flex items-start gap-3 rounded-2xl px-3.5 py-3 text-left bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors"
                       >
-                        <div
-                          className="shrink-0 size-9 rounded-xl flex items-center justify-center text-[12px] font-bold tabular-nums text-white"
-                          style={{ backgroundColor: accentHex }}
-                        >
-                          {formatMinutes(entry.minutes)}
-                        </div>
+                        <DurationIcon minutes={entry.minutes} accentHex={accentHex} size="sm" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <p className="text-[14px] font-medium truncate">{entry.topic || 'Time logged'}</p>
@@ -660,12 +687,7 @@ function EntryDetail({
       </button>
 
       <div className="flex flex-col items-center gap-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-4 py-5">
-        <div
-          className="size-14 rounded-2xl flex items-center justify-center text-[15px] font-bold tabular-nums text-white"
-          style={{ backgroundColor: accentHex }}
-        >
-          {formatMinutes(entry.minutes)}
-        </div>
+        <DurationIcon minutes={entry.minutes} accentHex={accentHex} size="lg" />
         <div className="text-center min-w-0 w-full">
           <p className="text-[17px] font-semibold tracking-tight">{entry.topic || 'Time logged'}</p>
           {startLabel && endLabel && (
