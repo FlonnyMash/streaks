@@ -181,7 +181,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
         )}
 
         {(onMoveUp || onMoveDown) && (
-          <div className="hidden sm:flex flex-col">
+          <div className="hidden app-desktop:flex flex-col">
             <button
               type="button"
               onClick={onMoveUp}

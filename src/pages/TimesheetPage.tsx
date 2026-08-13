@@ -57,13 +57,13 @@ export function TimesheetPage() {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Timesheet</h1>
-            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="app-desktop:hidden" />}
             {showHelpIcon && canClockIn && (
               <button
                 onClick={() => setClockInOpen(true)}
                 aria-label="Clock in"
                 title="Clock in"
-                className="sm:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
+                className="app-desktop:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
               >
                 <Play className="size-[18px] fill-current" />
               </button>
@@ -73,7 +73,7 @@ export function TimesheetPage() {
                 onClick={() => setExportOpen(true)}
                 aria-label="Export timesheet"
                 title="Export timesheet"
-                className="sm:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
+                className="app-desktop:hidden size-8 rounded-full inline-flex items-center justify-center text-black/40 dark:text-white/40 hover:text-accent-blue hover:bg-accent-blue/10 active:scale-95 transition-all shrink-0"
               >
                 <Download className="size-[18px]" />
               </button>
@@ -81,7 +81,7 @@ export function TimesheetPage() {
           </div>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Log time across projects and workspaces.</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="hidden app-desktop:flex items-center gap-2">
           {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
           {showHelpIcon && (
             <button
@@ -136,7 +136,7 @@ export function TimesheetPage() {
 
       {!workspacesLoading && workspaces && workspaces.length > 0 && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 app-desktop:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {workspaces.map((workspace) => (
               <WorkspaceCard key={workspace.id} workspace={workspace} entries={entriesByWorkspace(workspace.id)} />
             ))}
@@ -162,7 +162,7 @@ export function TimesheetPage() {
       <button
         onClick={() => setCreateOpen(true)}
         aria-label="New workspace"
-        className="sm:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
+        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
       >
         <Plus className="size-6" />
       </button>

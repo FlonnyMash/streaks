@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { APP_DESKTOP_MQ, isAppDesktopLayout } from '@/lib/layout'
 import { useStableMobileViewport } from '@/hooks/useStableMobileViewport'
 
 const links = [
@@ -19,7 +20,7 @@ export function GlassTabBar() {
 
   useLayoutEffect(() => {
     const nav = navRef.current
-    if (!nav || window.matchMedia('(min-width: 640px)').matches) return
+    if (!nav) return
 
     const readSab = () => {
       const raw = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-bottom')
@@ -29,6 +30,7 @@ export function GlassTabBar() {
     }
 
     const correctPosition = () => {
+      if (isAppDesktopLayout()) return
       nav.style.bottom = '0px'
       nav.style.paddingBottom = `max(0.5rem, var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)))`
       void nav.offsetHeight
@@ -49,24 +51,41 @@ export function GlassTabBar() {
       }
     }
 
-    correctPosition()
-    const frame = requestAnimationFrame(correctPosition)
-    const timeouts = [50, 150, 400, 1000, 2000].map((ms) => window.setTimeout(correctPosition, ms))
-    window.addEventListener('resize', correctPosition)
-    window.visualViewport?.addEventListener('resize', correctPosition)
-    window.visualViewport?.addEventListener('scroll', correctPosition)
+    const attach = () => {
+      if (isAppDesktopLayout()) return () => {}
+
+      correctPosition()
+      const frame = requestAnimationFrame(correctPosition)
+      const timeouts = [50, 150, 400, 1000, 2000].map((ms) => window.setTimeout(correctPosition, ms))
+      window.addEventListener('resize', correctPosition)
+      window.visualViewport?.addEventListener('resize', correctPosition)
+      window.visualViewport?.addEventListener('scroll', correctPosition)
+
+      return () => {
+        cancelAnimationFrame(frame)
+        timeouts.forEach(clearTimeout)
+        window.removeEventListener('resize', correctPosition)
+        window.visualViewport?.removeEventListener('resize', correctPosition)
+        window.visualViewport?.removeEventListener('scroll', correctPosition)
+      }
+    }
+
+    let detach = attach()
+    const mq = window.matchMedia(APP_DESKTOP_MQ)
+    const onLayoutChange = () => {
+      detach()
+      detach = attach()
+    }
+    mq.addEventListener('change', onLayoutChange)
 
     return () => {
-      cancelAnimationFrame(frame)
-      timeouts.forEach(clearTimeout)
-      window.removeEventListener('resize', correctPosition)
-      window.visualViewport?.removeEventListener('resize', correctPosition)
-      window.visualViewport?.removeEventListener('scroll', correctPosition)
+      mq.removeEventListener('change', onLayoutChange)
+      detach()
     }
   }, [location.pathname])
 
   return (
-    <nav ref={navRef} className="sm:hidden fixed inset-x-0 z-40 px-3 tabbar-bottom" aria-label="Primary">
+    <nav ref={navRef} className="app-desktop:hidden fixed inset-x-0 z-40 px-3 tabbar-bottom" aria-label="Primary">
       <div
         data-tabbar-surface
         className="glass-surface rounded-full h-[64px] flex items-center justify-around shadow-[0_8px_30px_-8px_rgba(0,0,0,0.3)]"

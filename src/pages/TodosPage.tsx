@@ -145,12 +145,12 @@ export function TodosPage() {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Todos</h1>
-            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="app-desktop:hidden" />}
           </div>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Quick tasks, checked off.</p>
         </div>
         {showHelpIcon && (
-          <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="hidden sm:inline-flex mt-1" />
+          <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="hidden app-desktop:inline-flex mt-1" />
         )}
       </div>
 
@@ -181,7 +181,7 @@ export function TodosPage() {
         </Button>
         <Button type="submit" size="md" disabled={!quickTitle.trim()} loading={createTodo.isPending} className="shrink-0">
           <Plus className="size-4" />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden app-desktop:inline">Add</span>
         </Button>
       </form>
 

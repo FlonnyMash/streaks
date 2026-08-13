@@ -1,14 +1,15 @@
 import { useLayoutEffect } from 'react'
+import { APP_DESKTOP_MQ, isAppDesktopLayout } from '@/lib/layout'
 
 /**
  * iOS standalone PWAs often settle the layout viewport late on cold start, so a
  * `position: fixed; bottom: 0` tab bar can sit too high until a later reflow
  * (e.g. route change). Keep CSS vars fresh and nudge WebKit after launch.
+ * Only runs while mobile portrait chrome (tab bar) is shown.
  */
 export function useStableMobileViewport() {
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.matchMedia('(min-width: 640px)').matches) return
 
     const root = document.documentElement
 
@@ -51,26 +52,49 @@ export function useStableMobileViewport() {
       if (document.visibilityState === 'visible') sync(true)
     }
 
-    sync(true)
-    const frame = requestAnimationFrame(() => sync(true))
-    const timeouts = [50, 150, 400, 1000, 2000].map((ms) => window.setTimeout(() => sync(true), ms))
+    let attached = false
 
-    window.addEventListener('resize', syncSoft)
-    window.addEventListener('orientationchange', syncHard)
-    window.addEventListener('pageshow', syncHard)
-    document.addEventListener('visibilitychange', onVisible)
-    window.visualViewport?.addEventListener('resize', syncSoft)
-    window.visualViewport?.addEventListener('scroll', syncSoft)
+    const attach = () => {
+      if (attached) return
+      attached = true
+      sync(true)
+      const frame = requestAnimationFrame(() => sync(true))
+      const timeouts = [50, 150, 400, 1000, 2000].map((ms) => window.setTimeout(() => sync(true), ms))
+
+      window.addEventListener('resize', syncSoft)
+      window.addEventListener('orientationchange', syncHard)
+      window.addEventListener('pageshow', syncHard)
+      document.addEventListener('visibilitychange', onVisible)
+      window.visualViewport?.addEventListener('resize', syncSoft)
+      window.visualViewport?.addEventListener('scroll', syncSoft)
+
+      return () => {
+        attached = false
+        cancelAnimationFrame(frame)
+        timeouts.forEach(clearTimeout)
+        window.removeEventListener('resize', syncSoft)
+        window.removeEventListener('orientationchange', syncHard)
+        window.removeEventListener('pageshow', syncHard)
+        document.removeEventListener('visibilitychange', onVisible)
+        window.visualViewport?.removeEventListener('resize', syncSoft)
+        window.visualViewport?.removeEventListener('scroll', syncSoft)
+      }
+    }
+
+    let detach = isAppDesktopLayout() ? undefined : attach()
+
+    const onLayoutChange = () => {
+      detach?.()
+      detach = undefined
+      if (!isAppDesktopLayout()) detach = attach()
+    }
+
+    const mq = window.matchMedia(APP_DESKTOP_MQ)
+    mq.addEventListener('change', onLayoutChange)
 
     return () => {
-      cancelAnimationFrame(frame)
-      timeouts.forEach(clearTimeout)
-      window.removeEventListener('resize', syncSoft)
-      window.removeEventListener('orientationchange', syncHard)
-      window.removeEventListener('pageshow', syncHard)
-      document.removeEventListener('visibilitychange', onVisible)
-      window.visualViewport?.removeEventListener('resize', syncSoft)
-      window.visualViewport?.removeEventListener('scroll', syncSoft)
+      mq.removeEventListener('change', onLayoutChange)
+      detach?.()
     }
   }, [])
 }

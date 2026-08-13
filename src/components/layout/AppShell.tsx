@@ -21,9 +21,9 @@ export function AppShell() {
             <PasskeySetupPrompt />
             <GlassNavbar />
             <MobileTopBar />
-            <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 pt-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(6.5rem+env(safe-area-inset-top,0px))] pb-[calc(5.5rem+var(--safe-area-bottom,env(safe-area-inset-bottom,0px)))] sm:pb-8">
+            <main className="flex-1 mx-auto w-full max-w-5xl safe-x [--safe-x-pad:1rem] app-desktop:[--safe-x-pad:1.5rem] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] [@media(min-width:640px)_and_(orientation:portrait)]:pt-[calc(6.5rem+env(safe-area-inset-top,0px))] landscape:pt-[calc(4.75rem+env(safe-area-inset-top,0px))] pb-[calc(5.5rem+var(--safe-area-bottom,env(safe-area-inset-bottom,0px)))] app-desktop:pb-8">
               <Outlet />
-              <footer className="hidden sm:block mt-12 pt-6 border-t border-black/8 dark:border-white/10">
+              <footer className="hidden app-desktop:block mt-12 pt-6 border-t border-black/8 dark:border-white/10">
                 <LegalFooterLinks className="justify-start text-[13px] gap-4" />
               </footer>
             </main>

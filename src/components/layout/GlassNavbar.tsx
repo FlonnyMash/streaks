@@ -14,9 +14,9 @@ const links = [
 
 export function GlassNavbar() {
   return (
-    <header className="hidden sm:block fixed inset-x-0 top-0 z-40 safe-top pointer-events-none">
-      <div className="mx-auto max-w-5xl px-6 pt-4 flex items-center gap-3 min-w-0 pointer-events-auto">
-        <div className="relative flex-1 min-w-0 h-14">
+    <header className="hidden app-desktop:block fixed inset-x-0 top-0 z-40 safe-top pointer-events-none">
+      <div className="mx-auto max-w-5xl safe-x [--safe-x-pad:1.5rem] pt-4 landscape:pt-2 flex items-center gap-3 min-w-0 pointer-events-auto">
+        <div className="relative flex-1 min-w-0 h-14 landscape:h-12">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"
@@ -64,7 +64,7 @@ export function GlassNavbar() {
             </nav>
           </div>
         </div>
-        <div className="relative size-14 shrink-0">
+        <div className="relative size-14 landscape:size-12 shrink-0">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"

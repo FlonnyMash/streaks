@@ -16,7 +16,7 @@ export function GlassModal({ open, onClose, title, children, className }: GlassM
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end app-desktop:items-center justify-center safe-x [--safe-x-pad:0px] app-desktop:[--safe-x-pad:1rem]">
           <motion.div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -30,9 +30,9 @@ export function GlassModal({ open, onClose, title, children, className }: GlassM
             exit={{ opacity: 0, y: 24, scale: 0.98 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className={cn(
-              'relative w-full sm:max-w-md max-h-[88vh] overflow-y-auto',
-              'glass-panel rounded-t-[28px] sm:rounded-[28px]',
-              'p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
+              'relative w-full app-desktop:max-w-md max-h-[88vh] overflow-y-auto',
+              'glass-panel rounded-t-[28px] app-desktop:rounded-[28px]',
+              'p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] app-desktop:pb-5',
               'shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)]',
               className,
             )}

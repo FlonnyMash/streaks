@@ -55,7 +55,7 @@ export function StreakStats({ streak, entries }: { streak: Streak; entries: Stre
   ]
 
   return (
-    <div className={streak.track_time ? 'grid grid-cols-2 sm:grid-cols-4 gap-3' : 'grid grid-cols-3 gap-3'}>
+    <div className={streak.track_time ? 'grid grid-cols-2 app-desktop:grid-cols-4 gap-3' : 'grid grid-cols-3 gap-3'}>
       {items.map(({ label, value, icon: Icon, color, bump }) => (
         <div key={label} className="glass-panel rounded-2xl p-3.5 flex flex-col items-center gap-1">
           <motion.div

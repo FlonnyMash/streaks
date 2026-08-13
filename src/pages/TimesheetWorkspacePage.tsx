@@ -159,7 +159,7 @@ export function TimesheetWorkspacePage() {
 
       <ActiveTimerBanner />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 app-desktop:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Today', value: totals.today },
           { label: 'This week', value: totals.week },

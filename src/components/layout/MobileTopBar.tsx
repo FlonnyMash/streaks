@@ -5,7 +5,7 @@ import { ProfileAvatarButton } from './ProfileAvatarButton'
 /** Mobile-only top bar: brand on the left, profile/avatar on the right. Stays fixed while content scrolls. */
 export function MobileTopBar() {
   return (
-    <header className="sm:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
+    <header className="app-desktop:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
       <div className="px-4 py-1.5 flex items-center justify-between gap-2.5">
         <Link
           to="/dashboard"

@@ -28,11 +28,11 @@ export function DashboardPage() {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight">Your Streaks</h1>
-            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="sm:hidden" />}
+            {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} className="app-desktop:hidden" />}
           </div>
           <p className="text-black/50 dark:text-white/50 text-[15px] mt-0.5">Keep the fire going.</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="hidden app-desktop:flex items-center gap-2">
           {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
           <button
             onClick={() => setCreateOpen(true)}
@@ -65,7 +65,7 @@ export function DashboardPage() {
       )}
 
       {!isLoading && streaks && streaks.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 app-desktop:grid-cols-2 lg:grid-cols-3 gap-4">
           {streaks.map((streak) => (
             <StreakCard key={streak.id} streak={streak} entries={entriesByStreak(streak.id)} />
           ))}
@@ -75,7 +75,7 @@ export function DashboardPage() {
       <button
         onClick={() => setCreateOpen(true)}
         aria-label="New streak"
-        className="sm:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
+        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
       >
         <Plus className="size-6" />
       </button>

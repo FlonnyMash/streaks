@@ -203,6 +203,39 @@ Go back to Supabase and:
 - If using Passkeys, add your `.pages.dev` domain (and any custom domain) to the allowed origins in **Authentication → Passkeys**.
 - If you add a custom domain in Cloudflare Pages later, repeat the two bullets above for that domain too.
 
+## 9. PWABuilder and Google Play
+
+The live site is [https://mashedstreaks.pages.dev](https://mashedstreaks.pages.dev). After each deploy:
+
+1. Confirm `https://mashedstreaks.pages.dev/manifest.json` and a service worker (`sw.js` from the production build) are served over HTTPS.
+2. Re-run the site on [pwabuilder.com](https://www.pwabuilder.com).
+3. Use **Package → Google Play** to generate the Trusted Web Activity (TWA).
+
+Suggested Android package name (change it in PWABuilder if you prefer a domain you own): `dev.pages.mashedstreaks.twa`.
+
+### Screenshots
+
+[`public/manifest.json`](public/manifest.json) expects these files (replace the placeholders with real signed-in captures before store submission):
+
+| File | Size | Form factor |
+| --- | --- | --- |
+| `public/screenshots/narrow-1080x1920.png` | 1080×1920 | Phone portrait |
+| `public/screenshots/wide-1920x1080.png` | 1920×1080 | Desktop / tablet landscape |
+
+Keep the filenames. PWABuilder and Play listings use them as-is.
+
+### Digital Asset Links
+
+Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) on the live origin.
+
+1. Generate the Android package in PWABuilder (or Bubblewrap).
+2. Copy the **SHA-256** fingerprint from Play App Signing (or the keystore PWABuilder shows).
+3. Replace `REPLACE_WITH_PLAY_SIGNING_SHA256` in `assetlinks.json`.
+4. Confirm `package_name` matches the package you submitted.
+5. Redeploy, then verify at `https://mashedstreaks.pages.dev/.well-known/assetlinks.json`.
+
+iOS App Store packaging is a later step (PWABuilder iOS wrapper or Capacitor). This setup is for the web PWA and Google Play.
+
 ## Notes
 
 - The anon key is safe to expose in client-side code — that's how Supabase is designed to be used. Access control is enforced by the Row Level Security policies in the SQL migration, not by hiding the key.

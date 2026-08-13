@@ -3,6 +3,18 @@
 /* Class-based dark mode so Settings can force light/dark independent of OS preference. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Desktop chrome: wide enough, or any landscape (phones included). */
+@custom-variant app-desktop {
+  @media (min-width: 640px), (orientation: landscape) {
+    @slot;
+  }
+}
+@custom-variant app-mobile {
+  @media (max-width: 639px) and (orientation: portrait) {
+    @slot;
+  }
+}
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -105,6 +117,12 @@ body {
 .safe-bottom {
   padding-bottom: constant(safe-area-inset-bottom);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-x {
+  padding-left: calc(var(--safe-x-pad, 0px) + constant(safe-area-inset-left));
+  padding-left: calc(var(--safe-x-pad, 0px) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--safe-x-pad, 0px) + constant(safe-area-inset-right));
+  padding-right: calc(var(--safe-x-pad, 0px) + env(safe-area-inset-right, 0px));
 }
 
 /*

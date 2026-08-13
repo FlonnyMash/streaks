@@ -40,6 +40,7 @@ for auth and data storage, and deployed as a static site to Cloudflare Pages.
 - Every account's data is private, enforced by Postgres Row Level Security
 - Responsive: frosted-glass top nav on desktop, frosted-glass bottom tab bar on mobile
 - Light and dark mode — choose in Settings, or follow system preference
+- Installable PWA (web app manifest + service worker), packaged for Google Play via [PWABuilder](https://www.pwabuilder.com)
 
 ## Tech stack
 
@@ -86,4 +87,4 @@ Deployed to Cloudflare Pages as a static site:
 - Build output directory: `dist`
 - Required environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
-Full details in [`SETUP.md`](SETUP.md).
+Full details in [`SETUP.md`](SETUP.md), including PWABuilder / Google Play packaging.
