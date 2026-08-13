@@ -31,6 +31,7 @@ import {
   isValidPastDate,
   primaryProviderLabel,
 } from '@/lib/profile'
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, validatePasswordStrength } from '@/lib/password'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -211,12 +212,8 @@ export function SettingsPage() {
       setPasswordError('No email on this account.')
       return
     }
-    if (currentPassword.length < 6) {
+    if (!currentPassword) {
       setPasswordError('Enter your current password.')
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -225,6 +222,11 @@ export function SettingsPage() {
     }
     if (newPassword === currentPassword) {
       setPasswordError('Choose a different password from your current one.')
+      return
+    }
+    const weak = validatePasswordStrength(newPassword, { email: user.email })
+    if (weak) {
+      setPasswordError(weak)
       return
     }
 
@@ -509,7 +511,7 @@ export function SettingsPage() {
                     <TextField
                       type="password"
                       autoComplete="new-password"
-                      minLength={6}
+                      minLength={MIN_PASSWORD_LENGTH}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New password"
@@ -518,12 +520,13 @@ export function SettingsPage() {
                     <TextField
                       type="password"
                       autoComplete="new-password"
-                      minLength={6}
+                      minLength={MIN_PASSWORD_LENGTH}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm new password"
                       className="h-10"
                     />
+                    <p className="text-[12px] text-black/40 dark:text-white/40">{PASSWORD_HINT}</p>
                     <div className="flex items-center gap-2">
                       <Button size="sm" loading={passwordSaving} onClick={handleSavePassword}>
                         Save

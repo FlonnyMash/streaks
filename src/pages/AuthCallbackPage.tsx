@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabaseClient'
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, validatePasswordStrength } from '@/lib/password'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Spinner } from '@/components/ui/Spinner'
@@ -27,6 +28,11 @@ export function AuthCallbackPage() {
   async function handleSetPassword(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    const weak = validatePasswordStrength(password, { email: user?.email })
+    if (weak) {
+      setError(weak)
+      return
+    }
     setSaving(true)
     const { error } = await supabase.auth.updateUser({ password })
     setSaving(false)
@@ -52,12 +58,13 @@ export function AuthCallbackPage() {
             <TextField
               label="New password"
               type="password"
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+            <p className="text-[12px] text-black/40 dark:text-white/40 -mt-2">{PASSWORD_HINT}</p>
             {error && <p className="text-[13px] text-accent-red text-center">{error}</p>}
             {done && <p className="text-[13px] text-accent-green text-center">Password updated — redirecting…</p>}
             <Button type="submit" size="lg" loading={saving} className="w-full">

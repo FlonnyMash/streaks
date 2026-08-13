@@ -8,6 +8,7 @@ import { TextField } from '@/components/ui/TextField'
 import { LegalFooterLinks } from '@/components/legal/LegalShared'
 import { isSupabaseConfigured } from '@/lib/supabaseClient'
 import { MIN_AGE_YEARS, isOldEnough, isValidPastDate } from '@/lib/profile'
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, validatePasswordStrength } from '@/lib/password'
 
 function GitHubIcon() {
   return (
@@ -73,6 +74,11 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
       if (!isOldEnough(dateOfBirth)) {
         setError(`You must be at least ${MIN_AGE_YEARS} years old to create an account.`)
+        return
+      }
+      const weak = validatePasswordStrength(password, { email })
+      if (weak) {
+        setError(weak)
         return
       }
     }
@@ -175,11 +181,14 @@ export function AuthForm({ mode }: AuthFormProps) {
               type="password"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               required
-              minLength={6}
+              minLength={mode === 'signup' ? MIN_PASSWORD_LENGTH : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+            {mode === 'signup' && (
+              <p className="text-[12px] text-black/40 dark:text-white/40 -mt-2">{PASSWORD_HINT}</p>
+            )}
             {mode === 'signup' && (
               <TextField
                 label="Date of birth"

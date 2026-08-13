@@ -92,6 +92,15 @@ In **Authentication → URL Configuration**:
 
 Enabled by default — no action needed. Optional: in **Authentication → Providers → Email**, you can toggle "Confirm email" off if you want new users to be signed in immediately without clicking a confirmation link (fine for testing, recommended ON for production).
 
+### Password strength (recommended)
+
+The app already rejects weak passwords client-side (min 8 chars, upper + lower + number + symbol, plus a small common-password blocklist). Mirror the same rules in Supabase so they can't be bypassed via the API:
+
+1. Open **Authentication → Providers → Email** (or **Authentication → Password** / security settings, depending on dashboard layout).
+2. Set **Minimum password length** to `8`.
+3. Under required characters, require **digits, lowercase, uppercase, and symbols**.
+4. If you're on Pro or above, enable **Prevent use of leaked passwords** (HaveIBeenPwned).
+
 ### Custom email templates
 
 Branded HTML lives in [`supabase/templates/`](supabase/templates/). These are versioned source files — they are **not** applied automatically. Paste each file into the matching slot at **Authentication → Email Templates**:
