@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom'
 import { BrandIcon } from '@/components/BrandIcon'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
 
-/** Mobile-only top bar: brand on the left, profile/avatar on the right. Stays fixed while content scrolls. */
+/** Mobile-only top bar: brand on the left, profile/avatar on the right. Scrolls with the page. */
 export function MobileTopBar() {
   return (
-    <header className="sm:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
+    <header className="sm:hidden shrink-0 safe-top bg-[#f2f2f7] dark:bg-black">
       <div className="px-4 pb-2 pt-3 flex items-center justify-between gap-3">
         <Link
           to="/dashboard"
