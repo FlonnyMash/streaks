@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { Flame, Clock } from 'lucide-react'
 import type { Streak, StreakEntry } from '@/lib/types'
-import { computeStreakStats, hasDayTimeGoal, hasPeriodTimeGoal, isScheduledDay } from '@/lib/streakLogic'
+import { computeStreakStats, hasDayTimeGoal, hasPeriodTimeGoal, previewSlots } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { formatMinutes, toDateKey } from '@/lib/utils'
-import { addDays, startOfDay } from 'date-fns'
+import { eachDayOfInterval, endOfWeek, startOfDay, startOfWeek } from 'date-fns'
 
 interface StreakCardProps {
   streak: Streak
@@ -33,9 +33,12 @@ export function StreakCard({ streak, entries }: StreakCardProps) {
   const periodGoal = hasPeriodTimeGoal(streak)
 
   const today = startOfDay(new Date())
-  const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
-
-  const thisWeekMinutes = last7.reduce((sum, date) => sum + (minutesByDate.get(toDateKey(date)) ?? 0), 0)
+  const slots = previewSlots(streak, completedDates, today)
+  const thisWeekDays = eachDayOfInterval({
+    start: startOfWeek(today, { weekStartsOn: 1 }),
+    end: endOfWeek(today, { weekStartsOn: 1 }),
+  })
+  const thisWeekMinutes = thisWeekDays.reduce((sum, date) => sum + (minutesByDate.get(toDateKey(date)) ?? 0), 0)
 
   return (
     <Link
@@ -69,22 +72,26 @@ export function StreakCard({ streak, entries }: StreakCardProps) {
       </div>
 
       <div className="mt-4 flex items-center gap-1.5">
-        {last7.map((date) => {
-          const key = toDateKey(date)
-          const scheduled = isScheduledDay(streak, date)
-          const done = completedDates.has(key)
-          const mins = minutesByDate.get(key) ?? 0
-          const partial = dayGoal && !done && mins > 0
+        {slots.map((slot) => {
+          const mins = slot.date ? (minutesByDate.get(toDateKey(slot.date)) ?? 0) : 0
+          const partial = dayGoal && !slot.completed && mins > 0
           return (
             <div
-              key={key}
-              className="flex-1 h-7 rounded-lg flex items-center justify-center"
+              key={slot.key}
+              className="flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold tracking-wide"
               style={{
-                backgroundColor: done ? accent.hex : partial ? `${accent.hex}40` : scheduled ? `${accent.hex}14` : 'transparent',
-                opacity: scheduled ? 1 : 0.35,
+                backgroundColor: slot.completed
+                  ? accent.hex
+                  : partial
+                    ? `${accent.hex}40`
+                    : slot.scheduled
+                      ? `${accent.hex}14`
+                      : 'transparent',
+                color: slot.completed ? '#fff' : accent.hex,
+                opacity: slot.scheduled ? 1 : 0.35,
               }}
             >
-              {!scheduled && <div className="size-1 rounded-full bg-current opacity-40" />}
+              {slot.label ?? (!slot.scheduled ? <div className="size-1 rounded-full bg-current opacity-40" /> : null)}
             </div>
           )
         })}

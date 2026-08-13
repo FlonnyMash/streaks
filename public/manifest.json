@@ -1,6 +1,6 @@
 {
   "name": "Mashed Personal Dashboard",
-  "short_name": "Mashed",
+  "short_name": "Mashed Planning",
   "description": "Streaks, todos, and timesheet in one personal dashboard.",
   "start_url": "/",
   "display": "standalone",

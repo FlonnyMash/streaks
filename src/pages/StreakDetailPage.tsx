@@ -79,14 +79,14 @@ export function StreakDetailPage() {
   async function handleDelete() {
     if (!id) return
     await deleteStreak.mutateAsync(id)
-    navigate('/')
+    navigate('/streaks')
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/streaks')}
           className="size-10 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
           aria-label="Back"
         >

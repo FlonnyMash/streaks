@@ -17,6 +17,7 @@ import type { Streak, StreakEntry, TimeGoalPeriod, StreakStats } from './types'
 import { toDateKey } from './utils'
 
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+export const WEEKDAY_SHORT_LABELS = WEEKDAY_LABELS.map((label) => label.slice(0, 2))
 
 /** Maps a Mon-first index (0=Mon..6=Sun) to JS `Date#getDay()` (0=Sun..6=Sat). */
 export function weekdayIndexToJsDay(index: number): number {
@@ -35,6 +36,54 @@ export function isScheduledDay(streak: Pick<Streak, 'frequency_type' | 'target_w
   }
   // 'daily' and 'times_per_week' streaks can be completed on any day.
   return true
+}
+
+export interface PreviewSlot {
+  key: string
+  date: Date | null
+  scheduled: boolean
+  completed: boolean
+  label?: string
+}
+
+/** Bars for the streaks-list preview: weekly goal slots, this week's scheduled days, or the last 7 days. */
+export function previewSlots(
+  streak: Pick<Streak, 'frequency_type' | 'target_count' | 'target_weekdays'>,
+  completedDates: Set<string>,
+  today: Date = startOfDay(new Date()),
+): PreviewSlot[] {
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+  const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) })
+
+  if (streak.frequency_type === 'times_per_week') {
+    const target = streak.target_count ?? 1
+    const completedThisWeek = weekDays.filter((d) => completedDates.has(toDateKey(d))).length
+    return Array.from({ length: target }, (_, i) => ({
+      key: `week-slot-${i}`,
+      date: null,
+      scheduled: true,
+      completed: i < completedThisWeek,
+    }))
+  }
+
+  if (streak.frequency_type === 'weekdays') {
+    return weekDays.filter((d) => isScheduledDay(streak, d)).map((date) => {
+      const key = toDateKey(date)
+      return {
+        key,
+        date,
+        scheduled: true,
+        completed: completedDates.has(key),
+        label: WEEKDAY_SHORT_LABELS[jsDayToWeekdayIndex(date.getDay())],
+      }
+    })
+  }
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(today, i - 6)
+    const key = toDateKey(date)
+    return { key, date, scheduled: isScheduledDay(streak, date), completed: completedDates.has(key) }
+  })
 }
 
 function completedDateSet(entries: StreakEntry[]): Set<string> {
