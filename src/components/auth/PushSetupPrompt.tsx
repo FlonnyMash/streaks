@@ -4,10 +4,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { useInvalidateProfile } from '@/hooks/useProfile'
 import { getPasskeyPromptState } from '@/lib/passkeyPrompt'
 import { enablePush, getNotificationPermission, isPushSupported } from '@/lib/push'
+import { isPushPermissionDeniedError } from '@/lib/notificationBlocked'
 import { getPushPromptState, isFirstLogin, setPushPromptState } from '@/lib/pushPrompt'
 import { getErrorMessage } from '@/lib/errors'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
+import { NotificationBlockedModal } from '@/components/pwa/NotificationBlockedModal'
 
 /**
  * First-sign-in soft ask for notifications (explains why).
@@ -21,6 +23,7 @@ export function PushSetupPrompt() {
   const [enabling, setEnabling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [passkeySettled, setPasskeySettled] = useState(false)
+  const [blockedOpen, setBlockedOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -38,7 +41,6 @@ export function PushSetupPrompt() {
       }
     }, 400)
 
-    // If passkey never appears (e.g. already has one / API skip), don’t block forever.
     const timeout = window.setTimeout(() => {
       setPasskeySettled(true)
       window.clearInterval(interval)
@@ -99,60 +101,91 @@ export function PushSetupPrompt() {
       invalidateProfile()
       setOpen(false)
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not enable notifications.'))
-      // Still mark dismissed so we don’t re-spam; they can use Settings.
       setPushPromptState(user.id, 'dismissed')
+      setOpen(false)
+      if (isPushPermissionDeniedError(err)) {
+        setBlockedOpen(true)
+      } else {
+        setError(getErrorMessage(err, 'Could not enable notifications.'))
+      }
+    } finally {
+      setEnabling(false)
+    }
+  }
+
+  async function handleTryAgainFromBlocked() {
+    if (!user) return
+    setEnabling(true)
+    try {
+      await enablePush(user.id)
+      setPushPromptState(user.id, 'completed')
+      invalidateProfile()
+      setBlockedOpen(false)
+    } catch (err) {
+      if (!isPushPermissionDeniedError(err)) {
+        setBlockedOpen(false)
+        setError(getErrorMessage(err, 'Could not enable notifications.'))
+      }
     } finally {
       setEnabling(false)
     }
   }
 
   return (
-    <GlassModal open={open} onClose={dismiss} title="Stay on track with reminders?">
-      <div className="flex flex-col gap-5">
-        <div className="flex justify-center">
-          <div className="size-14 rounded-2xl bg-accent-blue/15 flex items-center justify-center">
-            <Bell className="size-7 text-accent-blue" />
+    <>
+      <GlassModal open={open} onClose={dismiss} title="Stay on track with reminders?">
+        <div className="flex flex-col gap-5">
+          <div className="flex justify-center">
+            <div className="size-14 rounded-2xl bg-accent-blue/15 flex items-center justify-center">
+              <Bell className="size-7 text-accent-blue" />
+            </div>
+          </div>
+
+          <p className="text-[15px] text-black/70 dark:text-white/70 text-center leading-relaxed">
+            We can send optional push reminders so you don’t miss a streak day, overdue tasks, or a
+            timer that’s still running. Only for things you opt into — never ads or marketing.
+          </p>
+
+          <ul className="flex flex-col gap-3">
+            <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
+              <CalendarCheck className="size-4 shrink-0 mt-0.5 text-accent-green" />
+              <span>Streak reminders at the time you choose</span>
+            </li>
+            <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
+              <ListTodo className="size-4 shrink-0 mt-0.5 text-accent-orange" />
+              <span>Todo nudges when something is due or overdue</span>
+            </li>
+            <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
+              <Clock3 className="size-4 shrink-0 mt-0.5 text-accent-indigo" />
+              <span>A heads-up if a timer has been running a long time</span>
+            </li>
+          </ul>
+
+          <p className="text-[12px] text-black/45 dark:text-white/45 text-center">
+            If you say yes, your browser or device will ask for permission next. You can also enable
+            this later in Settings.
+          </p>
+
+          {error && <p className="text-[13px] text-accent-red text-center">{error}</p>}
+
+          <div className="flex flex-col gap-2.5 pt-1">
+            <Button size="lg" className="w-full" loading={enabling} onClick={() => void handleYes()}>
+              <Bell className="size-4" />
+              Yes, enable notifications
+            </Button>
+            <Button variant="ghost" size="md" className="w-full" onClick={dismiss} disabled={enabling}>
+              Later
+            </Button>
           </div>
         </div>
+      </GlassModal>
 
-        <p className="text-[15px] text-black/70 dark:text-white/70 text-center leading-relaxed">
-          We can send optional push reminders so you don’t miss a streak day, overdue tasks, or a
-          timer that’s still running. Only for things you opt into — never ads or marketing.
-        </p>
-
-        <ul className="flex flex-col gap-3">
-          <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
-            <CalendarCheck className="size-4 shrink-0 mt-0.5 text-accent-green" />
-            <span>Streak reminders at the time you choose</span>
-          </li>
-          <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
-            <ListTodo className="size-4 shrink-0 mt-0.5 text-accent-orange" />
-            <span>Todo nudges when something is due or overdue</span>
-          </li>
-          <li className="flex items-start gap-3 text-[14px] text-black/65 dark:text-white/65">
-            <Clock3 className="size-4 shrink-0 mt-0.5 text-accent-indigo" />
-            <span>A heads-up if a timer has been running a long time</span>
-          </li>
-        </ul>
-
-        <p className="text-[12px] text-black/45 dark:text-white/45 text-center">
-          If you say yes, your browser or device will ask for permission next. You can also enable
-          this later in Settings.
-        </p>
-
-        {error && <p className="text-[13px] text-accent-red text-center">{error}</p>}
-
-        <div className="flex flex-col gap-2.5 pt-1">
-          <Button size="lg" className="w-full" loading={enabling} onClick={() => void handleYes()}>
-            <Bell className="size-4" />
-            Yes, enable notifications
-          </Button>
-          <Button variant="ghost" size="md" className="w-full" onClick={dismiss} disabled={enabling}>
-            Later
-          </Button>
-        </div>
-      </div>
-    </GlassModal>
+      <NotificationBlockedModal
+        open={blockedOpen}
+        onClose={() => setBlockedOpen(false)}
+        onTryAgain={() => void handleTryAgainFromBlocked()}
+        tryingAgain={enabling}
+      />
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { PushPermissionDeniedError } from '@/lib/notificationBlocked'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -146,11 +147,8 @@ export async function enablePush(userId: string): Promise<void> {
   }
 
   if (permission !== 'granted') {
-    throw new Error(
-      permission === 'denied'
-        ? 'Notifications are blocked. Enable them in your browser or device settings, then return here.'
-        : 'Notification permission was not granted.',
-    )
+    if (permission === 'denied') throw new PushPermissionDeniedError()
+    throw new Error('Notification permission was not granted.')
   }
 
   await syncPushWithDevice(userId)

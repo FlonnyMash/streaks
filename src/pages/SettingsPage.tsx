@@ -44,15 +44,21 @@ import { cn } from '@/lib/utils'
 import {
   disablePush,
   enablePush,
-  getLocalTimezone,
   getNotificationPermission,
   isPushSupported,
 } from '@/lib/push'
+import {
+  getNotificationBlockedGuidance,
+  isPushPermissionDeniedError,
+} from '@/lib/notificationBlocked'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Avatar } from '@/components/ui/Avatar'
+import { Switch } from '@/components/ui/Switch'
 import { LegalPickerModal } from '@/components/legal/LegalPickerModal'
 import { AddToHomeScreenSettings } from '@/components/pwa/AddToHomeScreen'
+import { NotificationBlockedModal } from '@/components/pwa/NotificationBlockedModal'
+import { NotificationInfoModal } from '@/components/pwa/NotificationInfoModal'
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
@@ -298,14 +304,17 @@ export function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [legalOpen, setLegalOpen] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
-  const [pushError, setPushError] = useState<string | null>(null)
-  const [pushMsg, setPushMsg] = useState<string | null>(null)
   const [permissionTick, setPermissionTick] = useState(0)
+  const [blockedOpen, setBlockedOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const [infoTitle, setInfoTitle] = useState('')
+  const [infoBody, setInfoBody] = useState('')
   const pushSupported = isPushSupported()
-  // Re-read when tick changes (after allow / focus).
   void permissionTick
   const pushPermission = getNotificationPermission()
   const vapidConfigured = Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY)
+  const blockedGuidance = getNotificationBlockedGuidance()
+  const pushOn = pushPermission === 'granted' && Boolean(profile?.push_enabled)
 
   useEffect(() => {
     function refreshPermission() {
@@ -319,35 +328,79 @@ export function SettingsPage() {
     }
   }, [])
 
-  async function handleAllowNotifications() {
-    if (!user) return
-    setPushError(null)
-    setPushMsg(null)
+  function showInfo(title: string, body: string) {
+    setInfoTitle(title)
+    setInfoBody(body)
+    setInfoOpen(true)
+  }
+
+  async function handlePushSwitch(next: boolean) {
+    if (!user || pushBusy) return
+
+    if (!vapidConfigured) {
+      showInfo(
+        'Notifications unavailable',
+        'Push isn’t configured for this build. Add VITE_VAPID_PUBLIC_KEY and restart or redeploy.',
+      )
+      return
+    }
+    if (!pushSupported) {
+      showInfo(
+        'Notifications unavailable',
+        'Push isn’t available in this browser. Use Chrome, Edge, or Firefox on HTTPS (or localhost), or install the app to your home screen on iOS.',
+      )
+      return
+    }
+
+    if (next) {
+      if (getNotificationPermission() === 'denied') {
+        setBlockedOpen(true)
+        return
+      }
+      setPushBusy(true)
+      try {
+        await enablePush(user.id)
+        setPermissionTick((n) => n + 1)
+        invalidateProfile()
+      } catch (err) {
+        if (isPushPermissionDeniedError(err)) {
+          setBlockedOpen(true)
+        } else {
+          showInfo('Couldn’t enable notifications', getErrorMessage(err, 'Something went wrong.'))
+        }
+        setPermissionTick((n) => n + 1)
+      } finally {
+        setPushBusy(false)
+      }
+      return
+    }
+
     setPushBusy(true)
     try {
-      await enablePush(user.id)
-      setPushMsg('Notifications are allowed on this device.')
+      await disablePush(user.id)
       setPermissionTick((n) => n + 1)
       invalidateProfile()
     } catch (err) {
-      setPushError(getErrorMessage(err, 'Could not enable notifications.'))
-      setPermissionTick((n) => n + 1)
+      showInfo('Couldn’t update notifications', getErrorMessage(err, 'Something went wrong.'))
     } finally {
       setPushBusy(false)
     }
   }
 
-  async function handleStopThisDevice() {
+  async function handleTryAgainFromBlocked() {
     if (!user) return
-    setPushError(null)
-    setPushMsg(null)
     setPushBusy(true)
     try {
-      await disablePush(user.id)
-      setPushMsg('This device will no longer receive pushes until you allow notifications again.')
+      await enablePush(user.id)
+      setBlockedOpen(false)
+      setPermissionTick((n) => n + 1)
       invalidateProfile()
     } catch (err) {
-      setPushError(getErrorMessage(err, 'Could not update notifications.'))
+      if (!isPushPermissionDeniedError(err)) {
+        setBlockedOpen(false)
+        showInfo('Couldn’t enable notifications', getErrorMessage(err, 'Something went wrong.'))
+      }
+      setPermissionTick((n) => n + 1)
     } finally {
       setPushBusy(false)
     }
@@ -665,82 +718,38 @@ export function SettingsPage() {
       </div>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
             <Bell className="size-5 text-accent-blue" />
           </div>
-          <div className="min-w-0">
-            <p className="font-medium">Notifications</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45">
-              Enable device notifications here so streak, todo, and timer reminders can be delivered.
-            </p>
-          </div>
+          <Switch
+            checked={pushOn}
+            disabled={pushBusy}
+            onChange={(checked) => void handlePushSwitch(checked)}
+            label="Notifications"
+            description={
+              pushOn
+                ? 'Reminders for streaks, todos, and long timers'
+                : pushPermission === 'denied'
+                  ? `Blocked in ${blockedGuidance.surfaceLabel} settings`
+                  : 'Turn on for streak, todo, and timer reminders'
+            }
+          />
         </div>
 
-        {!vapidConfigured ? (
-          <p className="text-[13px] text-accent-orange">
-            Push isn’t configured for this build (missing <code className="text-[12px]">VITE_VAPID_PUBLIC_KEY</code>
-            ). Add it to your env and restart the dev server / redeploy.
-          </p>
-        ) : !pushSupported ? (
-          <p className="text-[13px] text-black/50 dark:text-white/50">
-            Push isn’t available in this browser. Use Chrome/Edge/Firefox on HTTPS (or localhost), or install
-            the app to your home screen on iOS, then reopen Settings.
-          </p>
-        ) : (
-          <>
-            <div className="rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-3">
-              <p className="text-[14px] font-medium">
-                {pushPermission === 'granted'
-                  ? 'Allowed on this device'
-                  : pushPermission === 'denied'
-                    ? 'Blocked on this device'
-                    : 'Not enabled yet'}
-              </p>
-              <p className="text-[12px] text-black/45 dark:text-white/45 mt-0.5">
-                {pushPermission === 'granted'
-                  ? `Reminders use your current local timezone (${getLocalTimezone()}). It updates when you open the app after traveling.`
-                  : pushPermission === 'denied'
-                    ? 'Enable notifications in your browser or system settings for this site, then tap the button below.'
-                    : 'Tap the button below — your browser will ask for permission.'}
-              </p>
-            </div>
-
-            {pushPermission !== 'granted' && (
-              <Button
-                className="w-full mt-3"
-                size="md"
-                loading={pushBusy}
-                onClick={() => void handleAllowNotifications()}
-              >
-                {pushPermission === 'denied' ? 'Check again after enabling in system settings' : 'Enable notifications'}
-              </Button>
-            )}
-            {pushPermission === 'granted' && (
-              <Button
-                className="w-full mt-3"
-                variant="secondary"
-                size="md"
-                loading={pushBusy}
-                onClick={() => void handleStopThisDevice()}
-              >
-                Stop pushes on this device
-              </Button>
-            )}
-            {pushPermission === 'denied' && (
-              <p className="text-[13px] text-accent-orange mt-3">
-                Websites can’t open system settings for you. After you allow notifications there, reopen
-                the app and tap the button above.
-              </p>
-            )}
-            <p className="text-[12px] text-black/40 dark:text-white/40 mt-3">
-              After enabling here, turn on “Notify me” on individual streaks or todos. We don’t send marketing
-              pushes.
-            </p>
-            {pushMsg && <p className="text-[13px] text-accent-green mt-2">{pushMsg}</p>}
-            {pushError && <p className="text-[13px] text-accent-red mt-2">{pushError}</p>}
-          </>
-        )}
+        <NotificationBlockedModal
+          open={blockedOpen}
+          onClose={() => setBlockedOpen(false)}
+          onTryAgain={() => void handleTryAgainFromBlocked()}
+          tryingAgain={pushBusy}
+          guidance={blockedGuidance}
+        />
+        <NotificationInfoModal
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          title={infoTitle}
+          body={infoBody}
+        />
       </div>
 
       <div className="glass-panel rounded-[24px] p-5 mb-4">
