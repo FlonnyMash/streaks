@@ -9,6 +9,7 @@ export interface TodoTimePrompt {
   todoId: string
   workspaceId: string | null
   title: string
+  notes: string | null
   days: DaySeconds[]
 }
 
@@ -63,6 +64,7 @@ export function useCompleteTodoWithTime() {
           todoId: todo.id,
           workspaceId: todo.workspace_id,
           title: todo.title,
+          notes: todo.notes,
           days,
         })
         void flush(todo.id)

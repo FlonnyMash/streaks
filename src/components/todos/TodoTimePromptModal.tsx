@@ -19,6 +19,12 @@ function dayLabel(dateKey: string): string {
   return format(date, 'EEE, MMM d')
 }
 
+/** Timesheet note: always mark origin as todo, append task notes when present. */
+function noteFromTodo(notes: string | null | undefined): string {
+  const trimmed = notes?.trim()
+  return trimmed ? `From todo\n${trimmed}` : 'From todo'
+}
+
 export function TodoTimePromptModal() {
   const { prompt, close } = useTodoTimePrompt()
   const { clearTimer } = useTodoTimer()
@@ -61,7 +67,7 @@ export function TodoTimePromptModal() {
           start_time: null,
           end_time: null,
           topic: prompt.title,
-          note: null,
+          note: noteFromTodo(prompt.notes),
           mood: null,
         })
       }
