@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { supabase } from '@/lib/supabaseClient'
 import type { Mood, StreakEntry } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
+import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { isOnline } from '@/lib/offline/network'
 
 function entriesKey(streakId: string) {
   return ['streak-entries', streakId] as const
@@ -27,8 +29,6 @@ export function useStreakEntries(streakId: string | undefined) {
 /** Fetches entries for many streaks at once, used on the dashboard. */
 export function useAllStreakEntries(streakIds: string[]) {
   return useQuery({
-    // Sort only the streak IDs (order-independent cache key) — keep the 'streak-entries', 'all'
-    // prefix intact so ALL_ENTRIES_KEY's partial-match filter below can find this query.
     queryKey: ['streak-entries', 'all', ...[...streakIds].sort()],
     enabled: streakIds.length > 0,
     queryFn: async (): Promise<StreakEntry[]> => {
@@ -39,16 +39,33 @@ export function useAllStreakEntries(streakIds: string[]) {
   })
 }
 
+function findEntry(
+  queryClient: ReturnType<typeof useQueryClient>,
+  streakId: string,
+  dateKey: string,
+): StreakEntry | undefined {
+  const detail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
+  const fromDetail = detail?.find((e) => e.streak_id === streakId && e.entry_date === dateKey)
+  if (fromDetail) return fromDetail
+  for (const [, data] of queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)) {
+    const hit = data?.find((e) => e.streak_id === streakId && e.entry_date === dateKey)
+    if (hit) return hit
+  }
+  return undefined
+}
+
 function patchToggle(
   entries: StreakEntry[],
   streakId: string,
   dateKey: string,
   completed: boolean,
   userId: string,
+  clientId: string,
 ): StreakEntry[] {
   if (completed) {
+    const now = new Date().toISOString()
     const optimisticEntry: StreakEntry = {
-      id: `optimistic-${streakId}-${dateKey}`,
+      id: clientId,
       streak_id: streakId,
       user_id: userId,
       entry_date: dateKey,
@@ -56,12 +73,13 @@ function patchToggle(
       note: null,
       mood: null,
       minutes: null,
-      created_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
     }
     const existingIdx = entries.findIndex((e) => e.streak_id === streakId && e.entry_date === dateKey)
     if (existingIdx >= 0) {
       const next = [...entries]
-      next[existingIdx] = optimisticEntry
+      next[existingIdx] = { ...entries[existingIdx], ...optimisticEntry, id: entries[existingIdx].id }
       return next
     }
     return [...entries, optimisticEntry]
@@ -72,6 +90,7 @@ function patchToggle(
 interface ToggleContext {
   previousDetail: StreakEntry[] | undefined
   previousAll: Array<[QueryKey, StreakEntry[] | undefined]>
+  clientId: string
 }
 
 export function useToggleStreakEntry(streakId: string) {
@@ -79,43 +98,77 @@ export function useToggleStreakEntry(streakId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ dateKey, completed }: { dateKey: string; completed: boolean }) => {
+    networkMode: 'always',
+    mutationFn: async ({
+      dateKey,
+      completed,
+      clientId,
+    }: {
+      dateKey: string
+      completed: boolean
+      clientId?: string
+    }) => {
       if (!user) throw new Error('Not signed in')
-      if (completed) {
-        const { error } = await supabase
-          .from('streak_entries')
-          .upsert(
-            { streak_id: streakId, user_id: user.id, entry_date: dateKey, completed: true },
-            { onConflict: 'streak_id,entry_date' },
-          )
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('streak_entries')
-          .delete()
-          .eq('streak_id', streakId)
-          .eq('entry_date', dateKey)
-        if (error) throw error
-      }
+      const existing = findEntry(queryClient, streakId, dateKey)
+      const id = clientId ?? existing?.id ?? crypto.randomUUID()
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: {
+          kind: 'streak_entry_toggle',
+          streakId,
+          dateKey,
+          completed,
+          clientId: completed ? id : undefined,
+        },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        run: async () => {
+          if (completed) {
+            const { error } = await supabase.from('streak_entries').upsert(
+              {
+                id,
+                streak_id: streakId,
+                user_id: user.id,
+                entry_date: dateKey,
+                completed: true,
+              },
+              { onConflict: 'streak_id,entry_date' },
+            )
+            if (error) throw error
+          } else {
+            const { error } = await supabase
+              .from('streak_entries')
+              .delete()
+              .eq('streak_id', streakId)
+              .eq('entry_date', dateKey)
+            if (error) throw error
+          }
+        },
+      })
     },
-    onMutate: async ({ dateKey, completed }): Promise<ToggleContext | undefined> => {
+    onMutate: async (vars): Promise<ToggleContext | undefined> => {
       if (!user) return undefined
+      const { dateKey, completed } = vars
       await queryClient.cancelQueries({ queryKey: entriesKey(streakId) })
       await queryClient.cancelQueries(ALL_ENTRIES_KEY)
 
       const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
       const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
+      const existing = findEntry(queryClient, streakId, dateKey)
+      const clientId = vars.clientId ?? existing?.id ?? crypto.randomUUID()
+      vars.clientId = clientId
 
       queryClient.setQueryData<StreakEntry[]>(entriesKey(streakId), (old) =>
-        patchToggle(old ?? [], streakId, dateKey, completed, user.id),
+        patchToggle(old ?? [], streakId, dateKey, completed, user.id, clientId),
       )
       queryClient.setQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY, (old) =>
-        old ? patchToggle(old, streakId, dateKey, completed, user.id) : old,
+        old ? patchToggle(old, streakId, dateKey, completed, user.id, clientId) : old,
       )
 
-      return { previousDetail, previousAll }
+      return { previousDetail, previousAll, clientId }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (!context) return
       queryClient.setQueryData(entriesKey(streakId), context.previousDetail)
       for (const [key, data] of context.previousAll) {
@@ -123,6 +176,7 @@ export function useToggleStreakEntry(streakId: string) {
       }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -136,15 +190,17 @@ function patchMinutes(
   minutes: number,
   completed: boolean,
   userId: string,
+  clientId: string,
 ): StreakEntry[] {
+  const now = new Date().toISOString()
   const existingIdx = entries.findIndex((e) => e.streak_id === streakId && e.entry_date === dateKey)
   if (existingIdx >= 0) {
     const next = [...entries]
-    next[existingIdx] = { ...next[existingIdx], minutes, completed }
+    next[existingIdx] = { ...next[existingIdx], minutes, completed, updated_at: now }
     return next
   }
   const optimisticEntry: StreakEntry = {
-    id: `optimistic-${streakId}-${dateKey}`,
+    id: clientId,
     streak_id: streakId,
     user_id: userId,
     entry_date: dateKey,
@@ -152,7 +208,8 @@ function patchMinutes(
     note: null,
     mood: null,
     minutes,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   }
   return [...entries, optimisticEntry]
 }
@@ -160,6 +217,7 @@ function patchMinutes(
 interface MinutesContext {
   previousDetail: StreakEntry[] | undefined
   previousAll: Array<[QueryKey, StreakEntry[] | undefined]>
+  clientId: string
 }
 
 /**
@@ -173,34 +231,72 @@ export function useLogMinutes(streakId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ dateKey, minutes, completed }: { dateKey: string; minutes: number; completed: boolean }) => {
+    networkMode: 'always',
+    mutationFn: async ({
+      dateKey,
+      minutes,
+      completed,
+      clientId,
+    }: {
+      dateKey: string
+      minutes: number
+      completed: boolean
+      clientId?: string
+    }) => {
       if (!user) throw new Error('Not signed in')
-      const { error } = await supabase
-        .from('streak_entries')
-        .upsert(
-          { streak_id: streakId, user_id: user.id, entry_date: dateKey, minutes, completed },
-          { onConflict: 'streak_id,entry_date' },
-        )
-      if (error) throw error
+      const existing = findEntry(queryClient, streakId, dateKey)
+      const id = clientId ?? existing?.id ?? crypto.randomUUID()
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: {
+          kind: 'streak_entry_minutes',
+          streakId,
+          dateKey,
+          minutes,
+          completed,
+          clientId: id,
+        },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        run: async () => {
+          const { error } = await supabase.from('streak_entries').upsert(
+            {
+              id,
+              streak_id: streakId,
+              user_id: user.id,
+              entry_date: dateKey,
+              minutes,
+              completed,
+            },
+            { onConflict: 'streak_id,entry_date' },
+          )
+          if (error) throw error
+        },
+      })
     },
-    onMutate: async ({ dateKey, minutes, completed }): Promise<MinutesContext | undefined> => {
+    onMutate: async (vars): Promise<MinutesContext | undefined> => {
       if (!user) return undefined
+      const { dateKey, minutes, completed } = vars
       await queryClient.cancelQueries({ queryKey: entriesKey(streakId) })
       await queryClient.cancelQueries(ALL_ENTRIES_KEY)
 
       const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
       const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
+      const existing = findEntry(queryClient, streakId, dateKey)
+      const clientId = vars.clientId ?? existing?.id ?? crypto.randomUUID()
+      vars.clientId = clientId
 
       queryClient.setQueryData<StreakEntry[]>(entriesKey(streakId), (old) =>
-        patchMinutes(old ?? [], streakId, dateKey, minutes, completed, user.id),
+        patchMinutes(old ?? [], streakId, dateKey, minutes, completed, user.id, clientId),
       )
       queryClient.setQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY, (old) =>
-        old ? patchMinutes(old, streakId, dateKey, minutes, completed, user.id) : old,
+        old ? patchMinutes(old, streakId, dateKey, minutes, completed, user.id, clientId) : old,
       )
 
-      return { previousDetail, previousAll }
+      return { previousDetail, previousAll, clientId }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (!context) return
       queryClient.setQueryData(entriesKey(streakId), context.previousDetail)
       for (const [key, data] of context.previousAll) {
@@ -208,6 +304,7 @@ export function useLogMinutes(streakId: string) {
       }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -221,7 +318,10 @@ function patchDetails(
   note: string | null,
   mood: Mood | null,
 ): StreakEntry[] {
-  return entries.map((e) => (e.streak_id === streakId && e.entry_date === dateKey ? { ...e, note, mood } : e))
+  const now = new Date().toISOString()
+  return entries.map((e) =>
+    e.streak_id === streakId && e.entry_date === dateKey ? { ...e, note, mood, updated_at: now } : e,
+  )
 }
 
 interface DetailsContext {
@@ -230,16 +330,27 @@ interface DetailsContext {
 }
 
 export function useUpdateEntryDetails(streakId: string) {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async ({ dateKey, note, mood }: { dateKey: string; note: string | null; mood: Mood | null }) => {
-      const { error } = await supabase
-        .from('streak_entries')
-        .update({ note, mood })
-        .eq('streak_id', streakId)
-        .eq('entry_date', dateKey)
-      if (error) throw error
+      if (!user) throw new Error('Not signed in')
+      const existing = findEntry(queryClient, streakId, dateKey)
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'streak_entry_details', streakId, dateKey, note, mood },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        run: async () => {
+          const { error } = await supabase
+            .from('streak_entries')
+            .update({ note, mood })
+            .eq('streak_id', streakId)
+            .eq('entry_date', dateKey)
+          if (error) throw error
+        },
+      })
     },
     onMutate: async ({ dateKey, note, mood }): Promise<DetailsContext> => {
       await queryClient.cancelQueries({ queryKey: entriesKey(streakId) })
@@ -257,7 +368,8 @@ export function useUpdateEntryDetails(streakId: string) {
 
       return { previousDetail, previousAll }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (!context) return
       queryClient.setQueryData(entriesKey(streakId), context.previousDetail)
       for (const [key, data] of context.previousAll) {
@@ -265,6 +377,7 @@ export function useUpdateEntryDetails(streakId: string) {
       }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },

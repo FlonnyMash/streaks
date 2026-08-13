@@ -33,6 +33,7 @@ export interface Streak {
   notify_time: string | null
   archived: boolean
   created_at: string
+  updated_at: string
 }
 
 export interface StreakInput {
@@ -61,6 +62,7 @@ export interface StreakEntry {
   mood: Mood | null
   minutes: number | null
   created_at: string
+  updated_at: string
 }
 
 /** 1 = low, 2 = medium, 3 = high */
@@ -85,6 +87,7 @@ export interface Todo {
   archived: boolean
   completed_at: string | null
   created_at: string
+  updated_at: string
   /** Optional timesheet workspace this task logs time to. */
   workspace_id: string | null
   /** Total minutes tracked when the task was completed (from the todo timer). */
@@ -139,6 +142,7 @@ export interface TimesheetEntry {
   /** Optional 1–3 mood from clock-out ("How was your day?"). */
   mood: Mood | null
   created_at: string
+  updated_at: string
 }
 
 export interface TimesheetEntryInput {

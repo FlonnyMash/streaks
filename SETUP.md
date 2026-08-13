@@ -245,6 +245,17 @@ Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/
 
 iOS App Store packaging is a later step (PWABuilder iOS wrapper or Capacitor). This setup is for the web PWA and Google Play.
 
+### Offline outbox (Background Sync)
+
+Failed or offline writes for **streaks**, **streak entries**, **todos**, and **timesheet entries** are queued in IndexedDB (`src/lib/offline/`) and replayed when connectivity returns.
+
+- The page owns flush + Supabase auth; the service worker only wakes clients via the Background Sync tag `outbox-flush` (`OUTBOX_FLUSH` message).
+- Conflict detection uses `updated_at` on those tables (migration `0024_updated_at_sync.sql`). When the same row changed elsewhere, the UI prompts **Keep local** or **Use server**.
+- Domain React Query caches are persisted (IndexedDB) so lists remain editable after a reload while offline.
+- Live timers and workspace CRUD are not queued.
+
+Apply the migration with `supabase db push` (or your usual migrate flow) before relying on conflict detection in production.
+
 ## 10. Web Push (reminders)
 
 Push uses the Web Push protocol (VAPID) and the `push-dispatch` Edge Function. Users allow

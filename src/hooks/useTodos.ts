@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Todo, TodoInput, TodoTopic } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
-import { normalizeTopicName } from '@/lib/todoLogic'
+import { syncTodoTopics } from '@/lib/todoTopics'
+import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { isOnline } from '@/lib/offline/network'
 
 const TODOS_KEY = ['todos'] as const
 const TODO_TOPICS_KEY = ['todo_topics'] as const
@@ -38,72 +40,12 @@ function mapTodo(row: TodoRow): Todo {
     archived: row.archived,
     completed_at: row.completed_at,
     created_at: row.created_at,
+    updated_at: row.updated_at ?? row.created_at,
     workspace_id: row.workspace_id ?? null,
     tracked_minutes: row.tracked_minutes ?? null,
     notify_enabled: Boolean(row.notify_enabled),
     topics,
   }
-}
-
-async function fetchUserTopics(userId: string): Promise<TodoTopic[]> {
-  const { data, error } = await supabase.from('todo_topics').select('*').eq('user_id', userId)
-  if (error) throw error
-  return (data ?? []) as TodoTopic[]
-}
-
-async function resolveTopicIds(userId: string, topicNames: string[]): Promise<string[]> {
-  const names = [...new Set(topicNames.map(normalizeTopicName).filter(Boolean))]
-  if (names.length === 0) return []
-
-  const existing = await fetchUserTopics(userId)
-  const byLower = new Map(existing.map((t) => [t.name.toLowerCase(), t]))
-  const ids: string[] = []
-
-  for (const name of names) {
-    const found = byLower.get(name.toLowerCase())
-    if (found) {
-      ids.push(found.id)
-      continue
-    }
-
-    const { data, error } = await supabase
-      .from('todo_topics')
-      .insert({ user_id: userId, name })
-      .select()
-      .single()
-
-    if (error) {
-      if (error.code === '23505') {
-        const retry = await fetchUserTopics(userId)
-        const match = retry.find((t) => t.name.toLowerCase() === name.toLowerCase())
-        if (!match) throw error
-        byLower.set(match.name.toLowerCase(), match)
-        ids.push(match.id)
-        continue
-      }
-      throw error
-    }
-
-    const created = data as TodoTopic
-    byLower.set(created.name.toLowerCase(), created)
-    ids.push(created.id)
-  }
-
-  return ids
-}
-
-async function syncTodoTopics(userId: string, todoId: string, topicNames: string[]): Promise<void> {
-  const topicIds = await resolveTopicIds(userId, topicNames)
-
-  const { error: deleteError } = await supabase.from('todo_topic_links').delete().eq('todo_id', todoId)
-  if (deleteError) throw deleteError
-
-  if (topicIds.length === 0) return
-
-  const { error: insertError } = await supabase
-    .from('todo_topic_links')
-    .insert(topicIds.map((topic_id) => ({ todo_id: todoId, topic_id })))
-  if (insertError) throw insertError
 }
 
 export function useTodos() {
@@ -145,25 +87,83 @@ export function useTodoTopics() {
 export function useCreateTodo() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async (input: TodoInput) => {
       if (!user) throw new Error('Not signed in')
-      const { topicNames, ...fields } = input
-      const existing = queryClient.getQueryData<Todo[]>([...TODOS_KEY, user.id]) ?? []
+      const existing = queryClient.getQueryData<Todo[]>(key) ?? []
       const maxPosition = existing.reduce((max, t) => Math.max(max, t.position), 0)
-      const { data, error } = await supabase
-        .from('todos')
-        .insert({ ...fields, user_id: user.id, position: maxPosition + 1 })
-        .select()
-        .single()
-      if (error) throw error
-      const todo = data as Omit<Todo, 'topics'>
-      await syncTodoTopics(user.id, todo.id, topicNames ?? [])
-      return todo
+      const position = maxPosition + 1
+      const clientId = crypto.randomUUID()
+      const now = new Date().toISOString()
+      const { topicNames, ...fields } = input
+
+      const offlineTodo: Omit<Todo, 'topics'> & { topics: Todo['topics'] } = {
+        id: clientId,
+        user_id: user.id,
+        title: fields.title,
+        notes: fields.notes,
+        done: false,
+        due_date: fields.due_date,
+        importance: fields.importance,
+        position,
+        archived: false,
+        completed_at: null,
+        created_at: now,
+        updated_at: now,
+        workspace_id: fields.workspace_id ?? null,
+        tracked_minutes: null,
+        notify_enabled: Boolean(fields.notify_enabled),
+        topics: (topicNames ?? []).map((name) => ({
+          id: `local-topic-${name}`,
+          user_id: user.id,
+          name,
+          created_at: now,
+        })),
+      }
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'todo_create', input, clientId, position },
+        offlineResult: offlineTodo,
+        run: async () => {
+          const { data, error } = await supabase
+            .from('todos')
+            .insert({ ...fields, id: clientId, user_id: user.id, position })
+            .select()
+            .single()
+          if (error) throw error
+          const todo = data as Omit<Todo, 'topics'>
+          await syncTodoTopics(user.id, todo.id, topicNames ?? [])
+          return { ...todo, topics: offlineTodo.topics }
+        },
+      })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...TODOS_KEY, user?.id] })
+    onMutate: async () => {
+      if (!user) return undefined
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Todo[]>(key)
+      return { previous }
+    },
+    onSuccess: (todo) => {
+      if (!user) return
+      queryClient.setQueryData<Todo[]>(key, (old) => {
+        if (!old) return [todo as Todo]
+        if (old.some((t) => t.id === todo.id)) {
+          return old.map((t) => (t.id === todo.id ? (todo as Todo) : t))
+        }
+        return [...old, todo as Todo]
+      })
+    },
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+    },
+    onSettled: () => {
+      if (!isOnline()) return
+      queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: [...TODO_TOPICS_KEY, user?.id] })
     },
   })
@@ -172,21 +172,63 @@ export function useCreateTodo() {
 export function useUpdateTodo() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async ({ id, input }: { id: string; input: Partial<TodoInput> }) => {
       if (!user) throw new Error('Not signed in')
+      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
       const { topicNames, ...fields } = input
-      if (Object.keys(fields).length > 0) {
-        const { error } = await supabase.from('todos').update(fields).eq('id', id)
-        if (error) throw error
-      }
-      if (topicNames !== undefined) {
-        await syncTodoTopics(user.id, id, topicNames)
-      }
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'todo_update', id, input },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        offlineResult: undefined as void,
+        run: async () => {
+          if (Object.keys(fields).length > 0) {
+            const { error } = await supabase.from('todos').update(fields).eq('id', id)
+            if (error) throw error
+          }
+          if (topicNames !== undefined) {
+            await syncTodoTopics(user.id, id, topicNames)
+          }
+        },
+      })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...TODOS_KEY, user?.id] })
+    onMutate: async ({ id, input }) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Todo[]>(key)
+      const { topicNames, ...fields } = input
+      queryClient.setQueryData<Todo[]>(key, (old) =>
+        old?.map((t) => {
+          if (t.id !== id) return t
+          return {
+            ...t,
+            ...fields,
+            topics:
+              topicNames !== undefined
+                ? topicNames.map((name) => ({
+                    id: `local-topic-${name}`,
+                    user_id: t.user_id,
+                    name,
+                    created_at: t.created_at,
+                  }))
+                : t.topics,
+            updated_at: new Date().toISOString(),
+          }
+        }),
+      )
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+    },
+    onSettled: () => {
+      if (!isOnline()) return
+      queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: [...TODO_TOPICS_KEY, user?.id] })
     },
   })
@@ -195,14 +237,37 @@ export function useUpdateTodo() {
 export function useDeleteTodo() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('todos').delete().eq('id', id)
-      if (error) throw error
+      if (!user) throw new Error('Not signed in')
+      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'todo_delete', id },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        offlineResult: undefined as void,
+        run: async () => {
+          const { error } = await supabase.from('todos').delete().eq('id', id)
+          if (error) throw error
+        },
+      })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...TODOS_KEY, user?.id] })
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Todo[]>(key)
+      queryClient.setQueryData<Todo[]>(key, (old) => old?.filter((t) => t.id !== id))
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+    },
+    onSettled: () => {
+      if (!isOnline()) return
+      queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }
@@ -217,6 +282,7 @@ export function useToggleTodo() {
   const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async ({
       id,
       done,
@@ -224,18 +290,38 @@ export function useToggleTodo() {
     }: {
       id: string
       done: boolean
-      /** Set when completing with a timer; cleared when reopening. */
       tracked_minutes?: number | null
     }) => {
-      const payload: { done: boolean; completed_at: string | null; tracked_minutes?: number | null } = {
+      if (!user) throw new Error('Not signed in')
+      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
+      const completed_at = done ? new Date().toISOString() : null
+      const payload: {
+        done: boolean
+        completed_at: string | null
+        tracked_minutes?: number | null
+      } = {
         done,
-        completed_at: done ? new Date().toISOString() : null,
+        completed_at,
       }
       if (tracked_minutes !== undefined) payload.tracked_minutes = tracked_minutes
       else if (!done) payload.tracked_minutes = null
 
-      const { error } = await supabase.from('todos').update(payload).eq('id', id)
-      if (error) throw error
+      return runOrEnqueue({
+        userId: user.id,
+        payload: {
+          kind: 'todo_toggle',
+          id,
+          done,
+          tracked_minutes: payload.tracked_minutes,
+          completed_at,
+        },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        offlineResult: undefined as void,
+        run: async () => {
+          const { error } = await supabase.from('todos').update(payload).eq('id', id)
+          if (error) throw error
+        },
+      })
     },
     onMutate: async ({ id, done, tracked_minutes }): Promise<ToggleContext> => {
       await queryClient.cancelQueries({ queryKey: key })
@@ -250,15 +336,18 @@ export function useToggleTodo() {
             done,
             completed_at: done ? new Date().toISOString() : null,
             tracked_minutes: nextMinutes ?? null,
+            updated_at: new Date().toISOString(),
           }
         }),
       )
       return { previous }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -271,13 +360,29 @@ export function useSwapTodoPositions() {
   const key = [...TODOS_KEY, user?.id]
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async ({ a, b }: { a: Todo; b: Todo }) => {
-      const [{ error: errA }, { error: errB }] = await Promise.all([
-        supabase.from('todos').update({ position: b.position }).eq('id', a.id),
-        supabase.from('todos').update({ position: a.position }).eq('id', b.id),
-      ])
-      if (errA) throw errA
-      if (errB) throw errB
+      if (!user) throw new Error('Not signed in')
+      return runOrEnqueue({
+        userId: user.id,
+        payload: {
+          kind: 'todo_swap',
+          aId: a.id,
+          bId: b.id,
+          aPosition: a.position,
+          bPosition: b.position,
+        },
+        expectedUpdatedAt: a.updated_at,
+        offlineResult: undefined as void,
+        run: async () => {
+          const [{ error: errA }, { error: errB }] = await Promise.all([
+            supabase.from('todos').update({ position: b.position }).eq('id', a.id),
+            supabase.from('todos').update({ position: a.position }).eq('id', b.id),
+          ])
+          if (errA) throw errA
+          if (errB) throw errB
+        },
+      })
     },
     onMutate: async ({ a, b }): Promise<ToggleContext> => {
       await queryClient.cancelQueries({ queryKey: key })
@@ -291,10 +396,12 @@ export function useSwapTodoPositions() {
       )
       return { previous }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })

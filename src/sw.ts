@@ -94,3 +94,17 @@ self.addEventListener('notificationclick', (event) => {
     })(),
   )
 })
+
+/** Wake open clients to flush the IndexedDB mutation outbox (auth stays in the page). */
+self.addEventListener('sync', (event) => {
+  const syncEvent = event as Event & { tag?: string; waitUntil: (p: Promise<unknown>) => void }
+  if (syncEvent.tag !== 'outbox-flush') return
+  syncEvent.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of allClients) {
+        client.postMessage({ type: 'OUTBOX_FLUSH' })
+      }
+    })(),
+  )
+})

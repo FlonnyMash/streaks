@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { supabase } from '@/lib/supabaseClient'
 import type { TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
+import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { isOnline } from '@/lib/offline/network'
 
 function entriesKey(workspaceId: string) {
   return ['timesheet-entries', workspaceId] as const
@@ -40,6 +42,7 @@ export function useAllTimesheetEntries(workspaceIds: string[]) {
 interface EntryContext {
   previousDetail: TimesheetEntry[] | undefined
   previousAll: Array<[QueryKey, TimesheetEntry[] | undefined]>
+  clientId: string
 }
 
 export function useCreateTimesheetEntry(workspaceId: string) {
@@ -47,15 +50,52 @@ export function useCreateTimesheetEntry(workspaceId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: TimesheetEntryInput) => {
+    networkMode: 'always',
+    mutationFn: async (input: TimesheetEntryInput & { clientId?: string }) => {
       if (!user) throw new Error('Not signed in')
-      const { data, error } = await supabase
-        .from('timesheet_entries')
-        .insert({ ...input, workspace_id: workspaceId, user_id: user.id })
-        .select()
-        .single()
-      if (error) throw error
-      return data as TimesheetEntry
+      const clientId = input.clientId ?? crypto.randomUUID()
+      const fields: TimesheetEntryInput = {
+        entry_date: input.entry_date,
+        minutes: input.minutes,
+        start_time: input.start_time,
+        end_time: input.end_time,
+        topic: input.topic,
+        note: input.note,
+        mood: input.mood,
+      }
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: {
+          kind: 'timesheet_entry_create',
+          workspaceId,
+          input: fields,
+          clientId,
+        },
+        offlineResult: {
+          id: clientId,
+          workspace_id: workspaceId,
+          user_id: user.id,
+          entry_date: fields.entry_date,
+          minutes: fields.minutes,
+          start_time: fields.start_time,
+          end_time: fields.end_time,
+          topic: fields.topic,
+          note: fields.note,
+          mood: fields.mood ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } satisfies TimesheetEntry,
+        run: async () => {
+          const { data, error } = await supabase
+            .from('timesheet_entries')
+            .insert({ ...fields, id: clientId, workspace_id: workspaceId, user_id: user.id })
+            .select()
+            .single()
+          if (error) throw error
+          return data as TimesheetEntry
+        },
+      })
     },
     onMutate: async (input): Promise<EntryContext | undefined> => {
       if (!user) return undefined
@@ -64,8 +104,11 @@ export function useCreateTimesheetEntry(workspaceId: string) {
 
       const previousDetail = queryClient.getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
       const previousAll = queryClient.getQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY)
+      const clientId = input.clientId ?? crypto.randomUUID()
+      input.clientId = clientId
+      const now = new Date().toISOString()
       const optimisticEntry: TimesheetEntry = {
-        id: `optimistic-${workspaceId}-${input.entry_date}-${Date.now()}`,
+        id: clientId,
         workspace_id: workspaceId,
         user_id: user.id,
         entry_date: input.entry_date,
@@ -75,15 +118,22 @@ export function useCreateTimesheetEntry(workspaceId: string) {
         topic: input.topic,
         note: input.note,
         mood: input.mood ?? null,
-        created_at: new Date().toISOString(),
+        created_at: now,
+        updated_at: now,
       }
 
-      queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) => [...(old ?? []), optimisticEntry])
-      queryClient.setQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY, (old) => (old ? [...old, optimisticEntry] : old))
+      queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) => [
+        ...(old ?? []),
+        optimisticEntry,
+      ])
+      queryClient.setQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY, (old) =>
+        old ? [...old, optimisticEntry] : old,
+      )
 
-      return { previousDetail, previousAll }
+      return { previousDetail, previousAll, clientId }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (!context) return
       queryClient.setQueryData(entriesKey(workspaceId), context.previousDetail)
       for (const [key, data] of context.previousAll) {
@@ -91,6 +141,7 @@ export function useCreateTimesheetEntry(workspaceId: string) {
       }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -98,14 +149,51 @@ export function useCreateTimesheetEntry(workspaceId: string) {
 }
 
 export function useUpdateTimesheetEntry(workspaceId: string) {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async ({ id, input }: { id: string; input: Partial<TimesheetEntryInput> }) => {
-      const { error } = await supabase.from('timesheet_entries').update(input).eq('id', id)
-      if (error) throw error
+      if (!user) throw new Error('Not signed in')
+      const existing = queryClient
+        .getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
+        ?.find((e) => e.id === id)
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'timesheet_entry_update', workspaceId, id, input },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        run: async () => {
+          const { error } = await supabase.from('timesheet_entries').update(input).eq('id', id)
+          if (error) throw error
+        },
+      })
+    },
+    onMutate: async ({ id, input }) => {
+      await queryClient.cancelQueries({ queryKey: entriesKey(workspaceId) })
+      await queryClient.cancelQueries(ALL_ENTRIES_KEY)
+      const previousDetail = queryClient.getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
+      const previousAll = queryClient.getQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY)
+      const now = new Date().toISOString()
+      queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) =>
+        old?.map((e) => (e.id === id ? { ...e, ...input, updated_at: now } : e)),
+      )
+      queryClient.setQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY, (old) =>
+        old?.map((e) => (e.id === id ? { ...e, ...input, updated_at: now } : e)),
+      )
+      return { previousDetail, previousAll }
+    },
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
+      if (!context) return
+      queryClient.setQueryData(entriesKey(workspaceId), context.previousDetail)
+      for (const [key, data] of context.previousAll) {
+        queryClient.setQueryData(key, data)
+      }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -113,12 +201,26 @@ export function useUpdateTimesheetEntry(workspaceId: string) {
 }
 
 export function useDeleteTimesheetEntry(workspaceId: string) {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('timesheet_entries').delete().eq('id', id)
-      if (error) throw error
+      if (!user) throw new Error('Not signed in')
+      const existing = queryClient
+        .getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
+        ?.find((e) => e.id === id)
+
+      return runOrEnqueue({
+        userId: user.id,
+        payload: { kind: 'timesheet_entry_delete', workspaceId, id },
+        expectedUpdatedAt: existing?.updated_at ?? null,
+        run: async () => {
+          const { error } = await supabase.from('timesheet_entries').delete().eq('id', id)
+          if (error) throw error
+        },
+      })
     },
     onMutate: async (id): Promise<EntryContext> => {
       await queryClient.cancelQueries({ queryKey: entriesKey(workspaceId) })
@@ -130,9 +232,10 @@ export function useDeleteTimesheetEntry(workspaceId: string) {
       queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) => old?.filter((e) => e.id !== id))
       queryClient.setQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY, (old) => old?.filter((e) => e.id !== id))
 
-      return { previousDetail, previousAll }
+      return { previousDetail, previousAll, clientId: id }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isOutboxQueuedError(err)) return
       if (!context) return
       queryClient.setQueryData(entriesKey(workspaceId), context.previousDetail)
       for (const [key, data] of context.previousAll) {
@@ -140,6 +243,7 @@ export function useDeleteTimesheetEntry(workspaceId: string) {
       }
     },
     onSettled: () => {
+      if (!isOnline()) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
