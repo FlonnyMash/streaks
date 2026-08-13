@@ -76,14 +76,15 @@ export function PrivacyPolicyPage() {
             'Optional timesheet PDF export: generated on your device for download (may include your first name and timesheet content); the App does not upload the PDF to our servers',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
-            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and a cache of active timesheet timers (keyed to your user ID) used to keep running timers available across reloads',
+            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the push-notification setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and a cache of active timesheet timers (keyed to your user ID) used to keep running timers available across reloads',
           ]}
         />
         <p>
           We do not set cookies for tracking, advertising, or analytics. No analytics or marketing
           tools are integrated into the App. The App does not request camera, microphone, or location
           permissions. Push-notification permission is requested by the browser/OS when you allow
-          notifications (for example from Settings or when enabling “Notify me”). The App reads the
+          notifications (for example from the first-sign-in reminder prompt, Settings, or when enabling
+          “Notify me”). The App reads the
           current device permission rather than keeping a separate on/off preference. Installing the
           App as a PWA does not collect additional personal data beyond the preferences described above.
         </p>
@@ -125,11 +126,12 @@ export function PrivacyPolicyPage() {
       <LegalSection title="7. Storage on your device (local storage)">
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
-          the theme preference, the passkey setup prompt status, the “Add to Home Screen” tip
-          dismissal, and a cache of active timesheet timers. Todo timers are stored on the server (not
-          in local storage). These local items are not tracking cookies. Without storing the session,
-          persistent sign-in would not be possible. Optional timesheet PDF exports are created locally
-          on your device and are not stored by the App on our servers.
+          the theme preference, the passkey setup prompt status, the push-notification setup prompt
+          status, the “Add to Home Screen” tip dismissal, and a cache of active timesheet timers. Todo
+          timers are stored on the server (not in local storage). These local items are not tracking
+          cookies. Without storing the session, persistent sign-in would not be possible. Optional
+          timesheet PDF exports are created locally on your device and are not stored by the App on our
+          servers.
         </p>
       </LegalSection>
 

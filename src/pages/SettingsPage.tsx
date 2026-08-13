@@ -305,6 +305,19 @@ export function SettingsPage() {
   // Re-read when tick changes (after allow / focus).
   void permissionTick
   const pushPermission = getNotificationPermission()
+  const vapidConfigured = Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY)
+
+  useEffect(() => {
+    function refreshPermission() {
+      setPermissionTick((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', refreshPermission)
+    window.addEventListener('focus', refreshPermission)
+    return () => {
+      document.removeEventListener('visibilitychange', refreshPermission)
+      window.removeEventListener('focus', refreshPermission)
+    }
+  }, [])
 
   async function handleAllowNotifications() {
     if (!user) return
@@ -659,14 +672,20 @@ export function SettingsPage() {
           <div className="min-w-0">
             <p className="font-medium">Notifications</p>
             <p className="text-[13px] text-black/45 dark:text-white/45">
-              Status comes from this device’s notification permission — not a separate app switch.
+              Enable device notifications here so streak, todo, and timer reminders can be delivered.
             </p>
           </div>
         </div>
 
-        {!pushSupported ? (
+        {!vapidConfigured ? (
+          <p className="text-[13px] text-accent-orange">
+            Push isn’t configured for this build (missing <code className="text-[12px]">VITE_VAPID_PUBLIC_KEY</code>
+            ). Add it to your env and restart the dev server / redeploy.
+          </p>
+        ) : !pushSupported ? (
           <p className="text-[13px] text-black/50 dark:text-white/50">
-            Push notifications are not supported in this browser.
+            Push isn’t available in this browser. Use Chrome/Edge/Firefox on HTTPS (or localhost), or install
+            the app to your home screen on iOS, then reopen Settings.
           </p>
         ) : (
           <>
@@ -676,25 +695,25 @@ export function SettingsPage() {
                   ? 'Allowed on this device'
                   : pushPermission === 'denied'
                     ? 'Blocked on this device'
-                    : 'Not decided yet'}
+                    : 'Not enabled yet'}
               </p>
               <p className="text-[12px] text-black/45 dark:text-white/45 mt-0.5">
                 {pushPermission === 'granted'
                   ? `Reminders use your current local timezone (${getLocalTimezone()}). It updates when you open the app after traveling.`
                   : pushPermission === 'denied'
-                    ? 'Enable notifications in your browser or system settings for this site, then return here.'
-                    : 'We’ll ask the browser when you allow notifications or turn on Notify me on a streak/todo.'}
+                    ? 'Enable notifications in your browser or system settings for this site, then tap the button below.'
+                    : 'Tap the button below — your browser will ask for permission.'}
               </p>
             </div>
 
-            {pushPermission === 'default' && (
+            {pushPermission !== 'granted' && (
               <Button
                 className="w-full mt-3"
                 size="md"
                 loading={pushBusy}
                 onClick={() => void handleAllowNotifications()}
               >
-                Allow notifications
+                {pushPermission === 'denied' ? 'Check again after enabling in system settings' : 'Enable notifications'}
               </Button>
             )}
             {pushPermission === 'granted' && (
@@ -711,12 +730,12 @@ export function SettingsPage() {
             {pushPermission === 'denied' && (
               <p className="text-[13px] text-accent-orange mt-3">
                 Websites can’t open system settings for you. After you allow notifications there, reopen
-                the app and we’ll detect it.
+                the app and tap the button above.
               </p>
             )}
             <p className="text-[12px] text-black/40 dark:text-white/40 mt-3">
-              We only send reminders for streaks and todos where you enable “Notify me”, plus nudges when a
-              timer has been running a long time. No marketing pushes.
+              After enabling here, turn on “Notify me” on individual streaks or todos. We don’t send marketing
+              pushes.
             </p>
             {pushMsg && <p className="text-[13px] text-accent-green mt-2">{pushMsg}</p>}
             {pushError && <p className="text-[13px] text-accent-red mt-2">{pushError}</p>}
