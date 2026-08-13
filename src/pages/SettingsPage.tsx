@@ -5,6 +5,7 @@ import {
   Camera,
   ChevronRight,
   Fingerprint,
+  KeyRound,
   LogOut,
   Mail,
   Monitor,
@@ -131,6 +132,14 @@ export function SettingsPage() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailNotice, setEmailNotice] = useState<string | null>(null)
 
+  const [editingPassword, setEditingPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordNotice, setPasswordNotice] = useState<string | null>(null)
+
   const [dobDraft, setDobDraft] = useState('')
   const [dobError, setDobError] = useState<string | null>(null)
 
@@ -178,6 +187,69 @@ export function SettingsPage() {
     }
     setEditingEmail(false)
     setEmailNotice('Check your inbox to confirm the new email address.')
+  }
+
+  function startEditingPassword() {
+    setPasswordError(null)
+    setPasswordNotice(null)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setEditingPassword(true)
+  }
+
+  function cancelEditingPassword() {
+    setEditingPassword(false)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+  }
+
+  async function handleSavePassword() {
+    if (!user?.email) {
+      setPasswordError('No email on this account.')
+      return
+    }
+    if (currentPassword.length < 6) {
+      setPasswordError('Enter your current password.')
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError('Choose a different password from your current one.')
+      return
+    }
+
+    setPasswordError(null)
+    setPasswordSaving(true)
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    })
+    if (verifyError) {
+      setPasswordSaving(false)
+      setPasswordError('Current password is incorrect.')
+      return
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setPasswordSaving(false)
+    if (error) {
+      setPasswordError(error.message)
+      return
+    }
+
+    cancelEditingPassword()
+    setPasswordNotice('Password updated.')
   }
 
   async function handleSaveDateOfBirth() {
@@ -412,6 +484,72 @@ export function SettingsPage() {
         {editingEmail && emailError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{emailError}</p>}
         {!editingEmail && emailNotice && (
           <p className="text-[13px] text-accent-green mb-4 -mt-2">{emailNotice}</p>
+        )}
+
+        {/* Password */}
+        {!oauthOnly && (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="size-12 rounded-2xl bg-accent-teal/15 flex items-center justify-center shrink-0">
+                <KeyRound className="size-5 text-accent-teal" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] text-black/45 dark:text-white/45">Password</p>
+                {editingPassword ? (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <TextField
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Current password"
+                      className="h-10"
+                      autoFocus
+                    />
+                    <TextField
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New password"
+                      className="h-10"
+                    />
+                    <TextField
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="h-10"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" loading={passwordSaving} onClick={handleSavePassword}>
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={cancelEditingPassword}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-medium truncate">••••••••</p>
+                )}
+              </div>
+              {!editingPassword && (
+                <Button variant="ghost" size="sm" onClick={startEditingPassword} aria-label="Change password">
+                  <Pencil className="size-4" />
+                </Button>
+              )}
+            </div>
+            {editingPassword && passwordError && (
+              <p className="text-[13px] text-accent-red mb-4 -mt-2">{passwordError}</p>
+            )}
+            {!editingPassword && passwordNotice && (
+              <p className="text-[13px] text-accent-green mb-4 -mt-2">{passwordNotice}</p>
+            )}
+          </>
         )}
 
         {/* Date of birth */}

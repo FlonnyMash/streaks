@@ -92,6 +92,32 @@ In **Authentication → URL Configuration**:
 
 Enabled by default — no action needed. Optional: in **Authentication → Providers → Email**, you can toggle "Confirm email" off if you want new users to be signed in immediately without clicking a confirmation link (fine for testing, recommended ON for production).
 
+### Custom email templates
+
+Branded HTML lives in [`supabase/templates/`](supabase/templates/). These are versioned source files — they are **not** applied automatically. Paste each file into the matching slot at **Authentication → Email Templates**:
+
+| File | Dashboard slot |
+|---|---|
+| `confirmation.html` | Confirm sign up |
+| `invite.html` | Invite user |
+| `magic_link.html` | Magic link |
+| `email_change.html` | Change email address |
+| `recovery.html` | Reset password |
+| `reauthentication.html` | Reauthentication |
+| `password_changed.html` | Password changed |
+| `email_changed.html` | Email address changed |
+| `phone_changed.html` | Phone number changed |
+| `identity_linked.html` | Sign-in method linked |
+| `identity_unlinked.html` | Sign-in method removed |
+| `mfa_factor_enrolled.html` | MFA method added |
+| `mfa_factor_unenrolled.html` | MFA method removed |
+
+The subject line is in an HTML comment at the top of each file — copy that into the **Subject** field separately (do not paste the comment into the body).
+
+Keep **Site URL** set to your production origin so `{{ .SiteURL }}` resolves the logo (`/icon-192.png`) and the Privacy / Imprint links.
+
+Security notification emails only send if their toggles are enabled on that same page.
+
 ## 5. GitHub sign-in
 
 1. Go to [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers) and click **New OAuth App** (this can be a personal account or an organization).
