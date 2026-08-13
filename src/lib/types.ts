@@ -146,8 +146,6 @@ export interface TimesheetTimerSession {
   workspaceId: string
   startedAt: string
   topic?: string
-  /** Set when the timer was started from a specific todo. */
-  todoId?: string
 }
 
 export interface TimesheetSessionRow {
@@ -156,8 +154,19 @@ export interface TimesheetSessionRow {
   workspace_id: string
   started_at: string
   topic: string | null
-  todo_id: string | null
   created_at: string
+}
+
+export interface TodoTimer {
+  id: string
+  todoId: string
+  runningSince: string | null
+}
+
+export interface TodoTimerDay {
+  todoId: string
+  workDate: string
+  seconds: number
 }
 
 export interface Profile {

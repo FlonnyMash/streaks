@@ -1,93 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { format, isToday, isYesterday } from 'date-fns'
 import { Check } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
-import { TextField } from '@/components/ui/TextField'
 import { useCreateTimesheetEntry } from '@/hooks/useTimesheetEntries'
-import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useTodoTimePrompt } from '@/hooks/useTodoTimePrompt'
+import { useTodoTimer } from '@/hooks/useTodoTimer'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { getErrorMessage } from '@/lib/errors'
-import { DEFAULT_QUICK_PRESETS, draftFromTimerRange, normalizeQuickPresets } from '@/lib/timesheetLogic'
-import { cn, formatMinutes, toDateKey } from '@/lib/utils'
+import { minutesFromSeconds, totalSeconds } from '@/lib/todoTimerLogic'
+import { formatMinutes, fromDateKey } from '@/lib/utils'
 
-const MAX_MINUTES = 24 * 60
-
-function clampMinutes(value: number): number {
-  if (!Number.isFinite(value)) return 15
-  return Math.min(MAX_MINUTES, Math.max(1, Math.round(value)))
+function dayLabel(dateKey: string): string {
+  const date = fromDateKey(dateKey)
+  if (isToday(date)) return 'Today'
+  if (isYesterday(date)) return 'Yesterday'
+  return format(date, 'EEE, MMM d')
 }
 
 export function TodoTimePromptModal() {
   const { prompt, close } = useTodoTimePrompt()
-  const { stoppingSession, stoppedAt, discard } = useTimesheetTimer()
+  const { clearTimer } = useTodoTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
-  const workspace = workspaces?.find((w) => w.id === prompt?.workspaceId)
+  const workspace = workspaces?.find((w) => w.id === prompt?.workspaceId) ?? null
   const createEntry = useCreateTimesheetEntry(prompt?.workspaceId ?? '')
 
-  const [minutes, setMinutes] = useState(30)
-  const [minutesText, setMinutesText] = useState('30')
   const [error, setError] = useState<string | null>(null)
   const [skipping, setSkipping] = useState(false)
 
-  const isSaveTimer = prompt?.mode === 'save-timer'
-  const presets = normalizeQuickPresets(workspace?.quick_presets ?? DEFAULT_QUICK_PRESETS)
+  const dayRows = (prompt?.days ?? [])
+    .map((day) => ({ dateKey: day.dateKey, minutes: minutesFromSeconds(day.seconds) }))
+    .filter((row) => row.minutes > 0)
+  const totalMins = dayRows.reduce((sum, row) => sum + row.minutes, 0)
   const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
-
-  const timerDraft =
-    isSaveTimer && stoppingSession && stoppedAt
-      ? draftFromTimerRange(new Date(stoppingSession.startedAt), stoppedAt)
-      : null
-
-  useEffect(() => {
-    if (!prompt) return
-    setError(null)
-    setSkipping(false)
-    if (prompt.mode === 'log-estimate') {
-      const initial = normalizeQuickPresets(workspace?.quick_presets ?? DEFAULT_QUICK_PRESETS)[0] ?? 30
-      setMinutes(initial)
-      setMinutesText(String(initial))
-    }
-  }, [prompt, workspace?.quick_presets])
+  const pending = createEntry.isPending || skipping
 
   async function handleSkip() {
+    if (!prompt) return
     setError(null)
     setSkipping(true)
     try {
-      if (isSaveTimer) await discard()
+      await clearTimer(prompt.todoId)
       close()
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not skip.'))
+      setError(getErrorMessage(err, 'Could not close the timer.'))
     } finally {
       setSkipping(false)
     }
   }
 
-  async function handleSave() {
-    if (!prompt) return
+  async function handleAdd() {
+    if (!prompt || !workspace) return
     setError(null)
     try {
-      if (isSaveTimer) {
-        if (!timerDraft) {
-          setError('The timer is no longer available.')
-          return
-        }
+      for (const row of dayRows) {
         await createEntry.mutateAsync({
-          entry_date: timerDraft.entry_date,
-          minutes: timerDraft.minutes,
-          start_time: timerDraft.start_time,
-          end_time: timerDraft.end_time,
-          topic: prompt.title,
-          note: null,
-          mood: null,
-        })
-        await discard()
-      } else {
-        const nextMinutes = clampMinutes(Number.parseInt(minutesText, 10) || minutes)
-        await createEntry.mutateAsync({
-          entry_date: toDateKey(new Date()),
-          minutes: nextMinutes,
+          entry_date: row.dateKey,
+          minutes: row.minutes,
           start_time: null,
           end_time: null,
           topic: prompt.title,
@@ -95,14 +65,12 @@ export function TodoTimePromptModal() {
           mood: null,
         })
       }
+      await clearTimer(prompt.todoId)
       close()
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not save time.'))
+      setError(getErrorMessage(err, 'Could not add time to the timesheet.'))
     }
   }
-
-  const pending = createEntry.isPending || skipping
-  const displayMinutes = isSaveTimer ? (timerDraft?.minutes ?? 1) : clampMinutes(Number.parseInt(minutesText, 10) || minutes)
 
   return (
     <GlassModal
@@ -110,13 +78,12 @@ export function TodoTimePromptModal() {
       onClose={() => {
         if (!pending) void handleSkip()
       }}
-      title={isSaveTimer ? 'Save tracked time?' : 'Log time?'}
+      title="Save tracked time?"
     >
       <div className="flex flex-col gap-4">
         <p className="text-[14px] text-black/55 dark:text-white/55 -mt-1">
-          {isSaveTimer
-            ? `Save ${formatMinutes(displayMinutes)} to this workspace’s timesheet?`
-            : 'You finished this task without a timer. Log an estimate to the linked workspace.'}
+          You tracked {formatMinutes(totalMins || minutesFromSeconds(totalSeconds(prompt?.days ?? [])))} on this
+          task. Add it to the workspace timesheet?
         </p>
 
         {workspace && (
@@ -134,53 +101,40 @@ export function TodoTimePromptModal() {
           </div>
         )}
 
-        {!isSaveTimer && (
-          <>
-            <TextField
-              label="Minutes"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={MAX_MINUTES}
-              value={minutesText}
-              onChange={(e) => setMinutesText(e.target.value.replace(/[^\d]/g, '').slice(0, 4))}
-              onBlur={() => {
-                const next = clampMinutes(Number.parseInt(minutesText, 10) || minutes)
-                setMinutes(next)
-                setMinutesText(String(next))
-              }}
-            />
-            <div className="flex flex-wrap gap-1.5">
-              {presets.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => {
-                    setMinutes(preset)
-                    setMinutesText(String(preset))
-                  }}
-                  className={cn(
-                    'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
-                    displayMinutes === preset
-                      ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
-                      : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                  )}
-                >
-                  {formatMinutes(preset)}
-                </button>
-              ))}
-            </div>
-          </>
+        {dayRows.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {dayRows.map((row) => (
+              <div
+                key={row.dateKey}
+                className="flex items-center justify-between rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-2.5"
+              >
+                <span className="text-[14px] font-medium">{dayLabel(row.dateKey)}</span>
+                <span className="text-[14px] font-semibold tabular-nums">{formatMinutes(row.minutes)}</span>
+              </div>
+            ))}
+            {dayRows.length > 1 && (
+              <div className="flex items-center justify-between px-3.5 pt-1">
+                <span className="text-[12px] font-medium text-black/45 dark:text-white/45">Total</span>
+                <span className="text-[13px] font-semibold tabular-nums">{formatMinutes(totalMins)}</span>
+              </div>
+            )}
+          </div>
         )}
 
         {error && <p className="text-[13px] text-accent-red text-center">{error}</p>}
 
-        <Button onClick={() => void handleSave()} loading={createEntry.isPending} disabled={skipping} size="lg" className="w-full">
-          <Check className="size-4" />
-          {isSaveTimer ? `Save ${formatMinutes(displayMinutes)}` : 'Save time'}
-        </Button>
+        {workspace ? (
+          <Button onClick={() => void handleAdd()} loading={createEntry.isPending} disabled={skipping} size="lg" className="w-full">
+            <Check className="size-4" />
+            Add to timesheet
+          </Button>
+        ) : (
+          <p className="text-[13px] text-black/45 dark:text-white/45 text-center">
+            This task has no workspace, so time can’t be added to a timesheet.
+          </p>
+        )}
         <Button variant="secondary" size="lg" className="w-full" onClick={() => void handleSkip()} disabled={pending}>
-          Skip
+          Don’t add
         </Button>
       </div>
     </GlassModal>

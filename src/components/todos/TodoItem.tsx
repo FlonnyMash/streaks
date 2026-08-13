@@ -1,13 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ChevronDown, ChevronUp, Pencil, Play, Square, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { ImportanceMeter } from '@/components/todos/ImportanceMeter'
-import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
+import { useTodoTimer } from '@/hooks/useTodoTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { formatElapsedClock } from '@/lib/timesheetLogic'
+import { minutesFromSeconds } from '@/lib/todoTimerLogic'
 import type { Todo } from '@/lib/types'
-import { cn, fromDateKey } from '@/lib/utils'
+import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
 
 interface TodoItemProps {
   todo: Todo
@@ -35,15 +36,16 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
   const { data: workspaces } = useTimesheetWorkspaces()
-  const { start, requestStop, sessionForTodo, sessionForWorkspace, elapsedMsFor, isSyncing } = useTimesheetTimer()
+  const { requestStart, pause, elapsedMsFor, storedSecondsFor, timerFor, isSyncing } = useTodoTimer()
 
   const workspace = todo.workspace_id
     ? (workspaces ?? []).find((w) => w.id === todo.workspace_id) ?? null
     : null
-  const ownSession = sessionForTodo(todo.id)
-  const workspaceSession = todo.workspace_id ? sessionForWorkspace(todo.workspace_id) : null
-  const otherTimerRunning = Boolean(workspaceSession && workspaceSession.todoId !== todo.id)
+  const timer = timerFor(todo.id)
+  const running = Boolean(timer?.runningSince)
+  const storedSeconds = storedSecondsFor(todo.id)
   const showTimer = Boolean(workspace && !todo.done)
+  const elapsedMs = elapsedMsFor(todo.id)
 
   return (
     <motion.div
@@ -146,29 +148,30 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
       </button>
 
       <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
-        {showTimer && ownSession && (
+        {showTimer && (running || storedSeconds > 0) && (
           <span className="text-[11px] font-semibold tabular-nums text-accent-blue px-1 min-w-[2.5rem] text-right">
-            {formatElapsedClock(elapsedMsFor(ownSession.id))}
+            {running ? formatElapsedClock(elapsedMs) : formatMinutes(minutesFromSeconds(storedSeconds))}
           </span>
         )}
-        {showTimer && ownSession && (
+        {showTimer && running && (
           <button
             type="button"
-            onClick={() => requestStop(ownSession.id)}
-            aria-label="Stop timer"
-            className="size-8 rounded-full flex items-center justify-center text-accent-red hover:bg-accent-red/10 transition-colors"
+            onClick={() => void pause(todo.id)}
+            disabled={isSyncing}
+            aria-label="Pause timer"
+            className="size-8 rounded-full flex items-center justify-center text-accent-orange hover:bg-accent-orange/10 transition-colors disabled:opacity-25"
           >
-            <Square className="size-3.5 fill-current" />
+            <Pause className="size-3.5 fill-current" />
           </button>
         )}
-        {showTimer && workspace && !ownSession && (
+        {showTimer && workspace && !running && (
           <button
             type="button"
-            onClick={() => start(workspace.id, { topic: todo.title, todoId: todo.id })}
-            disabled={otherTimerRunning || isSyncing}
-            aria-label="Start timer"
-            title={otherTimerRunning ? 'A timer is already running for this workspace' : 'Start timer'}
-            className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+            onClick={() => void requestStart(todo.id)}
+            disabled={isSyncing}
+            aria-label={storedSeconds > 0 ? 'Resume timer' : 'Start timer'}
+            title={storedSeconds > 0 ? 'Resume timer' : 'Start timer'}
+            className="size-8 rounded-full flex items-center justify-center text-black/30 dark:text-white/30 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors disabled:opacity-25"
           >
             <Play className="size-3.5 fill-current" />
           </button>

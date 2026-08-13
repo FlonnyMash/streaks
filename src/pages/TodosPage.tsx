@@ -11,13 +11,24 @@ import {
   FeatureHelpModal,
 } from '@/components/ui/FeatureHelp'
 import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useTodos } from '@/hooks/useTodos'
+import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
 import { useCompleteTodoWithTime } from '@/hooks/useTodoTimePrompt'
-import { BUCKET_LABELS, BUCKET_ORDER, groupActiveTodos, sortCompletedTodos, uniqueTopicsFromTodos } from '@/lib/todoLogic'
+import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import {
+  BUCKET_LABELS,
+  BUCKET_ORDER,
+  groupActiveTodos,
+  sortCompletedTodos,
+  todoMatchesFilters,
+  uniqueTopicsFromTodos,
+  uniqueWorkspaceIdsFromTodos,
+} from '@/lib/todoLogic'
 import { cn } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
 
 export function TodosPage() {
   const { data: todos, isLoading } = useTodos()
+  const { data: workspaces } = useTimesheetWorkspaces()
   const completeTodo = useCompleteTodoWithTime()
   const deleteTodo = useDeleteTodo()
   const createTodo = useCreateTodo()
@@ -30,14 +41,30 @@ export function TodosPage() {
   const [modalInitialTitle, setModalInitialTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
 
   const active = useMemo(() => (todos ?? []).filter((t) => !t.done), [todos])
   const completed = useMemo(() => sortCompletedTodos((todos ?? []).filter((t) => t.done)), [todos])
-  const filterTopics = useMemo(
-    () => uniqueTopicsFromTodos(showCompleted ? [...active, ...completed] : active),
+  const filterSource = useMemo(
+    () => (showCompleted ? [...active, ...completed] : active),
     [active, completed, showCompleted],
   )
+  const filterTopics = useMemo(() => uniqueTopicsFromTodos(filterSource), [filterSource])
+  const filterWorkspaces = useMemo(() => {
+    const ids = uniqueWorkspaceIdsFromTodos(filterSource)
+    const list = workspaces ?? []
+    return ids
+      .map((id) => list.find((w) => w.id === id))
+      .filter((w): w is NonNullable<typeof w> => Boolean(w))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  }, [filterSource, workspaces])
+
+  const filters = useMemo(
+    () => ({ topicId: selectedTopicId, workspaceId: selectedWorkspaceId }),
+    [selectedTopicId, selectedWorkspaceId],
+  )
+  const hasFilter = Boolean(selectedTopicId || selectedWorkspaceId)
 
   useEffect(() => {
     if (selectedTopicId && !filterTopics.some((t) => t.id === selectedTopicId)) {
@@ -45,16 +72,19 @@ export function TodosPage() {
     }
   }, [selectedTopicId, filterTopics])
 
+  useEffect(() => {
+    if (selectedWorkspaceId && !filterWorkspaces.some((w) => w.id === selectedWorkspaceId)) {
+      setSelectedWorkspaceId(null)
+    }
+  }, [selectedWorkspaceId, filterWorkspaces])
+
   const filteredActive = useMemo(
-    () => (selectedTopicId ? active.filter((t) => (t.topics ?? []).some((tp) => tp.id === selectedTopicId)) : active),
-    [active, selectedTopicId],
+    () => (hasFilter ? active.filter((t) => todoMatchesFilters(t, filters)) : active),
+    [active, filters, hasFilter],
   )
   const filteredCompleted = useMemo(
-    () =>
-      selectedTopicId
-        ? completed.filter((t) => (t.topics ?? []).some((tp) => tp.id === selectedTopicId))
-        : completed,
-    [completed, selectedTopicId],
+    () => (hasFilter ? completed.filter((t) => todoMatchesFilters(t, filters)) : completed),
+    [completed, filters, hasFilter],
   )
   const grouped = useMemo(() => groupActiveTodos(filteredActive), [filteredActive])
   const visibleBuckets = BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
@@ -155,25 +185,49 @@ export function TodosPage() {
         </Button>
       </form>
 
-      {!isLoading && !isEmpty && filterTopics.length > 0 && (
+      {!isLoading && !isEmpty && (filterWorkspaces.length > 0 || filterTopics.length > 0) && (
         <div className="flex gap-1.5 overflow-x-auto py-1 mb-4 -mx-1 px-1">
           <button
             type="button"
-            onClick={() => setSelectedTopicId(null)}
+            onClick={() => {
+              setSelectedTopicId(null)
+              setSelectedWorkspaceId(null)
+            }}
             className={cn(
               'h-8 px-3 rounded-full text-[12px] font-medium transition-all shrink-0',
-              selectedTopicId === null
+              !hasFilter
                 ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
                 : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
             )}
           >
             All
           </button>
+          {filterWorkspaces.map((workspace) => {
+            const accent = ACCENT_COLOR_MAP[workspace.color]
+            const selected = selectedWorkspaceId === workspace.id
+            return (
+              <button
+                key={workspace.id}
+                type="button"
+                onClick={() => setSelectedWorkspaceId(selected ? null : workspace.id)}
+                className={cn(
+                  'h-8 pl-2 pr-3 rounded-full text-[12px] font-medium transition-all shrink-0 inline-flex items-center gap-1.5 max-w-[14rem]',
+                  selected
+                    ? cn('ring-1', accent.ring, accent.text)
+                    : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                )}
+                style={selected ? { backgroundColor: `${accent.hex}22` } : undefined}
+              >
+                <span className="shrink-0">{workspace.emoji}</span>
+                <span className="truncate">{workspace.name}</span>
+              </button>
+            )
+          })}
           {filterTopics.map((topic) => (
             <button
               key={topic.id}
               type="button"
-              onClick={() => setSelectedTopicId(topic.id)}
+              onClick={() => setSelectedTopicId(selectedTopicId === topic.id ? null : topic.id)}
               className={cn(
                 'h-8 px-3 rounded-full text-[12px] font-medium transition-all shrink-0',
                 selectedTopicId === topic.id
@@ -209,8 +263,8 @@ export function TodosPage() {
 
       {!isLoading && !isEmpty && (
         <div className="flex flex-col gap-6">
-          {selectedTopicId && visibleBuckets.length === 0 && (
-            <p className="text-[14px] text-black/45 dark:text-white/45 px-1">No active tasks with this topic.</p>
+          {hasFilter && visibleBuckets.length === 0 && (
+            <p className="text-[14px] text-black/45 dark:text-white/45 px-1">No active tasks match these filters.</p>
           )}
           {visibleBuckets.map((bucket) => (
             <section key={bucket}>
@@ -223,7 +277,7 @@ export function TodosPage() {
                     <TodoItem
                       key={todo.id}
                       todo={todo}
-                      onToggle={(_id, done) => completeTodo(todo, done)}
+                      onToggle={(_id, done) => void completeTodo(todo, done)}
                       onView={openView}
                       onEdit={openEdit}
                       onDelete={(id) => deleteTodo.mutate(id)}
@@ -246,7 +300,7 @@ export function TodosPage() {
                 className="flex items-center gap-1.5 text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1"
               >
                 Completed · {filteredCompleted.length}
-                {selectedTopicId && filteredCompleted.length !== completed.length && (
+                {hasFilter && filteredCompleted.length !== completed.length && (
                   <span className="normal-case tracking-normal font-medium text-black/35 dark:text-white/35">
                     of {completed.length}
                   </span>
@@ -260,7 +314,7 @@ export function TodosPage() {
                       <TodoItem
                         key={todo.id}
                         todo={todo}
-                        onToggle={(_id, done) => completeTodo(todo, done)}
+                        onToggle={(_id, done) => void completeTodo(todo, done)}
                         onView={openView}
                         onEdit={openEdit}
                         onDelete={(id) => deleteTodo.mutate(id)}

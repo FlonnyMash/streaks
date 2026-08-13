@@ -4,20 +4,16 @@ import { hapticTick } from '@/lib/haptics'
 import { supabase } from '@/lib/supabaseClient'
 import type { TimesheetSessionRow, TimesheetTimerSession } from '@/lib/types'
 
-export type TimerConfirmVariant = 'full' | 'todo-complete'
-
 interface TimesheetTimerContextValue {
   sessions: TimesheetTimerSession[]
   stoppingSession: TimesheetTimerSession | null
   stoppedAt: Date | null
   confirmOpen: boolean
-  confirmVariant: TimerConfirmVariant
   isSyncing: boolean
   elapsedMsFor: (sessionId: string) => number
   sessionForWorkspace: (workspaceId: string) => TimesheetTimerSession | null
-  sessionForTodo: (todoId: string) => TimesheetTimerSession | null
-  start: (workspaceId: string, options?: { topic?: string; startedAt?: Date; todoId?: string }) => void
-  requestStop: (sessionId: string, options?: { variant?: TimerConfirmVariant }) => void
+  start: (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => void
+  requestStop: (sessionId: string) => void
   cancelStop: () => void
   discard: () => Promise<void>
 }
@@ -34,7 +30,6 @@ function fromRow(row: TimesheetSessionRow): TimesheetTimerSession {
     workspaceId: row.workspace_id,
     startedAt: row.started_at,
     topic: row.topic ?? undefined,
-    todoId: row.todo_id ?? undefined,
   }
 }
 
@@ -57,7 +52,6 @@ function readCache(userId: string): TimesheetTimerSession[] {
             workspaceId: one.workspaceId,
             startedAt: one.startedAt,
             topic: typeof one.topic === 'string' ? one.topic : undefined,
-            todoId: typeof one.todoId === 'string' ? one.todoId : undefined,
           },
         ]
       }
@@ -78,7 +72,6 @@ function readCache(userId: string): TimesheetTimerSession[] {
             workspaceId: row.workspaceId,
             startedAt: row.startedAt,
             topic: typeof row.topic === 'string' ? row.topic : undefined,
-            todoId: typeof row.todoId === 'string' ? row.todoId : undefined,
           },
         ]
       }),
@@ -133,7 +126,6 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
   const [stoppingSessionId, setStoppingSessionId] = useState<string | null>(null)
   const [stoppedAt, setStoppedAt] = useState<Date | null>(null)
-  const [confirmVariant, setConfirmVariant] = useState<TimerConfirmVariant>('full')
   const [isSyncing, setIsSyncing] = useState(false)
   const startEpochRef = useRef(0)
   const sessionsRef = useRef(sessions)
@@ -167,7 +159,6 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setStoppingSessionId(null)
     setStoppedAt(null)
-    setConfirmVariant('full')
     if (!userId) {
       setSessions([])
       setServerOffsetMs(0)
@@ -240,13 +231,8 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     [sessions],
   )
 
-  const sessionForTodo = useCallback(
-    (todoId: string) => sessions.find((s) => s.todoId === todoId) ?? null,
-    [sessions],
-  )
-
   const start = useCallback(
-    (workspaceId: string, options?: { topic?: string; startedAt?: Date; todoId?: string }) => {
+    (workspaceId: string, options?: { topic?: string; startedAt?: Date }) => {
       if (!userId || isSyncing) return
       if (sessionsRef.current.some((s) => s.workspaceId === workspaceId)) return
       hapticTick()
@@ -259,13 +245,11 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       if (startedAtMs > correctedNow) startedAtMs = correctedNow
       const startedAt = new Date(startedAtMs).toISOString()
       const trimmedTopic = options?.topic?.trim() ? options.topic.trim() : undefined
-      const todoId = options?.todoId?.trim() ? options.todoId.trim() : undefined
       const optimistic: TimesheetTimerSession = {
         id: `optimistic-${workspaceId}-${Date.now()}`,
         workspaceId,
         startedAt,
         topic: trimmedTopic,
-        todoId,
       }
       applySessions([...sessionsRef.current, optimistic])
       setIsSyncing(true)
@@ -279,7 +263,6 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
               workspace_id: workspaceId,
               started_at: startedAt,
               topic: trimmedTopic ?? null,
-              todo_id: todoId ?? null,
             })
             .select('*')
             .single()
@@ -310,10 +293,9 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     [applySessions, isSyncing, refreshFromServer, serverOffsetMs, userId],
   )
 
-  const requestStop = useCallback((sessionId: string, options?: { variant?: TimerConfirmVariant }) => {
+  const requestStop = useCallback((sessionId: string) => {
     if (!sessionsRef.current.some((s) => s.id === sessionId)) return
     hapticTick()
-    setConfirmVariant(options?.variant ?? 'full')
     setStoppingSessionId(sessionId)
     // Freeze using the same corrected clock the live display uses.
     setStoppedAt(new Date(Date.now() + serverOffsetMs))
@@ -322,7 +304,6 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
   const cancelStop = useCallback(() => {
     setStoppingSessionId(null)
     setStoppedAt(null)
-    setConfirmVariant('full')
   }, [])
 
   const discard = useCallback(async () => {
@@ -330,7 +311,6 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     startEpochRef.current += 1
     setStoppingSessionId(null)
     setStoppedAt(null)
-    setConfirmVariant('full')
     if (!current) return
 
     applySessions(sessionsRef.current.filter((s) => s.id !== current.id))
@@ -358,11 +338,9 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
       stoppingSession,
       stoppedAt,
       confirmOpen: Boolean(stoppingSessionId),
-      confirmVariant,
       isSyncing,
       elapsedMsFor,
       sessionForWorkspace,
-      sessionForTodo,
       start,
       requestStop,
       cancelStop,
@@ -370,12 +348,10 @@ export function TimesheetTimerProvider({ children }: { children: ReactNode }) {
     }),
     [
       cancelStop,
-      confirmVariant,
       discard,
       elapsedMsFor,
       isSyncing,
       requestStop,
-      sessionForTodo,
       sessionForWorkspace,
       sessions,
       start,

@@ -48,7 +48,7 @@ export function PrivacyPolicyPage() {
         <p>We use the following service providers to operate the App:</p>
         <LegalList
           items={[
-            'Supabase Inc. — authentication, database, object storage (including optional profile photos), and where applicable confirmation / password-reset emails',
+            'Supabase Inc. — authentication, database, realtime sync, object storage (including optional profile photos), and where applicable confirmation / password-reset / email-change emails',
             'Cloudflare, Inc. — hosting of the static web app (Cloudflare Pages) and CDN delivery',
             'GitHub, Inc. — only if you sign in with “Continue with GitHub” (OAuth)',
             'Google LLC — only if you sign in with “Continue with Google” (OAuth)',
@@ -67,12 +67,12 @@ export function PrivacyPolicyPage() {
         <LegalList
           items={[
             'Account data: email address, password hash (via Supabase Auth), user ID',
-            'Profile data: first name and date of birth, used to confirm you meet the minimum age requirement',
+            'Profile data: first name and date of birth, used to confirm you meet the minimum age requirement (date of birth is also used locally in the App for an optional birthday greeting)',
             'Profile photo (optional): an image you upload (up to 5 MB), stored in Supabase Storage under your user ID, with a publicly accessible URL saved on your profile so the App can display it',
             'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
-            'Content you create: streaks (name, emoji, color, frequency, time goals), daily streak entries (notes, mood, minutes), todos (title, notes, due date, importance, topics, optional linked timesheet workspace), timesheet workspaces (including quick duration presets), running timesheet sessions (workspace, start time, optional topic, optional linked todo), and timesheet entries (topics, notes, start/end times, minutes, mood)',
-            'Optional timesheet PDF export: generated on your device for download; the App does not upload the PDF to our servers',
+            'Content you create: streaks (name, emoji, color, frequency, archived status, time goals), daily streak entries (completion, notes, mood, minutes), todos (title, notes, due date, importance, topics, completion timestamps, optional linked timesheet workspace), timesheet workspaces (name, emoji, color, quick duration presets, archived status), running timesheet sessions (workspace, start time, optional topic), timesheet entries (topics, notes, start/end times, minutes, mood), todo timers (which todo is running and since when), and per-day todo timer totals (work date and seconds spent)',
+            'Optional timesheet PDF export: generated on your device for download (may include your first name and timesheet content); the App does not upload the PDF to our servers',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
             'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and a cache of active timesheet timers (keyed to your user ID) used to keep running timers available across reloads',
@@ -92,9 +92,9 @@ export function PrivacyPolicyPage() {
           items={[
             'Providing and operating your user account and sign-in (Art. 6(1)(b) GDPR)',
             'Verifying you meet the minimum age of 16 to use the App (Art. 6(1)(c) GDPR)',
-            'Storing and syncing your personal app content, including running timesheet sessions (Art. 6(1)(b) GDPR)',
+            'Storing and syncing your personal app content, including running timesheet sessions and todo timers (Art. 6(1)(b) GDPR)',
             'Displaying your optional profile photo in the App (Art. 6(1)(b) GDPR)',
-            'Securing authentication (sessions, passkeys, password reset) (Art. 6(1)(b) and (f) GDPR)',
+            'Securing authentication (sessions, passkeys, password reset, email change) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
             'Storing theme, passkey-prompt, install-tip, and active-timer-cache preferences for a comfortable display (Art. 6(1)(f) GDPR)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
@@ -104,14 +104,16 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="6. Retention">
         <p>
-          Account data, app content (including running timesheet sessions), and any uploaded profile
-          photo are stored for as long as your account exists or until you delete individual records,
-          stop or discard a timer, replace or clear your photo, or delete the entire account. The auth
-          session remains until you sign out or the tokens expire. Theme, passkey-prompt, install-tip,
-          and active-timer-cache preferences remain in local storage until you change them, the timer
-          cache is cleared when no sessions remain, or you clear browser storage. Server and access
-          logs of hosting / auth providers may be retained briefly according to their own retention
-          policies.
+          Account data, app content (including running timesheet sessions, todo timers, and per-day
+          todo timer totals), and any uploaded profile photo are stored for as long as your account
+          exists or until you delete individual records, stop, discard, or clear a timer, replace or
+          clear your photo, or delete the entire account. Clearing or replacing a profile photo
+          updates the URL used by the App; older photo files under your user ID may remain in storage
+          until you delete your account. The auth session remains until you sign out or the tokens
+          expire. Theme, passkey-prompt, install-tip, and active-timer-cache preferences remain in
+          local storage until you change them, the timesheet timer cache is cleared when no sessions
+          remain, or you clear browser storage. Server and access logs of hosting / auth providers may
+          be retained briefly according to their own retention policies.
         </p>
       </LegalSection>
 
@@ -119,9 +121,10 @@ export function PrivacyPolicyPage() {
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
           the theme preference, the passkey setup prompt status, the “Add to Home Screen” tip
-          dismissal, and a cache of active timesheet timers. These are not tracking cookies. Without
-          storing the session, persistent sign-in would not be possible. Optional timesheet PDF exports
-          are created locally on your device and are not stored by the App on our servers.
+          dismissal, and a cache of active timesheet timers. Todo timers are stored on the server (not
+          in local storage). These local items are not tracking cookies. Without storing the session,
+          persistent sign-in would not be possible. Optional timesheet PDF exports are created locally
+          on your device and are not stored by the App on our servers.
         </p>
       </LegalSection>
 
@@ -129,10 +132,10 @@ export function PrivacyPolicyPage() {
         <p>
           Recipients are the processors listed in section 3 and — if you use GitHub or Google login —
           the respective identity provider. Uploaded profile photos are stored with a publicly
-          accessible URL so the App can load them; only your account can upload, replace, or delete
-          your own photo files. Where personal data is transferred outside the EEA, this is based on
-          appropriate safeguards (in particular EU Standard Contractual Clauses) of the respective
-          providers.
+          accessible URL so the App can load them; only your account can upload or replace photos
+          under your user ID, and only you can clear the photo URL on your profile. Where personal
+          data is transferred outside the EEA, this is based on appropriate safeguards (in particular
+          EU Standard Contractual Clauses) of the respective providers.
         </p>
       </LegalSection>
 

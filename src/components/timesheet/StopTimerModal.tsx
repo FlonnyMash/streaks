@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { Check, Frown, Meh, Minus, Play, Plus, Smile } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { Button } from '@/components/ui/Button'
-import { Switch } from '@/components/ui/Switch'
 import { useCreateTimesheetEntry } from '@/hooks/useTimesheetEntries'
 import { useTimesheetTimer } from '@/hooks/useTimesheetTimer'
 import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
-import { useToggleTodo, useTodos } from '@/hooks/useTodos'
 import {
   addMinutesToClock,
   draftFromTimerRange,
@@ -48,14 +46,9 @@ function clampMinutes(value: number): number {
 }
 
 export function StopTimerModal() {
-  const { stoppingSession, confirmOpen, confirmVariant, stoppedAt, cancelStop, discard } = useTimesheetTimer()
+  const { stoppingSession, confirmOpen, stoppedAt, cancelStop, discard } = useTimesheetTimer()
   const { data: workspaces } = useTimesheetWorkspaces()
-  const { data: todos } = useTodos()
-  const toggleTodo = useToggleTodo()
   const workspace = workspaces?.find((w) => w.id === stoppingSession?.workspaceId)
-  const linkedTodo = stoppingSession?.todoId
-    ? (todos ?? []).find((t) => t.id === stoppingSession.todoId)
-    : undefined
   const createEntry = useCreateTimesheetEntry(stoppingSession?.workspaceId ?? '')
 
   const [entryDate, setEntryDate] = useState('')
@@ -67,7 +60,6 @@ export function StopTimerModal() {
   const [topic, setTopic] = useState('')
   const [note, setNote] = useState('')
   const [mood, setMood] = useState<Mood | null>(null)
-  const [markTodoDone, setMarkTodoDone] = useState(false)
   const [rangeError, setRangeError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -88,7 +80,6 @@ export function StopTimerModal() {
     setTopic(stoppingSession.topic ?? '')
     setNote('')
     setMood(null)
-    setMarkTodoDone(false)
     setRangeError(null)
     setSaveError(null)
   }, [confirmOpen, stoppingSession, stoppedAt])
@@ -163,9 +154,6 @@ export function StopTimerModal() {
     setSaveError(null)
     try {
       await createEntry.mutateAsync(input)
-      if (markTodoDone && stoppingSession.todoId && linkedTodo && !linkedTodo.done) {
-        await toggleTodo.mutateAsync({ id: stoppingSession.todoId, done: true })
-      }
       await discard()
     } catch (error) {
       setSaveError(getErrorMessage(error))
@@ -184,11 +172,7 @@ export function StopTimerModal() {
   const accent = workspace ? ACCENT_COLOR_MAP[workspace.color] : null
 
   return (
-    <GlassModal
-      open={confirmOpen && confirmVariant !== 'todo-complete' && Boolean(stoppingSession)}
-      onClose={cancelStop}
-      title="Clock out"
-    >
+    <GlassModal open={confirmOpen && Boolean(stoppingSession)} onClose={cancelStop} title="Clock out">
       <div className="flex flex-col gap-4">
         <p className="text-[14px] text-black/55 dark:text-white/55 -mt-1">
           Check that the time looks right, then save it to your timesheet.
@@ -326,16 +310,7 @@ export function StopTimerModal() {
 
         {saveError && <p className="text-[12px] text-accent-red text-center">{saveError}</p>}
 
-        {linkedTodo && !linkedTodo.done && (
-          <Switch
-            checked={markTodoDone}
-            onChange={setMarkTodoDone}
-            label="Mark this task as done"
-            description={linkedTodo.title}
-          />
-        )}
-
-        <Button onClick={handleSave} loading={createEntry.isPending || toggleTodo.isPending} size="lg" className="w-full">
+        <Button onClick={handleSave} loading={createEntry.isPending} size="lg" className="w-full">
           <Check className="size-4" />
           Save time block
         </Button>
@@ -345,7 +320,7 @@ export function StopTimerModal() {
           size="lg"
           className="w-full"
           onClick={cancelStop}
-          disabled={createEntry.isPending || toggleTodo.isPending}
+          disabled={createEntry.isPending}
         >
           <Play className="size-4 fill-current" />
           Resume timer
@@ -353,7 +328,7 @@ export function StopTimerModal() {
         <button
           type="button"
           onClick={handleDiscard}
-          disabled={createEntry.isPending || toggleTodo.isPending}
+          disabled={createEntry.isPending}
           className="h-11 rounded-2xl text-[14px] font-medium text-accent-red hover:bg-accent-red/10 active:scale-95 transition-all disabled:opacity-50"
         >
           Discard timer

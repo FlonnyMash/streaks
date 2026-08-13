@@ -19,6 +19,28 @@ export function uniqueTopicsFromTodos(todos: Todo[]): TodoTopic[] {
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 }
 
+/** Unique workspace ids from a todo list, in first-seen order. */
+export function uniqueWorkspaceIdsFromTodos(todos: Todo[]): string[] {
+  const ids: string[] = []
+  const seen = new Set<string>()
+  for (const todo of todos) {
+    if (todo.workspace_id && !seen.has(todo.workspace_id)) {
+      seen.add(todo.workspace_id)
+      ids.push(todo.workspace_id)
+    }
+  }
+  return ids
+}
+
+export function todoMatchesFilters(
+  todo: Todo,
+  filters: { topicId: string | null; workspaceId: string | null },
+): boolean {
+  if (filters.topicId && !(todo.topics ?? []).some((tp) => tp.id === filters.topicId)) return false
+  if (filters.workspaceId && todo.workspace_id !== filters.workspaceId) return false
+  return true
+}
+
 export type TodoBucket = 'overdue' | 'today' | 'upcoming' | 'noDate'
 
 export const BUCKET_ORDER: TodoBucket[] = ['overdue', 'today', 'upcoming', 'noDate']

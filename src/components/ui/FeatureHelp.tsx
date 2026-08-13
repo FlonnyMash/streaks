@@ -29,12 +29,12 @@ const HELP_CONTENT: Record<
   },
   todos: {
     title: 'About Todos',
-    what: 'Todos are a lightweight checklist for things you need to get done. Tasks are grouped by due date so you always see what’s urgent first. Optional topics work like tags so you can group and filter related tasks.',
+    what: 'Todos are a lightweight checklist for things you need to get done. Tasks are grouped by due date so you always see what’s urgent first. Optional topics work like tags, and you can link a timesheet workspace to log time from a task.',
     how: [
       'Type in the quick-add field and press Enter to create a task instantly.',
-      'Use the details button to add notes, a due date, topics, and importance before saving.',
-      'Tap a task to view details, or use the pencil to edit notes, due date, topics, and importance.',
-      'Filter the list by topic. While Completed is closed, only topics on active tasks appear; open Completed to see older topics again.',
+      'Use the details button to add notes, a due date, a workspace, topics, and importance before saving.',
+      'Tap a task to view details, or use the pencil to edit notes, due date, workspace, topics, and importance.',
+      'Filter the list by workspace or topic. While Completed is closed, only values on active tasks appear; open Completed to see older ones again.',
       'Check tasks off when done, or reorder items within a group.',
     ],
     goodFor: [
