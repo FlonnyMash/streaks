@@ -72,14 +72,14 @@
   "screenshots": [
     {
       "src": "/screenshots/narrow-1080x1920.png",
-      "sizes": "1080x1920",
+      "sizes": "1290x2796",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Dashboard on a phone"
     },
     {
       "src": "/screenshots/wide-1920x1080.png",
-      "sizes": "1920x1080",
+      "sizes": "2796x1290",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Dashboard on desktop"
