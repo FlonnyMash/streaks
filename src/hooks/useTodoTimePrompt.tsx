@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useToggleTodo } from '@/hooks/useTodos'
 import { useTodoTimer } from '@/hooks/useTodoTimer'
-import { minutesFromSeconds, totalSeconds, type DaySeconds } from '@/lib/todoTimerLogic'
+import { totalSeconds, type DaySeconds } from '@/lib/todoTimerLogic'
+import { toDateKey } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
 
 export interface TodoTimePrompt {
@@ -39,31 +40,33 @@ export function useTodoTimePrompt() {
 /** Marks a todo done/undone and opens a time summary only when tracked time exists. */
 export function useCompleteTodoWithTime() {
   const toggleTodo = useToggleTodo()
-  const { timerFor, storedSecondsFor, flush, clearTimer } = useTodoTimer()
+  const { elapsedMsFor, previewDaysFor, flush } = useTodoTimer()
   const { openSummary } = useTodoTimePrompt()
 
   return useCallback(
-    async (todo: Todo, done: boolean) => {
-      toggleTodo.mutate({ id: todo.id, done })
-      if (!done) return
-
-      const timer = timerFor(todo.id)
-      const stored = storedSecondsFor(todo.id)
-      if (!timer && stored === 0) return
-
-      const days = await flush(todo.id)
-      if (minutesFromSeconds(totalSeconds(days)) < 1) {
-        await clearTimer(todo.id)
+    (todo: Todo, done: boolean) => {
+      if (!done) {
+        toggleTodo.mutate({ id: todo.id, done })
         return
       }
 
-      openSummary({
-        todoId: todo.id,
-        workspaceId: todo.workspace_id,
-        title: todo.title,
-        days,
-      })
+      const elapsed = elapsedMsFor(todo.id)
+      let days = previewDaysFor(todo.id)
+      if (totalSeconds(days) === 0 && elapsed > 0) {
+        days = [{ dateKey: toDateKey(new Date()), seconds: Math.max(1, Math.round(elapsed / 1000) || 1) }]
+      }
+      if (elapsed > 0 || totalSeconds(days) > 0) {
+        openSummary({
+          todoId: todo.id,
+          workspaceId: todo.workspace_id,
+          title: todo.title,
+          days,
+        })
+        void flush(todo.id)
+      }
+
+      toggleTodo.mutate({ id: todo.id, done: true })
     },
-    [clearTimer, flush, openSummary, storedSecondsFor, timerFor, toggleTodo],
+    [elapsedMsFor, flush, openSummary, previewDaysFor, toggleTodo],
   )
 }

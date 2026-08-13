@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from '@/hooks/useAuth'
 import { hapticTick } from '@/lib/haptics'
 import { supabase } from '@/lib/supabaseClient'
-import { addDaySeconds, splitElapsedByDay, type DaySeconds } from '@/lib/todoTimerLogic'
+import { addDaySeconds, liveChunks, type DaySeconds } from '@/lib/todoTimerLogic'
 import type { TodoTimer, TodoTimerDay } from '@/lib/types'
 
 interface TodoTimerRow {
@@ -32,6 +32,7 @@ interface TodoTimerContextValue {
   elapsedMsFor: (todoId: string) => number
   storedSecondsFor: (todoId: string) => number
   daysFor: (todoId: string) => DaySeconds[]
+  previewDaysFor: (todoId: string) => DaySeconds[]
   timerFor: (todoId: string) => TodoTimer | null
   requestStart: (todoId: string) => Promise<StartTimerResult>
   confirmSwitch: () => Promise<void>
@@ -121,6 +122,8 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
 
   const refreshFromServer = useCallback(async () => {
     if (!userId) {
+      timersRef.current = []
+      daysRef.current = []
       setTimers([])
       setDays([])
       setServerOffsetMs(0)
@@ -134,8 +137,12 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
       ])
       if (timersResult.error) throw timersResult.error
       if (daysResult.error) throw daysResult.error
-      setTimers((timersResult.data ?? []).map((row) => fromTimerRow(row as TodoTimerRow)))
-      setDays((daysResult.data ?? []).map((row) => fromDayRow(row as TodoTimerDayRow)))
+      const nextTimers = (timersResult.data ?? []).map((row) => fromTimerRow(row as TodoTimerRow))
+      const nextDays = (daysResult.data ?? []).map((row) => fromDayRow(row as TodoTimerDayRow))
+      timersRef.current = nextTimers
+      daysRef.current = nextDays
+      setTimers(nextTimers)
+      setDays(nextDays)
       setServerOffsetMs(offset)
     } catch {
       // Keep current UI if the network blips.
@@ -221,6 +228,17 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
 
   const daysFor = useCallback((todoId: string) => daysToChunks(days, todoId), [days])
 
+  const previewDaysFor = useCallback(
+    (todoId: string) => {
+      const stored = daysToChunks(daysRef.current, todoId)
+      const timer = timersRef.current.find((t) => t.todoId === todoId)
+      if (!timer?.runningSince) return stored
+      const endedAt = new Date(Date.now() + serverOffsetMs)
+      return addDaySeconds(stored, liveChunks(new Date(timer.runningSince), endedAt))
+    },
+    [serverOffsetMs],
+  )
+
   const timerFor = useCallback(
     (todoId: string) => timers.find((t) => t.todoId === todoId) ?? null,
     [timers],
@@ -236,7 +254,7 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
       hapticTick()
 
       const endedAt = new Date(Date.now() + serverOffsetMs)
-      const chunks = splitElapsedByDay(new Date(timer.runningSince), endedAt)
+      const chunks = liveChunks(new Date(timer.runningSince), endedAt)
       const nextDays = addDaySeconds(daysToChunks(daysRef.current, todoId), chunks)
       const nextDayRows = nextDays.map((row) => ({ todoId, workDate: row.dateKey, seconds: row.seconds }))
       const nextTimers = timersRef.current.map((t) => (t.todoId === todoId ? { ...t, runningSince: null } : t))
@@ -249,9 +267,22 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
       const epoch = ++opEpochRef.current
       setIsSyncing(true)
       try {
-        await persistDayChunks(userId, todoId, chunks)
-        const { error } = await supabase.from('todo_timers').update({ running_since: null }).eq('id', timer.id)
-        if (error) throw error
+        const { error } = await supabase.rpc('pause_todo_timer', {
+          p_todo_id: todoId,
+          p_chunks: chunks,
+        })
+        if (error) {
+          await persistDayChunks(userId, todoId, chunks)
+          const { data, error: updateError } = await supabase
+            .from('todo_timers')
+            .update({ running_since: null })
+            .eq('todo_id', todoId)
+            .select('id')
+            .maybeSingle()
+          if (updateError) throw updateError
+          if (!data) throw error
+        }
+        if (epoch === opEpochRef.current) await refreshFromServer()
       } catch {
         if (epoch === opEpochRef.current) await refreshFromServer()
       } finally {
@@ -277,11 +308,14 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
         timersRef.current = nextTimers
         setTimers(nextTimers)
         try {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('todo_timers')
             .update({ running_since: startedAt })
-            .eq('id', existing.id)
+            .eq('todo_id', todoId)
+            .select('id')
+            .maybeSingle()
           if (error) throw error
+          if (!data) throw new Error('Todo timer row not found')
         } catch {
           if (epoch === opEpochRef.current) await refreshFromServer()
         } finally {
@@ -382,6 +416,7 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
       elapsedMsFor,
       storedSecondsFor,
       daysFor,
+      previewDaysFor,
       timerFor,
       requestStart,
       confirmSwitch,
@@ -401,6 +436,7 @@ export function TodoTimerProvider({ children }: { children: ReactNode }) {
       isSyncing,
       pause,
       pendingSwitchTodoId,
+      previewDaysFor,
       requestStart,
       runningTimer,
       storedSecondsFor,

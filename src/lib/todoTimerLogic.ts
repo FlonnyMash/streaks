@@ -43,5 +43,15 @@ export function totalSeconds(days: DaySeconds[]): number {
 }
 
 export function minutesFromSeconds(seconds: number): number {
-  return Math.max(0, Math.round(seconds / 60))
+  if (seconds <= 0) return 0
+  return Math.max(1, Math.round(seconds / 60) || 1)
+}
+
+/** Like splitElapsedByDay, but keeps a 1s remainder so a short run still counts. */
+export function liveChunks(startedAt: Date, endedAt: Date): DaySeconds[] {
+  const chunks = splitElapsedByDay(startedAt, endedAt)
+  if (chunks.length > 0) return chunks
+  const elapsedMs = endedAt.getTime() - startedAt.getTime()
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return []
+  return [{ dateKey: toDateKey(endedAt), seconds: Math.max(1, Math.round(elapsedMs / 1000) || 1) }]
 }
