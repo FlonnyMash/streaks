@@ -487,398 +487,410 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-lg">
+    <div>
       <h1 className="text-[26px] sm:text-3xl font-bold tracking-tight mb-6">Settings</h1>
 
-      <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 mb-4">Profile</p>
+      <div className="grid grid-cols-1 app-desktop:grid-cols-2 gap-4 items-start">
+          <div className="glass-panel rounded-[24px] p-5 min-w-0">
+            <p className="text-[13px] font-semibold text-black/45 dark:text-white/45 mb-4">Profile</p>
 
-        {/* Avatar */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative shrink-0">
-            <Avatar src={profile?.avatar_url ?? oauthAvatarUrl} name={profile?.first_name} size="xl" />
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={updateAvatar.isPending}
-              aria-label="Change avatar"
-              className="absolute -bottom-1 -right-1 size-7 rounded-full bg-accent-blue text-white flex items-center justify-center ring-2 ring-white dark:ring-black shadow-sm active:scale-90 transition-transform disabled:opacity-60"
-            >
-              <Camera className="size-3.5" />
-            </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarFileChange}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Profile photo</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45 mb-2">
-              {updateAvatar.isPending ? 'Uploading…' : 'Shown in the top-right of the app.'}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" loading={updateAvatar.isPending} onClick={() => avatarInputRef.current?.click()}>
-                <Camera className="size-3.5" />
-                Change photo
-              </Button>
-              {profile?.avatar_url && oauthAvatarUrl && (
-                <Button size="sm" variant="ghost" loading={removeAvatar.isPending} onClick={handleResetAvatar}>
-                  <RotateCcw className="size-3.5" />
-                  Reset to {primaryProviderLabel(user)} photo
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-        {avatarError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{avatarError}</p>}
-
-        {/* First name */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
-            <UserRound className="size-5 text-accent-blue" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-black/45 dark:text-white/45">First name</p>
-            {editingName ? (
-              <div className="flex items-center gap-2 mt-1">
-                <TextField
-                  value={firstNameDraft}
-                  onChange={(e) => setFirstNameDraft(e.target.value)}
-                  className="h-10 flex-1"
-                  autoFocus
+            {/* Avatar */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative shrink-0">
+                <Avatar src={profile?.avatar_url ?? oauthAvatarUrl} name={profile?.first_name} size="xl" />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={updateAvatar.isPending}
+                  aria-label="Change avatar"
+                  className="absolute -bottom-1 -right-1 size-7 rounded-full bg-accent-blue text-white flex items-center justify-center ring-2 ring-white dark:ring-black shadow-sm active:scale-90 transition-transform disabled:opacity-60"
+                >
+                  <Camera className="size-3.5" />
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarFileChange}
                 />
-                <Button size="sm" loading={updateFirstName.isPending} onClick={handleSaveFirstName}>
-                  Save
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <p className="font-medium truncate">{profile?.first_name || 'Not set'}</p>
-            )}
-          </div>
-          {!editingName && (
-            <Button variant="ghost" size="sm" onClick={startEditingName} aria-label="Edit first name">
-              <Pencil className="size-4" />
-            </Button>
-          )}
-        </div>
-        {editingName && nameError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{nameError}</p>}
-
-        {/* Email */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="size-12 rounded-2xl bg-accent-orange/15 flex items-center justify-center shrink-0">
-            <Mail className="size-5 text-accent-orange" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-black/45 dark:text-white/45">Email</p>
-            {editingEmail ? (
-              <div className="flex items-center gap-2 mt-1">
-                <TextField
-                  type="email"
-                  value={emailDraft}
-                  onChange={(e) => setEmailDraft(e.target.value)}
-                  className="h-10 flex-1"
-                  autoFocus
-                />
-                <Button size="sm" loading={emailSaving} onClick={handleSaveEmail}>
-                  Save
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditingEmail(false)}>
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
-            )}
-          </div>
-          {!editingEmail && !oauthOnly && (
-            <Button variant="ghost" size="sm" onClick={startEditingEmail} aria-label="Edit email">
-              <Pencil className="size-4" />
-            </Button>
-          )}
-        </div>
-        {!editingEmail && oauthOnly && (
-          <p className="text-[12px] text-black/40 dark:text-white/40 mb-4 -mt-2">
-            Managed by {primaryProviderLabel(user)} — sign-in email can't be changed here.
-          </p>
-        )}
-        {editingEmail && emailError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{emailError}</p>}
-        {!editingEmail && emailNotice && (
-          <p className="text-[13px] text-accent-green mb-4 -mt-2">{emailNotice}</p>
-        )}
-
-        {/* Password */}
-        {!oauthOnly && (
-          <>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="size-12 rounded-2xl bg-accent-teal/15 flex items-center justify-center shrink-0">
-                <KeyRound className="size-5 text-accent-teal" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-black/45 dark:text-white/45">Password</p>
-                {editingPassword ? (
-                  <div className="flex flex-col gap-2 mt-1">
-                    <TextField
-                      type="password"
-                      autoComplete="current-password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Current password"
-                      className="h-10"
-                      autoFocus
-                    />
-                    <TextField
-                      type="password"
-                      autoComplete="new-password"
-                      minLength={MIN_PASSWORD_LENGTH}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="New password"
-                      className="h-10"
-                    />
-                    <TextField
-                      type="password"
-                      autoComplete="new-password"
-                      minLength={MIN_PASSWORD_LENGTH}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      className="h-10"
-                    />
-                    <p className="text-[12px] text-black/40 dark:text-white/40">{PASSWORD_HINT}</p>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" loading={passwordSaving} onClick={handleSavePassword}>
-                        Save
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={cancelEditingPassword}>
-                        Cancel
-                      </Button>
-                    </div>
+                <p className="font-medium">Profile photo</p>
+                <p className="text-[13px] text-black/45 dark:text-white/45 mb-2">
+                  {updateAvatar.isPending ? 'Uploading…' : 'Shown in the top-right of the app.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="secondary" loading={updateAvatar.isPending} onClick={() => avatarInputRef.current?.click()}>
+                    <Camera className="size-3.5" />
+                    Change photo
+                  </Button>
+                  {profile?.avatar_url && oauthAvatarUrl && (
+                    <Button size="sm" variant="ghost" loading={removeAvatar.isPending} onClick={handleResetAvatar}>
+                      <RotateCcw className="size-3.5" />
+                      Reset to {primaryProviderLabel(user)} photo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            {avatarError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{avatarError}</p>}
+
+            <div className="grid grid-cols-1 app-desktop:grid-cols-2 gap-3 mb-4">
+              {/* First name */}
+              <div className={cn('rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-3', editingName && 'col-span-full')}>
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-accent-blue/15 flex items-center justify-center shrink-0">
+                    <UserRound className="size-4 text-accent-blue" />
                   </div>
-                ) : (
-                  <p className="font-medium truncate">••••••••</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-black/45 dark:text-white/45">First name</p>
+                    {editingName ? (
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <TextField
+                          value={firstNameDraft}
+                          onChange={(e) => setFirstNameDraft(e.target.value)}
+                          className="h-10 flex-1 min-w-[8rem]"
+                          autoFocus
+                        />
+                        <Button size="sm" loading={updateFirstName.isPending} onClick={handleSaveFirstName}>
+                          Save
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="font-medium truncate">{profile?.first_name || 'Not set'}</p>
+                    )}
+                  </div>
+                  {!editingName && (
+                    <Button variant="ghost" size="sm" onClick={startEditingName} aria-label="Edit first name">
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
+                </div>
+                {editingName && nameError && <p className="text-[13px] text-accent-red mt-2">{nameError}</p>}
+              </div>
+
+              {/* Email */}
+              <div className={cn('rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-3', editingEmail && 'col-span-full')}>
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-accent-orange/15 flex items-center justify-center shrink-0">
+                    <Mail className="size-4 text-accent-orange" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-black/45 dark:text-white/45">Email</p>
+                    {editingEmail ? (
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <TextField
+                          type="email"
+                          value={emailDraft}
+                          onChange={(e) => setEmailDraft(e.target.value)}
+                          className="h-10 flex-1 min-w-[8rem]"
+                          autoFocus
+                        />
+                        <Button size="sm" loading={emailSaving} onClick={handleSaveEmail}>
+                          Save
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingEmail(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="font-medium truncate">{user?.email ?? 'Unknown'}</p>
+                    )}
+                  </div>
+                  {!editingEmail && !oauthOnly && (
+                    <Button variant="ghost" size="sm" onClick={startEditingEmail} aria-label="Edit email">
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
+                </div>
+                {!editingEmail && oauthOnly && (
+                  <p className="text-[12px] text-black/40 dark:text-white/40 mt-2">
+                    Managed by {primaryProviderLabel(user)} — sign-in email can't be changed here.
+                  </p>
+                )}
+                {editingEmail && emailError && <p className="text-[13px] text-accent-red mt-2">{emailError}</p>}
+                {!editingEmail && emailNotice && (
+                  <p className="text-[13px] text-accent-green mt-2">{emailNotice}</p>
                 )}
               </div>
-              {!editingPassword && (
-                <Button variant="ghost" size="sm" onClick={startEditingPassword} aria-label="Change password">
-                  <Pencil className="size-4" />
-                </Button>
+
+              {/* Password */}
+              {!oauthOnly && (
+                <div className={cn('rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-3', editingPassword && 'col-span-full')}>
+                  <div className="flex items-start gap-3">
+                    <div className="size-10 rounded-xl bg-accent-teal/15 flex items-center justify-center shrink-0">
+                      <KeyRound className="size-4 text-accent-teal" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] text-black/45 dark:text-white/45">Password</p>
+                      {editingPassword ? (
+                        <div className="flex flex-col gap-2 mt-1">
+                          <TextField
+                            type="password"
+                            autoComplete="current-password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Current password"
+                            className="h-10"
+                            autoFocus
+                          />
+                          <TextField
+                            type="password"
+                            autoComplete="new-password"
+                            minLength={MIN_PASSWORD_LENGTH}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="New password"
+                            className="h-10"
+                          />
+                          <TextField
+                            type="password"
+                            autoComplete="new-password"
+                            minLength={MIN_PASSWORD_LENGTH}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirm new password"
+                            className="h-10"
+                          />
+                          <p className="text-[12px] text-black/40 dark:text-white/40">{PASSWORD_HINT}</p>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" loading={passwordSaving} onClick={handleSavePassword}>
+                              Save
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEditingPassword}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="font-medium truncate">••••••••</p>
+                      )}
+                    </div>
+                    {!editingPassword && (
+                      <Button variant="ghost" size="sm" onClick={startEditingPassword} aria-label="Change password">
+                        <Pencil className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {editingPassword && passwordError && (
+                    <p className="text-[13px] text-accent-red mt-2">{passwordError}</p>
+                  )}
+                  {!editingPassword && passwordNotice && (
+                    <p className="text-[13px] text-accent-green mt-2">{passwordNotice}</p>
+                  )}
+                </div>
               )}
-            </div>
-            {editingPassword && passwordError && (
-              <p className="text-[13px] text-accent-red mb-4 -mt-2">{passwordError}</p>
-            )}
-            {!editingPassword && passwordNotice && (
-              <p className="text-[13px] text-accent-green mb-4 -mt-2">{passwordNotice}</p>
-            )}
-          </>
-        )}
 
-        {/* Date of birth */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="size-12 rounded-2xl bg-accent-pink/15 flex items-center justify-center shrink-0">
-            <Cake className="size-5 text-accent-pink" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-black/45 dark:text-white/45">Date of birth</p>
-            {profile?.date_of_birth ? (
-              <p className="font-medium truncate">{formatDateOfBirth(profile.date_of_birth)}</p>
-            ) : (
-              <div className="flex items-center gap-2 mt-1">
-                <TextField
-                  type="date"
-                  value={dobDraft}
-                  onChange={(e) => setDobDraft(e.target.value)}
-                  max={new Date().toISOString().slice(0, 10)}
-                  className="h-10 flex-1"
-                />
-                <Button size="sm" loading={setDateOfBirth.isPending} onClick={handleSaveDateOfBirth}>
-                  Save
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-        {!profile?.date_of_birth && (
-          <p className="text-[12px] text-black/40 dark:text-white/40 mb-4 -mt-2">
-            You must be at least {MIN_AGE_YEARS}. This can't be changed once saved.
-          </p>
-        )}
-        {dobError && <p className="text-[13px] text-accent-red mb-4 -mt-2">{dobError}</p>}
-
-        <Button variant="secondary" size="md" className="w-full justify-start" onClick={() => signOut()}>
-          <LogOut className="size-4" />
-          Sign out
-        </Button>
-      </div>
-
-      <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
-            <Bell className="size-5 text-accent-blue" />
-          </div>
-          <Switch
-            checked={pushOn}
-            disabled={pushBusy}
-            onChange={(checked) => void handlePushSwitch(checked)}
-            label="Notifications"
-            description={
-              pushOn
-                ? 'Reminders for streaks, todos, and long timers'
-                : pushPermission === 'denied'
-                  ? `Blocked in ${blockedGuidance.surfaceLabel} settings`
-                  : 'Turn on for streak, todo, and timer reminders'
-            }
-          />
-        </div>
-
-        <NotificationBlockedModal
-          open={blockedOpen}
-          onClose={() => setBlockedOpen(false)}
-          onTryAgain={() => void handleTryAgainFromBlocked()}
-          tryingAgain={pushBusy}
-          guidance={blockedGuidance}
-        />
-        <NotificationInfoModal
-          open={infoOpen}
-          onClose={() => setInfoOpen(false)}
-          title={infoTitle}
-          body={infoBody}
-        />
-      </div>
-
-      <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="size-12 rounded-2xl bg-accent-orange/15 flex items-center justify-center">
-            <Sun className="size-5 text-accent-orange" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium">Appearance</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45">
-              Choose light, dark, or follow your device setting.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
-          {THEME_OPTIONS.map((opt) => {
-            const Icon = opt.icon
-            const selected = theme === opt.value
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setTheme(opt.value)}
-                className={cn(
-                  'rounded-2xl px-2 py-2.5 text-center transition-all',
-                  selected
-                    ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
-                    : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+              {/* Date of birth */}
+              <div className={cn('rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-3', !profile?.date_of_birth && 'col-span-full')}>
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-accent-pink/15 flex items-center justify-center shrink-0">
+                    <Cake className="size-4 text-accent-pink" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-black/45 dark:text-white/45">Date of birth</p>
+                    {profile?.date_of_birth ? (
+                      <p className="font-medium truncate">{formatDateOfBirth(profile.date_of_birth)}</p>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <TextField
+                          type="date"
+                          value={dobDraft}
+                          onChange={(e) => setDobDraft(e.target.value)}
+                          max={new Date().toISOString().slice(0, 10)}
+                          className="h-10 flex-1 min-w-[8rem]"
+                        />
+                        <Button size="sm" loading={setDateOfBirth.isPending} onClick={handleSaveDateOfBirth}>
+                          Save
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {!profile?.date_of_birth && (
+                  <p className="text-[12px] text-black/40 dark:text-white/40 mt-2">
+                    You must be at least {MIN_AGE_YEARS}. This can't be changed once saved.
+                  </p>
                 )}
-              >
-                <Icon className="size-4 mx-auto mb-1 opacity-80" />
-                <div className="text-[13px] font-semibold">{opt.label}</div>
-                <div className="text-[11px] text-black/45 dark:text-white/45 mt-0.5">{opt.hint}</div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+                {dobError && <p className="text-[13px] text-accent-red mt-2">{dobError}</p>}
+              </div>
+            </div>
 
-      <div className="glass-panel rounded-[24px] p-5 mb-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="size-12 rounded-2xl bg-accent-indigo/15 flex items-center justify-center">
-            <Fingerprint className="size-5 text-accent-indigo" />
+            <Button variant="secondary" size="md" className="w-full justify-start" onClick={() => signOut()}>
+              <LogOut className="size-4" />
+              Sign out
+            </Button>
           </div>
-          <div className="min-w-0">
-            <p className="font-medium">Passkeys</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45">
-              Register devices for faster, passwordless sign-in. You can remove any passkey below.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex flex-col gap-2 mb-3">
-          {passkeysLoading && (
-            <p className="text-[13px] text-black/45 dark:text-white/45">Loading passkeys…</p>
-          )}
-          {!passkeysLoading && passkeys.length === 0 && (
-            <p className="text-[13px] text-black/45 dark:text-white/45">No passkeys registered yet.</p>
-          )}
-          {passkeys.map((passkey) => (
-            <div
-              key={passkey.id}
-              className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-3"
-            >
+        <div className="flex flex-col gap-4 min-w-0">
+          <div className="glass-panel rounded-[24px] p-5">
+            <div className="flex items-center gap-3">
+              <div className="size-12 rounded-2xl bg-accent-blue/15 flex items-center justify-center shrink-0">
+                <Bell className="size-5 text-accent-blue" />
+              </div>
+              <Switch
+                checked={pushOn}
+                disabled={pushBusy}
+                onChange={(checked) => void handlePushSwitch(checked)}
+                label="Notifications"
+                description={
+                  pushOn
+                    ? 'Reminders for streaks, todos, and long timers'
+                    : pushPermission === 'denied'
+                      ? `Blocked in ${blockedGuidance.surfaceLabel} settings`
+                      : 'Turn on for streak, todo, and timer reminders'
+                }
+              />
+            </div>
+
+            <NotificationBlockedModal
+              open={blockedOpen}
+              onClose={() => setBlockedOpen(false)}
+              onTryAgain={() => void handleTryAgainFromBlocked()}
+              tryingAgain={pushBusy}
+              guidance={blockedGuidance}
+            />
+            <NotificationInfoModal
+              open={infoOpen}
+              onClose={() => setInfoOpen(false)}
+              title={infoTitle}
+              body={infoBody}
+            />
+          </div>
+
+          <div className="glass-panel rounded-[24px] p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-2xl bg-accent-orange/15 flex items-center justify-center shrink-0">
+                <Sun className="size-5 text-accent-orange" />
+              </div>
               <div className="min-w-0">
-                <p className="text-[14px] font-medium truncate">
-                  {passkey.friendly_name?.trim() || 'Passkey'}
-                </p>
-                <p className="text-[12px] text-black/45 dark:text-white/45">
-                  Added {formatPasskeyDate(passkey.created_at)}
-                  {passkey.last_used_at ? ` · Last used ${formatPasskeyDate(passkey.last_used_at)}` : ''}
+                <p className="font-medium">Appearance</p>
+                <p className="text-[13px] text-black/45 dark:text-white/45">
+                  Choose light, dark, or follow your device setting.
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                loading={deletingId === passkey.id}
-                onClick={() => handleDeletePasskey(passkey.id)}
-                aria-label={`Delete ${passkey.friendly_name || 'passkey'}`}
-                className="text-accent-red shrink-0"
-              >
-                <Trash2 className="size-4" />
-              </Button>
             </div>
-          ))}
-        </div>
 
-        <Button variant="secondary" size="sm" loading={registering} onClick={handleRegisterPasskey}>
-          Register a passkey
-        </Button>
-        {passkeyMsg && <p className="text-[13px] text-accent-green mt-2">{passkeyMsg}</p>}
-        {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
+              {THEME_OPTIONS.map((opt) => {
+                const Icon = opt.icon
+                const selected = theme === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setTheme(opt.value)}
+                    className={cn(
+                      'rounded-2xl px-2 py-2.5 text-center transition-all',
+                      selected
+                        ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
+                        : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                    )}
+                  >
+                    <Icon className="size-4 mx-auto mb-1 opacity-80" />
+                    <div className="text-[13px] font-semibold">{opt.label}</div>
+                    <div className="text-[11px] text-black/45 dark:text-white/45 mt-0.5">{opt.hint}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-[24px] p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-2xl bg-accent-indigo/15 flex items-center justify-center shrink-0">
+                <Fingerprint className="size-5 text-accent-indigo" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium">Passkeys</p>
+                <p className="text-[13px] text-black/45 dark:text-white/45">
+                  Register devices for faster, passwordless sign-in. You can remove any passkey below.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-3">
+              {passkeysLoading && (
+                <p className="text-[13px] text-black/45 dark:text-white/45">Loading passkeys…</p>
+              )}
+              {!passkeysLoading && passkeys.length === 0 && (
+                <p className="text-[13px] text-black/45 dark:text-white/45">No passkeys registered yet.</p>
+              )}
+              {passkeys.map((passkey) => (
+                <div
+                  key={passkey.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-medium truncate">
+                      {passkey.friendly_name?.trim() || 'Passkey'}
+                    </p>
+                    <p className="text-[12px] text-black/45 dark:text-white/45">
+                      Added {formatPasskeyDate(passkey.created_at)}
+                      {passkey.last_used_at ? ` · Last used ${formatPasskeyDate(passkey.last_used_at)}` : ''}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    loading={deletingId === passkey.id}
+                    onClick={() => handleDeletePasskey(passkey.id)}
+                    aria-label={`Delete ${passkey.friendly_name || 'passkey'}`}
+                    className="text-accent-red shrink-0"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <Button variant="secondary" size="sm" loading={registering} onClick={handleRegisterPasskey}>
+              Register a passkey
+            </Button>
+            {passkeyMsg && <p className="text-[13px] text-accent-green mt-2">{passkeyMsg}</p>}
+            {passkeyError && <p className="text-[13px] text-accent-red mt-2">{passkeyError}</p>}
+          </div>
+
+          <AddToHomeScreenSettings />
+
+          <section className="sm:hidden">
+            <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
+              Legal
+            </h2>
+            <button
+              type="button"
+              onClick={() => setLegalOpen(true)}
+              className="w-full glass-panel rounded-[24px] p-5 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+            >
+              <div className="size-12 rounded-2xl bg-accent-teal/15 flex items-center justify-center shrink-0">
+                <Scale className="size-5 text-accent-teal" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">Legal</p>
+                <p className="text-[13px] text-black/45 dark:text-white/45">
+                  Privacy Policy and Imprint
+                </p>
+              </div>
+              <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />
+            </button>
+            <LegalPickerModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+          </section>
+        </div>
       </div>
 
-      <AddToHomeScreenSettings />
-
-      <section className="sm:hidden mb-4">
-        <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
-          Legal
-        </h2>
-        <button
-          type="button"
-          onClick={() => setLegalOpen(true)}
-          className="w-full glass-panel rounded-[24px] p-5 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-        >
-          <div className="size-12 rounded-2xl bg-accent-teal/15 flex items-center justify-center shrink-0">
-            <Scale className="size-5 text-accent-teal" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Legal</p>
-            <p className="text-[13px] text-black/45 dark:text-white/45">
-              Privacy Policy and Imprint
-            </p>
-          </div>
-          <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />
-        </button>
-        <LegalPickerModal open={legalOpen} onClose={() => setLegalOpen(false)} />
-      </section>
-
-      <section>
+      <section className="mt-4">
         <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
           Danger zone
         </h2>
         <div className="glass-panel rounded-[24px] p-5 border border-accent-red/20">
           <div className="flex items-center gap-3 mb-3">
-            <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center">
+            <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center shrink-0">
               <TriangleAlert className="size-5 text-accent-red" />
             </div>
             <div className="min-w-0">
