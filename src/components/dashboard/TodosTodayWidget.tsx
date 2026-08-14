@@ -7,6 +7,7 @@ import { formatElapsedClock } from '@/lib/timesheetLogic'
 import { toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const IMPORTANCE_DOT = { 1: 'bg-black/20 dark:bg-white/25', 2: 'bg-accent-orange', 3: 'bg-accent-red' } as const
 
@@ -44,7 +45,8 @@ export function TodosTodayWidget() {
       )}
 
       {!isLoading && runningTodo && runningTimer && (
-        <div className="rounded-2xl bg-accent-blue/10 px-3.5 py-3 flex flex-col gap-2 mb-3">
+        <div className="glass-inset rounded-2xl px-3.5 py-3 flex flex-col gap-2 mb-3 relative overflow-hidden pl-4">
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-accent-blue" />
           <div className="flex items-center gap-3">
             <span className="relative flex size-2.5 shrink-0">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-blue opacity-60" />
@@ -53,7 +55,7 @@ export function TodosTodayWidget() {
             <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{runningTodo.title}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-2xl font-bold tabular-nums tracking-tight">
+            <span className="text-2xl font-extrabold tabular-nums tracking-tight">
               {formatElapsedClock(elapsedMsFor(runningTodo.id))}
             </span>
             <Button type="button" size="sm" onClick={() => void pause(runningTodo.id)} loading={isSyncing}>
@@ -65,10 +67,11 @@ export function TodosTodayWidget() {
       )}
 
       {!isLoading && dueToday.length === 0 && !runningTodo && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
-          <PartyPopper className="size-6 text-accent-green/70" />
-          <p className="text-[13px] text-black/45 dark:text-white/45">Nothing due today. You're all caught up.</p>
-        </div>
+        <EmptyState
+          icon={<PartyPopper className="size-6" />}
+          iconClassName="text-accent-green"
+          body="Nothing due today. You're all caught up."
+        />
       )}
 
       {!isLoading && dueToday.length === 0 && runningTodo && (

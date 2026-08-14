@@ -6,6 +6,7 @@ import { isScheduledDay } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { Streak, StreakEntry } from '@/lib/types'
 
 interface TodayStreakRowProps {
@@ -79,10 +80,11 @@ export function TodayStreaksWidget() {
       )}
 
       {!isLoading && scheduledToday.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
-          <Sparkles className="size-6 text-accent-orange/70" />
-          <p className="text-[13px] text-black/45 dark:text-white/45">Nothing scheduled today. Enjoy the day off!</p>
-        </div>
+        <EmptyState
+          icon={<Sparkles className="size-6" />}
+          iconClassName="text-accent-orange"
+          body="Nothing scheduled today. Enjoy the day off!"
+        />
       )}
 
       {!isLoading && scheduledToday.length > 0 && (

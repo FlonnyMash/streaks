@@ -13,10 +13,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-accent-blue text-white shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:brightness-95',
+    'bg-accent-blue text-white shadow-[0_4px_12px_-6px_rgba(10,132,255,0.35)] hover:brightness-110 hover:shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] active:brightness-95',
   secondary:
     'bg-black/5 dark:bg-white/10 text-current hover:bg-black/10 dark:hover:bg-white/15',
-  glass: 'glass-panel text-current hover:brightness-105 active:brightness-95',
+  glass: 'glass-panel text-current hover:brightness-105 hover:border-accent-blue/30 active:brightness-95',
   ghost: 'bg-transparent text-current hover:bg-black/5 dark:hover:bg-white/10',
   danger: 'bg-accent-red text-white hover:brightness-110 active:brightness-95',
 }

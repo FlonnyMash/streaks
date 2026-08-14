@@ -166,11 +166,11 @@ export function TimesheetWorkspacePage() {
           { label: 'This month', value: totals.month },
           { label: 'Total', value: totals.total },
         ].map(({ label, value }) => (
-          <div key={label} className="glass-panel rounded-2xl p-3.5 flex flex-col items-center gap-1">
-            <span className="text-xl font-bold tabular-nums tracking-tight" style={{ color: value > 0 ? accent.hex : undefined }}>
+          <div key={label} className="glass-inset rounded-2xl p-3.5 flex flex-col items-center gap-1">
+            <span className="text-2xl font-extrabold tabular-nums tracking-tight" style={{ color: value > 0 ? accent.hex : undefined }}>
               {formatMinutes(value)}
             </span>
-            <span className="text-[11px] font-medium text-black/45 dark:text-white/45">{label}</span>
+            <span className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45">{label}</span>
           </div>
         ))}
       </div>

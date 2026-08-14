@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import { ChevronDown, ListTodo, Plus, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { TodoItem } from '@/components/todos/TodoItem'
 import { CreateTodoModal, type TodoModalMode } from '@/components/todos/CreateTodoModal'
 import {
@@ -244,20 +245,20 @@ export function TodosPage() {
       {isLoading && <Spinner />}
 
       {isEmpty && (
-        <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
-          <ListTodo className="size-8 text-accent-orange" />
-          <h2 className="font-semibold text-lg">No tasks yet</h2>
-          <p className="text-black/50 dark:text-white/50 text-[15px] max-w-xs">
-            Add your first task to start your checklist.
-          </p>
-          <button
-            onClick={() => openCreate()}
-            className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
+        <div className="glass-panel rounded-[28px] p-4 mt-6">
+          <EmptyState
+            className="py-10"
+            icon={<ListTodo className="size-8" />}
+            iconClassName="text-accent-orange"
+            title="No tasks yet"
+            body="Add your first task to start your checklist."
           >
-            <Plus className="size-4" />
-            Create a task
-          </button>
-          <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+            <Button type="button" className="mt-2" onClick={() => openCreate()}>
+              <Plus className="size-4" />
+              Create a task
+            </Button>
+            <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+          </EmptyState>
         </div>
       )}
 

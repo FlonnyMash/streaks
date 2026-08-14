@@ -11,6 +11,8 @@ import { ExportTimesheetModal } from '@/components/timesheet/ExportTimesheetModa
 import { ActiveTimerBanner } from '@/components/timesheet/ActiveTimerBanner'
 import { ClockInPickerModal } from '@/components/timesheet/ClockInPickerModal'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 import {
   FeatureGetStartedButton,
   FeatureHelpIconButton,
@@ -84,31 +86,21 @@ export function TimesheetPage() {
         <div className="hidden app-desktop:flex items-center gap-2">
           {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
           {showHelpIcon && (
-            <button
-              onClick={() => setExportOpen(true)}
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-black/5 dark:bg-white/10 font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all"
-            >
+            <Button type="button" variant="secondary" onClick={() => setExportOpen(true)}>
               <Download className="size-4" />
               Export
-            </button>
+            </Button>
           )}
           {showHelpIcon && (
-            <button
-              onClick={() => setClockInOpen(true)}
-              disabled={!canClockIn}
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-black/5 dark:bg-white/10 font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
-            >
+            <Button type="button" variant="glass" className="text-accent-teal hover:border-accent-teal/30" onClick={() => setClockInOpen(true)} disabled={!canClockIn}>
               <Play className="size-4 fill-current" />
               Clock in
-            </button>
+            </Button>
           )}
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:scale-95 transition-all"
-          >
+          <Button type="button" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             New Workspace
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -117,20 +109,20 @@ export function TimesheetPage() {
       {workspacesLoading && <Spinner />}
 
       {isEmpty && (
-        <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
-          <Sparkles className="size-8 text-accent-orange" />
-          <h2 className="font-semibold text-lg">No workspaces yet</h2>
-          <p className="text-black/50 dark:text-white/50 text-[15px] max-w-xs">
-            Create a workspace for each project, client, or job you want to track time for.
-          </p>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
+        <div className="glass-panel rounded-[28px] p-4 mt-6">
+          <EmptyState
+            className="py-10"
+            icon={<Sparkles className="size-8" />}
+            iconClassName="text-accent-orange"
+            title="No workspaces yet"
+            body="Create a workspace for each project, client, or job you want to track time for."
           >
-            <Plus className="size-4" />
-            Create a workspace
-          </button>
-          <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+            <Button type="button" className="mt-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Create a workspace
+            </Button>
+            <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+          </EmptyState>
         </div>
       )}
 
@@ -162,7 +154,7 @@ export function TimesheetPage() {
       <button
         onClick={() => setCreateOpen(true)}
         aria-label="New workspace"
-        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
+        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_4px_12px_-6px_rgba(10,132,255,0.35)] active:scale-90 transition-transform"
       >
         <Plus className="size-6" />
       </button>

@@ -4,6 +4,7 @@ import { useAllStreakEntries } from '@/hooks/useStreakEntries'
 import { computeStreakStats } from '@/lib/streakLogic'
 import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export function StreakHighlightsWidget() {
   const { data: streaks, isLoading: streaksLoading } = useStreaks()
@@ -25,13 +26,15 @@ export function StreakHighlightsWidget() {
   if (!streaks || streaks.length === 0) {
     return (
       <div className="glass-panel rounded-[24px] p-5 flex flex-col h-full min-h-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="size-4 text-accent-blue" />
           <h2 className="font-semibold text-[15px]">Streak Highlights</h2>
         </div>
-        <p className="text-[13px] text-black/45 dark:text-white/45">
-          Create your first streak to start building momentum.
-        </p>
+        <EmptyState
+          icon={<TrendingUp className="size-6" />}
+          iconClassName="text-accent-blue"
+          body="Create your first streak to start building momentum."
+        />
       </div>
     )
   }
@@ -53,18 +56,19 @@ export function StreakHighlightsWidget() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] p-3">
-          <p className="text-[11px] text-black/45 dark:text-white/45 uppercase tracking-wide mb-1">Active</p>
-          <p className="text-2xl font-bold tabular-nums">{streaks.length}</p>
+        <div className="glass-inset rounded-2xl p-3">
+          <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-1">Active</p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight">{streaks.length}</p>
         </div>
-        <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] p-3">
-          <p className="text-[11px] text-black/45 dark:text-white/45 uppercase tracking-wide mb-1">Combined days</p>
-          <p className="text-2xl font-bold tabular-nums">{totalCurrentDays}</p>
+        <div className="glass-inset rounded-2xl p-3">
+          <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-1">Combined days</p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight">{totalCurrentDays}</p>
         </div>
       </div>
 
       {best.stats.currentStreak > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ backgroundColor: `${bestAccent.hex}14` }}>
+        <div className="glass-inset relative overflow-hidden flex items-center gap-3 rounded-2xl px-3 py-2.5">
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `${bestAccent.hex}14` }} />
           <Trophy className="size-5 shrink-0" style={{ color: bestAccent.hex }} />
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium truncate">{best.streak.name}</p>
@@ -72,7 +76,7 @@ export function StreakHighlightsWidget() {
           </div>
           <div className="flex items-center gap-1 shrink-0" style={{ color: bestAccent.hex }}>
             <Flame className="size-4" fill="currentColor" fillOpacity={0.25} />
-            <span className="font-bold tabular-nums">{best.stats.currentStreak}</span>
+            <span className="font-extrabold tabular-nums">{best.stats.currentStreak}</span>
           </div>
         </div>
       )}

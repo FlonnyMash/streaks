@@ -11,6 +11,7 @@ import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
 import { formatMinutes, toDateKey } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export function TimesheetTodayWidget() {
   const { data: workspaces, isLoading: workspacesLoading } = useTimesheetWorkspaces()
@@ -57,13 +58,13 @@ export function TimesheetTodayWidget() {
       {!isLoading && (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] p-3">
-              <p className="text-[11px] text-black/45 dark:text-white/45 uppercase tracking-wide mb-1">Today</p>
-              <p className="text-2xl font-bold tabular-nums">{formatMinutes(totals.today)}</p>
+            <div className="glass-inset rounded-2xl p-3">
+              <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-1">Today</p>
+              <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatMinutes(totals.today)}</p>
             </div>
-            <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] p-3">
-              <p className="text-[11px] text-black/45 dark:text-white/45 uppercase tracking-wide mb-1">This week</p>
-              <p className="text-2xl font-bold tabular-nums">{formatMinutes(totals.week)}</p>
+            <div className="glass-inset rounded-2xl p-3">
+              <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-1">This week</p>
+              <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatMinutes(totals.week)}</p>
             </div>
           </div>
 
@@ -75,7 +76,8 @@ export function TimesheetTodayWidget() {
                 const running = Boolean(session.runningSince)
                 const stored = storedSecondsFor(session.workspaceId)
                 return (
-                  <div key={session.id} className="rounded-2xl bg-accent-teal/10 px-3.5 py-3 flex flex-col gap-2">
+                  <div key={session.id} className="glass-inset rounded-2xl px-3.5 py-3 flex flex-col gap-2 relative overflow-hidden pl-4">
+                    <span className="absolute inset-y-0 left-0 w-[3px] bg-accent-teal" />
                     <div className="flex items-center gap-3">
                       <span className="relative flex size-2.5 shrink-0">
                         {running && (
@@ -102,7 +104,7 @@ export function TimesheetTodayWidget() {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-2xl font-bold tabular-nums tracking-tight">
+                      <span className="text-2xl font-extrabold tabular-nums tracking-tight">
                         {running
                           ? formatElapsedClock(elapsedMsFor(session.id))
                           : formatMinutes(minutesFromSeconds(stored || Math.round(elapsedMsFor(session.id) / 1000)))}
@@ -131,7 +133,7 @@ export function TimesheetTodayWidget() {
           )}
 
           {available.length > 0 && (
-            <Button type="button" size="md" className="w-full mb-3" onClick={handleClockIn}>
+            <Button type="button" size="md" variant="glass" className="w-full mb-3 text-accent-teal hover:border-accent-teal/30" onClick={handleClockIn}>
               <Play className="size-4 fill-current" />
               Clock in
             </Button>
@@ -159,14 +161,15 @@ export function TimesheetTodayWidget() {
             </div>
           ) : (
             sessions.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
-                <Clock className="size-6 text-accent-teal/70" />
-                <p className="text-[13px] text-black/45 dark:text-white/45">
-                  {workspaces && workspaces.length === 0
+              <EmptyState
+                icon={<Clock className="size-6" />}
+                iconClassName="text-accent-teal"
+                body={
+                  workspaces && workspaces.length === 0
                     ? 'Create a workspace to start tracking.'
-                    : 'No time logged yet today.'}
-                </p>
-              </div>
+                    : 'No time logged yet today.'
+                }
+              />
             )
           )}
         </div>

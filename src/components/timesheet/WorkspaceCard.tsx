@@ -35,20 +35,20 @@ export function WorkspaceCard({ workspace, entries }: WorkspaceCardProps) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] px-4 py-3">
+      <div className="mt-4 flex items-center justify-between glass-inset rounded-2xl px-4 py-3">
         <div className="text-center flex-1">
-          <p className="text-[11px] text-black/45 dark:text-white/45">Today</p>
-          <p className="font-semibold text-[15px] tabular-nums" style={{ color: totals.today > 0 ? accent.hex : undefined }}>
+          <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-0.5">Today</p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight" style={{ color: totals.today > 0 ? accent.hex : undefined }}>
             {formatMinutes(totals.today)}
           </p>
         </div>
         <div className="text-center flex-1 border-x border-black/[0.06] dark:border-white/[0.08]">
-          <p className="text-[11px] text-black/45 dark:text-white/45">This month</p>
-          <p className="font-semibold text-[15px] tabular-nums">{formatMinutes(totals.month)}</p>
+          <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-0.5">This month</p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatMinutes(totals.month)}</p>
         </div>
         <div className="text-center flex-1">
-          <p className="text-[11px] text-black/45 dark:text-white/45">Total</p>
-          <p className="font-semibold text-[15px] tabular-nums">{formatMinutes(totals.total)}</p>
+          <p className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45 mb-0.5">Total</p>
+          <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatMinutes(totals.total)}</p>
         </div>
       </div>
     </Link>

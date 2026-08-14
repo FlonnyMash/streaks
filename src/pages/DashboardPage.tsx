@@ -4,6 +4,8 @@ import { useStreaks } from '@/hooks/useStreaks'
 import { useAllStreakEntries } from '@/hooks/useStreakEntries'
 import { StreakCard } from '@/components/streaks/StreakCard'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { CreateStreakModal } from '@/components/streaks/CreateStreakModal'
 import {
   FeatureGetStartedButton,
@@ -34,33 +36,30 @@ export function DashboardPage() {
         </div>
         <div className="hidden app-desktop:flex items-center gap-2">
           {showHelpIcon && <FeatureHelpIconButton onClick={() => setHelpOpen(true)} />}
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium shadow-[0_8px_20px_-6px_rgba(10,132,255,0.6)] hover:brightness-110 active:scale-95 transition-all"
-          >
+          <Button type="button" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             New Streak
-          </button>
+          </Button>
         </div>
       </div>
 
       {isLoading && <Spinner />}
 
       {isEmpty && (
-        <div className="glass-panel rounded-[28px] p-10 flex flex-col items-center text-center gap-3 mt-6">
-          <Sparkles className="size-8 text-accent-orange" />
-          <h2 className="font-semibold text-lg">No streaks yet</h2>
-          <p className="text-black/50 dark:text-white/50 text-[15px] max-w-xs">
-            Create your first streak to start tracking a daily habit, custom days, or a weekly goal.
-          </p>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="mt-2 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-accent-blue text-white font-medium active:scale-95 transition-all"
+        <div className="glass-panel rounded-[28px] p-4 mt-6">
+          <EmptyState
+            className="py-10"
+            icon={<Sparkles className="size-8" />}
+            iconClassName="text-accent-orange"
+            title="No streaks yet"
+            body="Create your first streak to start tracking a daily habit, custom days, or a weekly goal."
           >
-            <Plus className="size-4" />
-            Create a streak
-          </button>
-          <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+            <Button type="button" className="mt-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Create a streak
+            </Button>
+            <FeatureGetStartedButton onClick={() => setHelpOpen(true)} />
+          </EmptyState>
         </div>
       )}
 
@@ -75,7 +74,7 @@ export function DashboardPage() {
       <button
         onClick={() => setCreateOpen(true)}
         aria-label="New streak"
-        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(10,132,255,0.7)] active:scale-90 transition-transform"
+        className="app-desktop:hidden fixed right-5 fab-above-tabbar z-40 size-14 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-[0_4px_12px_-6px_rgba(10,132,255,0.35)] active:scale-90 transition-transform"
       >
         <Plus className="size-6" />
       </button>

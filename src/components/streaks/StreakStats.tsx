@@ -57,7 +57,7 @@ export function StreakStats({ streak, entries }: { streak: Streak; entries: Stre
   return (
     <div className={streak.track_time ? 'grid grid-cols-2 app-desktop:grid-cols-4 gap-3' : 'grid grid-cols-3 gap-3'}>
       {items.map(({ label, value, icon: Icon, color, bump }) => (
-        <div key={label} className="glass-panel rounded-2xl p-3.5 flex flex-col items-center gap-1">
+        <div key={label} className="glass-inset rounded-2xl p-3.5 flex flex-col items-center gap-1">
           <motion.div
             key={bump}
             initial={bump ? { scale: 1 } : false}
@@ -66,10 +66,10 @@ export function StreakStats({ streak, entries }: { streak: Streak; entries: Stre
           >
             <Icon className="size-5" style={{ color }} fill={color} fillOpacity={0.2} />
           </motion.div>
-          <span className="text-xl font-bold tabular-nums tracking-tight">
+          <span className="text-2xl font-extrabold tabular-nums tracking-tight">
             <AnimatedNumber value={value} />
           </span>
-          <span className="text-[11px] font-medium text-black/45 dark:text-white/45">{label}</span>
+          <span className="text-[11px] uppercase tracking-wider text-black/45 dark:text-white/45">{label}</span>
         </div>
       ))}
     </div>

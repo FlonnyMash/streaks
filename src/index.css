@@ -158,4 +158,69 @@ body {
     --glass-bg: light-dark(rgba(255, 255, 255, 0.65), rgba(28, 28, 30, 0.78));
     --glass-blur: 64px;
   }
+
+  /* Nested wells inside a glass-panel — lighter, no drop shadow, so stacked glass stays readable. */
+  .glass-inset {
+    --glass-inset-bg: light-dark(rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
+    --glass-inset-border: light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.14));
+
+    background: var(--glass-inset-bg);
+    border: 1px solid var(--glass-inset-border);
+    box-shadow: light-dark(
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16)
+    );
+  }
+
+  /* Empty-state inner area: radial wash + faint dots, faded toward the edges. */
+  .empty-well {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        ellipse 80% 70% at 50% 0%,
+        light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08)),
+        transparent 70%
+      ),
+      light-dark(rgba(0, 0, 0, 0.025), rgba(255, 255, 255, 0.04));
+  }
+
+  .empty-well::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(
+      light-dark(rgba(0, 0, 0, 0.09), rgba(255, 255, 255, 0.14)) 1px,
+      transparent 1px
+    );
+    background-size: 12px 12px;
+    opacity: 0.4;
+    mask-image: radial-gradient(ellipse at 50% 40%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 40%, black 30%, transparent 75%);
+  }
+
+  .empty-well > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .empty-well-icon {
+    display: inline-flex;
+    opacity: 0.85;
+    filter: drop-shadow(0 6px 16px color-mix(in srgb, currentColor 35%, transparent));
+  }
+
+  .empty-well-title {
+    background: linear-gradient(
+      180deg,
+      light-dark(#1c1c1e, #f5f5f7) 0%,
+      light-dark(rgba(28, 28, 30, 0.55), rgba(245, 245, 247, 0.55)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
