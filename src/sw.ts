@@ -48,7 +48,9 @@ registerRoute(
   }),
 )
 
-self.addEventListener('push', (event) => {
+// Use onpush/onsync (not addEventListener('push'|'sync')) so PWABuilder's
+// static analyzer still matches after Vite minifies string literals to backticks.
+self.onpush = (event) => {
   let title = 'Mashed'
   let body = 'You have a new reminder.'
   let url = '/'
@@ -71,7 +73,7 @@ self.addEventListener('push', (event) => {
       data: { url },
     }),
   )
-})
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
@@ -96,8 +98,8 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 /** Wake open clients to flush the IndexedDB mutation outbox (auth stays in the page). */
-self.addEventListener('sync', (event) => {
-  const syncEvent = event as Event & { tag?: string; waitUntil: (p: Promise<unknown>) => void }
+self.onsync = (event) => {
+  const syncEvent = event as ExtendableEvent & { tag?: string }
   if (syncEvent.tag !== 'outbox-flush') return
   syncEvent.waitUntil(
     (async () => {
@@ -107,4 +109,4 @@ self.addEventListener('sync', (event) => {
       }
     })(),
   )
-})
+}
