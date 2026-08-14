@@ -14,6 +14,7 @@ import { initPwaInstallCapture } from '@/lib/pwa'
 initPwaInstallCapture()
 
 const DOMAIN_QUERY_ROOTS = new Set([
+  'profile',
   'streaks',
   'streak-entries',
   'todos',

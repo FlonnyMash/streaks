@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Profile } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
+import { isLikelyNetworkError } from '@/lib/offline/network'
 
 const PROFILE_KEY = ['profile'] as const
 
@@ -11,6 +12,13 @@ export function useProfile() {
   return useQuery({
     queryKey: [...PROFILE_KEY, user?.id],
     enabled: Boolean(user),
+    // iOS home-screen PWAs often fail the first fetch on cold start ("Load failed").
+    retry: (failureCount, error) => {
+      if (failureCount >= 4) return false
+      return isLikelyNetworkError(error) || failureCount < 2
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    staleTime: 60_000,
     queryFn: async (): Promise<Profile | null> => {
       const { data, error } = await supabase
         .from('profiles')
@@ -139,6 +147,7 @@ export function useCompleteOnboarding() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: async (input: { firstName: string; dateOfBirth: string }) => {
       if (!user) throw new Error('Not signed in')
       // Upsert covers race cases where the auth.users trigger hasn't created a
@@ -159,7 +168,8 @@ export function useCompleteOnboarding() {
       if (error) throw error
       return data as Profile
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData([...PROFILE_KEY, user?.id], data)
       queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
     },
   })

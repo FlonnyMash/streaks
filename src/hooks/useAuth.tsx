@@ -48,17 +48,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    let cancelled = false
+
+    async function bootstrap() {
+      const { data } = await supabase.auth.getSession()
+      if (cancelled) return
       setSession(data?.session ?? null)
       setLoading(false)
-    })
+
+      // iOS standalone cold starts often restore a stale access token; refresh quietly.
+      if (data?.session) {
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        if (!cancelled && refreshed?.session) {
+          setSession(refreshed.session)
+        }
+      }
+    }
+
+    void bootstrap()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setLoading(false)
     })
 
-    return () => listener.subscription.unsubscribe()
+    const rehydrate = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') return
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) setSession(data.session)
+      })
+    }
+    document.addEventListener('visibilitychange', rehydrate)
+    window.addEventListener('pageshow', rehydrate)
+
+    return () => {
+      cancelled = true
+      listener.subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', rehydrate)
+      window.removeEventListener('pageshow', rehydrate)
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(

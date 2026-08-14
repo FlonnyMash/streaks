@@ -882,45 +882,45 @@ export function SettingsPage() {
             <LegalPickerModal open={legalOpen} onClose={() => setLegalOpen(false)} />
           </section>
         </div>
-      </div>
 
-      <section className="mt-4">
-        <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
-          Danger zone
-        </h2>
-        <div className="glass-panel rounded-[24px] p-5 border border-accent-red/20">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center shrink-0">
-              <TriangleAlert className="size-5 text-accent-red" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-medium">Delete account</p>
-              <p className="text-[13px] text-black/45 dark:text-white/45">
-                Permanently deletes your account and every streak. This can't be undone.
-              </p>
-            </div>
-          </div>
-
-          {!confirmDelete ? (
-            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="size-4" />
-              Delete my account
-            </Button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {deleteError && <p className="text-[13px] text-accent-red">{deleteError}</p>}
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(false)}>
-                  Cancel
-                </Button>
-                <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount}>
-                  Yes, delete everything
-                </Button>
+        <section className="app-desktop:col-start-1">
+          <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
+            Danger zone
+          </h2>
+          <div className="glass-panel rounded-[24px] p-5 border border-accent-red/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center shrink-0">
+                <TriangleAlert className="size-5 text-accent-red" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium">Delete account</p>
+                <p className="text-[13px] text-black/45 dark:text-white/45">
+                  Permanently deletes your account and every streak. This can't be undone.
+                </p>
               </div>
             </div>
-          )}
-        </div>
-      </section>
+
+            {!confirmDelete ? (
+              <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="size-4" />
+                Delete my account
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {deleteError && <p className="text-[13px] text-accent-red">{deleteError}</p>}
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount}>
+                    Yes, delete everything
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

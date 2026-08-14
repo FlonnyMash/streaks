@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfile, useCompleteOnboarding } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabaseClient'
 import { getErrorMessage } from '@/lib/errors'
+import { isLikelyNetworkError } from '@/lib/offline/network'
 import { MIN_AGE_YEARS, guessFirstNameFromUser, isOldEnough, isValidPastDate } from '@/lib/profile'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -55,7 +56,11 @@ export function CompleteProfilePage() {
       await completeOnboarding.mutateAsync({ firstName: firstName.trim(), dateOfBirth })
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(getErrorMessage(err))
+      if (isLikelyNetworkError(err)) {
+        setError('Network error — check your connection and try again.')
+      } else {
+        setError(getErrorMessage(err))
+      }
     }
   }
 
