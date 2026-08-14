@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import type { Profile } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
 import { isLikelyNetworkError } from '@/lib/offline/network'
+import { deleteCachedAvatar, writeCachedAvatarBlob } from '@/lib/avatarCache'
 
 const PROFILE_KEY = ['profile'] as const
 
@@ -93,17 +94,26 @@ export function useUpdateAvatar() {
       if (uploadError) throw uploadError
 
       const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      const publicUrl = publicUrlData.publicUrl
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrlData.publicUrl })
+        .update({ avatar_url: publicUrl })
         .eq('user_id', user.id)
         .select()
         .single()
       if (error) throw error
+
+      const previous = queryClient.getQueryData<Profile | null>([...PROFILE_KEY, user.id])
+      if (previous?.avatar_url && previous.avatar_url !== publicUrl) {
+        void deleteCachedAvatar(previous.avatar_url)
+      }
+      void writeCachedAvatarBlob(publicUrl, file)
+
       return data as Profile
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData([...PROFILE_KEY, user?.id], data)
       queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
     },
   })
@@ -117,6 +127,7 @@ export function useRemoveAvatar() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not signed in')
+      const previous = queryClient.getQueryData<Profile | null>([...PROFILE_KEY, user.id])
       const { data, error } = await supabase
         .from('profiles')
         .update({ avatar_url: null })
@@ -124,9 +135,11 @@ export function useRemoveAvatar() {
         .select()
         .single()
       if (error) throw error
+      if (previous?.avatar_url) void deleteCachedAvatar(previous.avatar_url)
       return data as Profile
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData([...PROFILE_KEY, user?.id], data)
       queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
     },
   })

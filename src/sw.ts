@@ -1,7 +1,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { clientsClaim } from 'workbox-core'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 declare let self: ServiceWorkerGlobalScope
@@ -43,6 +43,29 @@ registerRoute(
       new ExpirationPlugin({
         maxEntries: 64,
         maxAgeSeconds: 60 * 60 * 24 * 7,
+      }),
+    ],
+  }),
+)
+
+/** Profile photos (Supabase Storage + common OAuth avatar hosts) for offline PWA use. */
+registerRoute(
+  ({ request, url }) => {
+    if (request.destination !== 'image') return false
+    const host = url.hostname
+    return (
+      host.endsWith('.supabase.co') ||
+      host.includes('googleusercontent.com') ||
+      host === 'avatars.githubusercontent.com' ||
+      host === 'githubusercontent.com'
+    )
+  },
+  new CacheFirst({
+    cacheName: 'avatars',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 48,
+        maxAgeSeconds: 60 * 60 * 24 * 30,
       }),
     ],
   }),

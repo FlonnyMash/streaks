@@ -235,15 +235,13 @@ Keep the filenames. If you replace the images, update the matching `sizes` value
 
 ### Digital Asset Links
 
-Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) on the live origin.
+Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) on the live origin. It currently lists package `dev.pages.mashedstreaks.twa` with the SHA-256 from the PWABuilder signing keystore.
 
-1. Generate the Android package in PWABuilder (or Bubblewrap).
-2. Copy the **SHA-256** fingerprint from Play App Signing (or the keystore PWABuilder shows).
-3. Replace `REPLACE_WITH_PLAY_SIGNING_SHA256` in `assetlinks.json`.
-4. Confirm `package_name` matches the package you submitted.
-5. Redeploy, then verify at `https://mashedstreaks.pages.dev/.well-known/assetlinks.json`.
+1. Deploy so `https://mashedstreaks.pages.dev/.well-known/assetlinks.json` is live.
+2. If you enroll in **Play App Signing**, add Google’s **App signing key certificate** SHA-256 as a second fingerprint in the same `sha256_cert_fingerprints` array (keep the upload-key fingerprint too).
+3. Verify with Google’s statement list tester or by opening the assetlinks URL in a browser.
 
-iOS App Store packaging is a later step (PWABuilder iOS wrapper or Capacitor). This setup is for the web PWA and Google Play.
+Keep `signing.keystore` and passwords from the PWABuilder zip **out of git** — store them somewhere safe offline.
 
 ### Offline outbox (Background Sync)
 

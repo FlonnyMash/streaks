@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCachedAvatarSrc } from '@/hooks/useCachedAvatarSrc'
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -32,9 +33,14 @@ function initialsFor(name: string | null | undefined): string | null {
 }
 
 export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
+  const cachedSrc = useCachedAvatarSrc(src)
   const [imageFailed, setImageFailed] = useState(false)
   const initials = initialsFor(name)
-  const showImage = Boolean(src) && !imageFailed
+  const showImage = Boolean(cachedSrc) && !imageFailed
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [cachedSrc])
 
   return (
     <div
@@ -47,7 +53,7 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
     >
       {showImage ? (
         <img
-          src={src as string}
+          src={cachedSrc as string}
           alt={name ? `${name}'s avatar` : 'Profile avatar'}
           className="size-full object-cover"
           onError={() => setImageFailed(true)}
