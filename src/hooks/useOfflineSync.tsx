@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { listOutbox, subscribeOutbox, removeOutboxItem } from '@/lib/offline/outbox'
+import { listOutbox, subscribeOutbox, removeOutboxItem, updateOutboxItem } from '@/lib/offline/outbox'
 import { isOnline, subscribeOnline } from '@/lib/offline/network'
 import {
   flushOutbox,
@@ -54,6 +54,18 @@ export function OfflineSyncProvider({ children }: { children: ReactNode }) {
     if (!user || !isOnline()) return
     setSyncing(true)
     try {
+      // Re-queue failed items so Retry from the banner actually attempts them again.
+      const current = await listOutbox(user.id)
+      for (const item of current) {
+        if (item.status === 'failed' || item.status === 'conflict') {
+          await updateOutboxItem({
+            ...item,
+            status: 'pending',
+            error: undefined,
+            serverSnapshot: undefined,
+          })
+        }
+      }
       await flushOutbox(user.id, queryClient)
       await refresh()
     } finally {

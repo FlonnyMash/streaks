@@ -49,6 +49,8 @@ export function SyncStatusBar() {
   const visible = !online || pendingCount > 0 || failedCount > 0 || syncing || Boolean(conflict)
   if (!visible) return <ConflictResolveModal />
 
+  const canFlush = online && (pendingCount > 0 || failedCount > 0) && !syncing
+
   const summary = !online
     ? `Offline${pendingCount ? ` · ${pendingCount} pending` : ''}`
     : conflict
@@ -84,7 +86,7 @@ export function SyncStatusBar() {
               <RefreshCw className={cn('size-4 shrink-0', syncing && 'animate-spin')} />
             )}
             <span className="flex-1 font-medium">{summary}</span>
-            {online && pendingCount > 0 && !syncing && (
+            {canFlush && (
               <span
                 role="button"
                 tabIndex={0}
@@ -100,19 +102,19 @@ export function SyncStatusBar() {
                   }
                 }}
               >
-                Sync now
+                {failedCount ? 'Retry' : 'Sync now'}
               </span>
             )}
             {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </button>
 
-          {expanded && items.length > 0 && (
+          {(expanded || failedCount > 0) && items.length > 0 && (
             <ul className="mt-1 rounded-2xl glass-panel border border-black/8 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 overflow-hidden">
               {items.map((item) => (
                 <li key={item.id} className="px-3 py-2 flex items-start gap-2 text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{labelFor(item)}</p>
-                    <p className="text-xs text-black/50 dark:text-white/50">
+                    <p className="text-xs text-black/50 dark:text-white/50 break-words">
                       {item.status}
                       {item.error ? ` · ${item.error}` : ''}
                     </p>
