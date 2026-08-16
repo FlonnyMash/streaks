@@ -8,7 +8,7 @@ import {
   updateOutboxItem,
 } from '@/lib/offline/outbox'
 import type { OutboxPayload, PendingMutation } from '@/lib/offline/types'
-import type { Streak, StreakInput, Todo, TodoInput, TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
+import type { Streak, StreakInput, Todo, TodoInput } from '@/lib/types'
 
 export type FlushResult =
   | { status: 'idle' }
@@ -23,7 +23,6 @@ function invalidateDomain(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ['streak-entries'] })
   void queryClient.invalidateQueries({ queryKey: ['todos'] })
   void queryClient.invalidateQueries({ queryKey: ['todo_topics'] })
-  void queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] })
 }
 
 function formatError(err: unknown): string {
@@ -41,7 +40,7 @@ function isDuplicateKey(err: unknown): boolean {
 }
 
 async function fetchRow(
-  table: 'streaks' | 'streak_entries' | 'todos' | 'timesheet_entries',
+  table: 'streaks' | 'streak_entries' | 'todos',
   match: Record<string, string>,
 ): Promise<Record<string, unknown> | null> {
   let q = supabase.from(table).select('*')
@@ -187,30 +186,6 @@ async function applyPayload(userId: string, payload: OutboxPayload): Promise<voi
       if (errB) throw errB
       return
     }
-    case 'timesheet_entry_create': {
-      const row = {
-        ...payload.input,
-        id: payload.clientId,
-        workspace_id: payload.workspaceId,
-        user_id: userId,
-      }
-      const { error } = await supabase.from('timesheet_entries').upsert(row, { onConflict: 'id' })
-      if (error) throw error
-      return
-    }
-    case 'timesheet_entry_update': {
-      const { error } = await supabase
-        .from('timesheet_entries')
-        .update(payload.input)
-        .eq('id', payload.id)
-      if (error) throw error
-      return
-    }
-    case 'timesheet_entry_delete': {
-      const { error } = await supabase.from('timesheet_entries').delete().eq('id', payload.id)
-      if (error) throw error
-      return
-    }
   }
 }
 
@@ -235,7 +210,6 @@ async function recoverMissingFromCache(
       notes: local.notes,
       due_date: local.due_date,
       importance: local.importance,
-      workspace_id: local.workspace_id,
       notify_enabled: local.notify_enabled,
       topicNames: local.topics.map((t) => t.name),
     }
@@ -283,29 +257,6 @@ async function recoverMissingFromCache(
     return true
   }
 
-  if (p.kind === 'timesheet_entry_update') {
-    const entries = queryClient.getQueryData<TimesheetEntry[]>(['timesheet-entries', p.workspaceId])
-    const local = entries?.find((e) => e.id === p.id)
-    if (!local) return false
-    const input: TimesheetEntryInput = {
-      entry_date: local.entry_date,
-      minutes: local.minutes,
-      start_time: local.start_time,
-      end_time: local.end_time,
-      topic: local.topic,
-      note: local.note,
-      mood: local.mood,
-      ...p.input,
-    }
-    await applyPayload(userId, {
-      kind: 'timesheet_entry_create',
-      workspaceId: p.workspaceId,
-      clientId: local.id,
-      input,
-    })
-    return true
-  }
-
   return false
 }
 
@@ -314,7 +265,6 @@ async function checkConflict(item: PendingMutation): Promise<'ok' | 'skip' | 'mi
   switch (p.kind) {
     case 'streak_create':
     case 'todo_create':
-    case 'timesheet_entry_create':
     case 'todo_swap':
     case 'streak_entry_minutes':
       return 'ok'
@@ -354,14 +304,6 @@ async function checkConflict(item: PendingMutation): Promise<'ok' | 'skip' | 'mi
     }
     case 'todo_delete': {
       const row = await fetchRow('todos', { id: p.id })
-      return row ? 'ok' : 'skip'
-    }
-    case 'timesheet_entry_update': {
-      const row = await fetchRow('timesheet_entries', { id: p.id })
-      return row ? 'ok' : 'missing'
-    }
-    case 'timesheet_entry_delete': {
-      const row = await fetchRow('timesheet_entries', { id: p.id })
       return row ? 'ok' : 'skip'
     }
   }

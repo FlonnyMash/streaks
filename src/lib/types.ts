@@ -88,8 +88,6 @@ export interface Todo {
   completed_at: string | null
   created_at: string
   updated_at: string
-  /** Optional timesheet workspace this task logs time to. */
-  workspace_id: string | null
   /** Total minutes tracked when the task was completed (from the todo timer). */
   tracked_minutes: number | null
   /** Overdue / due-day reminders at 20:00 local (requires due_date). */
@@ -102,81 +100,9 @@ export interface TodoInput {
   notes: string | null
   due_date: string | null
   importance: TodoImportance
-  workspace_id?: string | null
   notify_enabled?: boolean
   /** Topic names to attach. Omitted on update leaves existing links unchanged. */
   topicNames?: string[]
-}
-
-export interface TimesheetWorkspace {
-  id: string
-  user_id: string
-  name: string
-  emoji: string
-  color: AccentColor
-  /** Quick-select durations in minutes for the day logger. */
-  quick_presets: number[]
-  archived: boolean
-  created_at: string
-}
-
-export interface TimesheetWorkspaceInput {
-  name: string
-  emoji: string
-  color: AccentColor
-  quick_presets: number[]
-}
-
-export interface TimesheetEntry {
-  id: string
-  workspace_id: string
-  user_id: string
-  entry_date: string
-  minutes: number
-  /** Local clock time `HH:MM:SS` (or `HH:MM`) when the block started, if set. */
-  start_time: string | null
-  /** Local clock time `HH:MM:SS` (or `HH:MM`) when the block ended, if set. */
-  end_time: string | null
-  topic: string | null
-  note: string | null
-  /** Optional 1–3 mood from clock-out ("How was your day?"). */
-  mood: Mood | null
-  created_at: string
-  updated_at: string
-}
-
-export interface TimesheetEntryInput {
-  entry_date: string
-  minutes: number
-  start_time: string | null
-  end_time: string | null
-  topic: string | null
-  note: string | null
-  mood: Mood | null
-}
-
-/** Open workspace timer session (persisted in timesheet_sessions). */
-export interface TimesheetTimerSession {
-  id: string
-  workspaceId: string
-  /** Null when paused. */
-  runningSince: string | null
-  topic?: string
-}
-
-export interface TimesheetSessionRow {
-  id: string
-  user_id: string
-  workspace_id: string
-  running_since: string | null
-  topic: string | null
-  created_at: string
-}
-
-export interface TimesheetSessionDay {
-  workspaceId: string
-  workDate: string
-  seconds: number
 }
 
 export interface TodoTimer {

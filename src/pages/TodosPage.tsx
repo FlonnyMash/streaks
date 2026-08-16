@@ -12,9 +12,7 @@ import {
   FeatureHelpModal,
 } from '@/components/ui/FeatureHelp'
 import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useTodos } from '@/hooks/useTodos'
-import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
-import { useCompleteTodoWithTime } from '@/hooks/useTodoTimePrompt'
-import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
+import { useCompleteTodoWithTime } from '@/hooks/useCompleteTodoWithTime'
 import {
   BUCKET_LABELS,
   BUCKET_ORDER,
@@ -22,14 +20,12 @@ import {
   sortCompletedTodos,
   todoMatchesFilters,
   uniqueTopicsFromTodos,
-  uniqueWorkspaceIdsFromTodos,
 } from '@/lib/todoLogic'
 import { cn } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
 
 export function TodosPage() {
   const { data: todos, isLoading } = useTodos()
-  const { data: workspaces } = useTimesheetWorkspaces()
   const completeTodo = useCompleteTodoWithTime()
   const deleteTodo = useDeleteTodo()
   const createTodo = useCreateTodo()
@@ -42,7 +38,6 @@ export function TodosPage() {
   const [modalInitialTitle, setModalInitialTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
 
   const active = useMemo(() => (todos ?? []).filter((t) => !t.done), [todos])
@@ -52,32 +47,15 @@ export function TodosPage() {
     [active, completed, showCompleted],
   )
   const filterTopics = useMemo(() => uniqueTopicsFromTodos(filterSource), [filterSource])
-  const filterWorkspaces = useMemo(() => {
-    const ids = uniqueWorkspaceIdsFromTodos(filterSource)
-    const list = workspaces ?? []
-    return ids
-      .map((id) => list.find((w) => w.id === id))
-      .filter((w): w is NonNullable<typeof w> => Boolean(w))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-  }, [filterSource, workspaces])
 
-  const filters = useMemo(
-    () => ({ topicId: selectedTopicId, workspaceId: selectedWorkspaceId }),
-    [selectedTopicId, selectedWorkspaceId],
-  )
-  const hasFilter = Boolean(selectedTopicId || selectedWorkspaceId)
+  const filters = useMemo(() => ({ topicId: selectedTopicId }), [selectedTopicId])
+  const hasFilter = Boolean(selectedTopicId)
 
   useEffect(() => {
     if (selectedTopicId && !filterTopics.some((t) => t.id === selectedTopicId)) {
       setSelectedTopicId(null)
     }
   }, [selectedTopicId, filterTopics])
-
-  useEffect(() => {
-    if (selectedWorkspaceId && !filterWorkspaces.some((w) => w.id === selectedWorkspaceId)) {
-      setSelectedWorkspaceId(null)
-    }
-  }, [selectedWorkspaceId, filterWorkspaces])
 
   const filteredActive = useMemo(
     () => (hasFilter ? active.filter((t) => todoMatchesFilters(t, filters)) : active),
@@ -186,14 +164,11 @@ export function TodosPage() {
         </Button>
       </form>
 
-      {!isLoading && !isEmpty && (filterWorkspaces.length > 0 || filterTopics.length > 0) && (
+      {!isLoading && !isEmpty && filterTopics.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto py-1 mb-4 -mx-1 px-1">
           <button
             type="button"
-            onClick={() => {
-              setSelectedTopicId(null)
-              setSelectedWorkspaceId(null)
-            }}
+            onClick={() => setSelectedTopicId(null)}
             className={cn(
               'h-8 px-3 rounded-full text-[12px] font-medium transition-all shrink-0',
               !hasFilter
@@ -203,27 +178,6 @@ export function TodosPage() {
           >
             All
           </button>
-          {filterWorkspaces.map((workspace) => {
-            const accent = ACCENT_COLOR_MAP[workspace.color]
-            const selected = selectedWorkspaceId === workspace.id
-            return (
-              <button
-                key={workspace.id}
-                type="button"
-                onClick={() => setSelectedWorkspaceId(selected ? null : workspace.id)}
-                className={cn(
-                  'h-8 pl-2 pr-3 rounded-full text-[12px] font-medium transition-all shrink-0 inline-flex items-center gap-1.5 max-w-[14rem]',
-                  selected
-                    ? cn('ring-1', accent.ring, accent.text)
-                    : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
-                )}
-                style={selected ? { backgroundColor: `${accent.hex}22` } : undefined}
-              >
-                <span className="shrink-0">{workspace.emoji}</span>
-                <span className="truncate">{workspace.name}</span>
-              </button>
-            )
-          })}
           {filterTopics.map((topic) => (
             <button
               key={topic.id}

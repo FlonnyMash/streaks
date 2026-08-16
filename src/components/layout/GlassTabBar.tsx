@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
+import { Flame, LayoutDashboard, ListTodo } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_DESKTOP_MQ, isAppDesktopLayout } from '@/lib/layout'
 import { useStableMobileViewport } from '@/hooks/useStableMobileViewport'
@@ -10,7 +10,6 @@ const links = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: false },
   { to: '/streaks', label: 'Streaks', icon: Flame, end: false },
   { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
-  { to: '/timesheet', label: 'Timesheet', icon: CalendarClock, end: false },
 ]
 
 export function GlassTabBar() {

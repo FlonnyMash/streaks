@@ -19,8 +19,6 @@ const DOMAIN_QUERY_ROOTS = new Set([
   'streak-entries',
   'todos',
   'todo_topics',
-  'timesheet-entries',
-  'timesheet-workspaces',
 ])
 
 const queryClient = new QueryClient({

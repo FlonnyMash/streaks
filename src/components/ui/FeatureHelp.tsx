@@ -2,7 +2,7 @@ import { CircleHelp } from 'lucide-react'
 import { GlassModal } from '@/components/ui/GlassModal'
 import { cn } from '@/lib/utils'
 
-export type FeatureHelpId = 'streaks' | 'todos' | 'timesheet'
+export type FeatureHelpId = 'streaks' | 'todos'
 
 const HELP_CONTENT: Record<
   FeatureHelpId,
@@ -29,33 +29,18 @@ const HELP_CONTENT: Record<
   },
   todos: {
     title: 'About Todos',
-    what: 'Todos are a lightweight checklist for things you need to get done. Tasks are grouped by due date so you always see what’s urgent first. Optional topics work like tags, and you can link a timesheet workspace to log time from a task.',
+    what: 'Todos are a lightweight checklist for things you need to get done. Tasks are grouped by due date so you always see what’s urgent first. Optional topics work like tags, and each task has its own play/pause timer.',
     how: [
       'Type in the quick-add field and press Enter to create a task instantly.',
-      'Use the details button to add notes, a due date, a workspace, topics, and importance before saving.',
-      'Tap a task to view details, or use the pencil to edit notes, due date, workspace, topics, and importance.',
-      'Filter the list by workspace or topic. While Completed is closed, only values on active tasks appear; open Completed to see older ones again.',
+      'Use the details button to add notes, a due date, topics, and importance before saving.',
+      'Tap a task to view details, or use the pencil to edit notes, due date, topics, and importance.',
+      'Filter the list by topic. While Completed is closed, only topics on active tasks appear; open Completed to see older ones again.',
       'Check tasks off when done, or reorder items within a group.',
     ],
     goodFor: [
       'One-off tasks and errands',
       'Prioritizing work with due dates and importance',
       'Keeping a clear “today / upcoming / later” list',
-    ],
-  },
-  timesheet: {
-    title: 'About Timesheet',
-    what: 'Timesheet tracks how you spend time across projects. Each workspace is a project, client, or job, and entries log minutes (optionally with start/end times and topics).',
-    how: [
-      'Create a workspace for each project you want to track.',
-      'Clock in from the dashboard or from today in a workspace to start a live timer, then clock out to review and save the block.',
-      'Open a workspace and tap a day on the calendar to add or edit time entries.',
-      'Use the overview calendar on this page to see time across all workspaces at a glance.',
-    ],
-    goodFor: [
-      'Freelance or client work billing',
-      'Understanding where your hours go',
-      'Keeping separate logs per project or role',
     ],
   },
 }

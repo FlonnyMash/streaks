@@ -47,6 +47,18 @@ export function minutesFromSeconds(seconds: number): number {
   return Math.max(1, Math.round(seconds / 60) || 1)
 }
 
+/** Live timer label: `m:ss` or `h:mm:ss`. */
+export function formatElapsedClock(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 /** Like splitElapsedByDay, but keeps a 1s remainder so a short run still counts. */
 export function liveChunks(startedAt: Date, endedAt: Date): DaySeconds[] {
   const chunks = splitElapsedByDay(startedAt, endedAt)

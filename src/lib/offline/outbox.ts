@@ -61,11 +61,7 @@ export async function getOutboxItem(id: string): Promise<PendingMutation | undef
 }
 
 function isDeletePayload(payload: OutboxPayload): boolean {
-  return (
-    payload.kind === 'streak_delete' ||
-    payload.kind === 'todo_delete' ||
-    payload.kind === 'timesheet_entry_delete'
-  )
+  return payload.kind === 'streak_delete' || payload.kind === 'todo_delete'
 }
 
 /**
@@ -156,29 +152,6 @@ function mergePayloads(existing: OutboxPayload, incoming: OutboxPayload): Outbox
   if (existing.kind === 'streak_create' && incoming.kind === 'streak_archive' && incoming.id === existing.clientId) {
     // Creating then archiving before sync → net no-op for the server.
     return 'cancel'
-  }
-
-  // --- timesheet ---
-  if (
-    existing.kind === 'timesheet_entry_create' &&
-    incoming.kind === 'timesheet_entry_update' &&
-    incoming.id === existing.clientId
-  ) {
-    return {
-      ...existing,
-      input: { ...existing.input, ...incoming.input },
-    }
-  }
-
-  if (
-    existing.kind === 'timesheet_entry_update' &&
-    incoming.kind === 'timesheet_entry_update' &&
-    incoming.id === existing.id
-  ) {
-    return {
-      ...existing,
-      input: { ...existing.input, ...incoming.input },
-    }
   }
 
   // --- streak entries: last write wins (toggle / minutes / details share coalesce key) ---

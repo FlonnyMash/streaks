@@ -42,17 +42,10 @@ If your todos table was created before importance levels were added, also run
 [`supabase/migrations/0008_todo_importance.sql`](supabase/migrations/0008_todo_importance.sql)
 to add the `importance` column (1=low, 2=medium, 3=high).
 
-If you want the Timesheet section, also run
-[`supabase/migrations/0007_timesheet.sql`](supabase/migrations/0007_timesheet.sql) to create the
-`timesheet_workspaces` and `timesheet_entries` tables and their Row Level Security policies.
-
-If your timesheet workspaces were created before custom quick-select times were added, also run
-[`supabase/migrations/0009_workspace_quick_presets.sql`](supabase/migrations/0009_workspace_quick_presets.sql)
-to add the `quick_presets` column (defaults to 15m, 30m, 1h, 2h, 4h, 8h).
-
-If your timesheet entries were created before clock ranges were added, also run
-[`supabase/migrations/0010_timesheet_entry_time_range.sql`](supabase/migrations/0010_timesheet_entry_time_range.sql)
-to add nullable `start_time` and `end_time` columns.
+> The Timesheet section (workspaces, time entries, clock-in sessions) has been archived — see
+> [`_archived_timesheet_feature/REUSE_GUIDE.md`](_archived_timesheet_feature/REUSE_GUIDE.md).
+> Its migrations (`0007`, `0009`, `0010`, `0013`, `0014`, `0016`, `0021`) are copied there for
+> reference; the tables themselves are left in Supabase and are simply unused by this app.
 
 To collect a first name + date of birth and enforce the 16+ age minimum, also run
 [`supabase/migrations/0011_profiles.sql`](supabase/migrations/0011_profiles.sql). This creates a
@@ -64,15 +57,6 @@ To let users upload a custom profile photo from Settings, also run
 [`supabase/migrations/0012_profile_avatar.sql`](supabase/migrations/0012_profile_avatar.sql). This
 adds an `avatar_url` column to `profiles` and creates a public `avatars` Storage bucket with
 policies that only let each user write to their own `{user_id}/...` path.
-
-For cross-device timesheet clock-in/out, also run
-[`supabase/migrations/0013_timesheet_sessions.sql`](supabase/migrations/0013_timesheet_sessions.sql)
-and [`supabase/migrations/0014_timesheet_sessions_multi.sql`](supabase/migrations/0014_timesheet_sessions_multi.sql).
-These create `timesheet_sessions` (one open timer per workspace) with RLS, Realtime, and a
-`server_now()` helper so elapsed time matches across devices.
-
-To store an optional mood on timesheet entries (asked on clock-out), also run
-[`supabase/migrations/0016_timesheet_entry_mood.sql`](supabase/migrations/0016_timesheet_entry_mood.sql).
 
 For todo topics (tags), also run
 [`supabase/migrations/0015_todo_topics.sql`](supabase/migrations/0015_todo_topics.sql). This creates
@@ -214,9 +198,9 @@ Go back to Supabase and:
 
 ## 9. PWABuilder and Google Play
 
-The live site is [https://mashedstreaks.pages.dev](https://mashedstreaks.pages.dev). After each deploy:
+The live site is [https://flonny.app](https://flonny.app). After each deploy:
 
-1. Confirm `https://mashedstreaks.pages.dev/manifest.json` and a service worker (`sw.js` from the production build) are served over HTTPS.
+1. Confirm `https://flonny.app/manifest.json` and a service worker (`sw.js` from the production build) are served over HTTPS.
 2. Re-run the site on [pwabuilder.com](https://www.pwabuilder.com).
 3. Use **Package → Google Play** to generate the Trusted Web Activity (TWA).
 
@@ -237,7 +221,7 @@ Keep the filenames. If you replace the images, update the matching `sizes` value
 
 Play / TWA URL verification needs [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) on the live origin. It currently lists package `dev.pages.mashedstreaks.twa` with the SHA-256 from the PWABuilder signing keystore.
 
-1. Deploy so `https://mashedstreaks.pages.dev/.well-known/assetlinks.json` is live.
+1. Deploy so `https://flonny.app/.well-known/assetlinks.json` is live.
 2. If you enroll in **Play App Signing**, add Google’s **App signing key certificate** SHA-256 as a second fingerprint in the same `sha256_cert_fingerprints` array (keep the upload-key fingerprint too).
 3. Verify with Google’s statement list tester or by opening the assetlinks URL in a browser.
 
@@ -245,7 +229,7 @@ Keep `signing.keystore` and passwords from the PWABuilder zip **out of git** —
 
 ### Offline outbox (Background Sync)
 
-Failed or offline writes for **streaks**, **streak entries**, **todos**, and **timesheet entries** are queued in IndexedDB (`src/lib/offline/`) and replayed when connectivity returns.
+Failed or offline writes for **streaks**, **streak entries**, and **todos** are queued in IndexedDB (`src/lib/offline/`) and replayed when connectivity returns.
 
 - The page owns flush + Supabase auth; the service worker only wakes clients via the Background Sync tag `outbox-flush` (`OUTBOX_FLUSH` message).
 - Conflict detection uses `updated_at` on those tables (migration `0024_updated_at_sync.sql`). When the same row changed elsewhere, the UI prompts **Keep local** or **Use server**.
@@ -277,7 +261,7 @@ supabase functions deploy push-dispatch
 supabase secrets set \
   VAPID_PUBLIC_KEY="..." \
   VAPID_PRIVATE_KEY="..." \
-  VAPID_SUBJECT="mailto:kontakt@lucabakan.de" \
+  VAPID_SUBJECT="mailto:hello@flonny.app" \
   PUSH_DISPATCH_SECRET="generate-a-long-random-string"
 ```
 
@@ -326,7 +310,7 @@ Target one user by adding `"user_id":"<uuid>"`.
 | --- | --- |
 | Streak | Notify-me streaks, within ~15m of `notify_time` local, on a due day, not completed today |
 | Todo | Notify-me incomplete todos with `due_date` ≤ today, at/after 20:00 local, once per day until done |
-| Timer | Running timesheet or todo timer ≥ 8h, then every 2h; skipped 00:00–06:00 local |
+| Timer | Running todo timer ≥ 8h, then every 2h; skipped 00:00–06:00 local |
 
 ## Notes
 

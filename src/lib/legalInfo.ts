@@ -7,8 +7,8 @@ export const LEGAL = {
   vatId: 'DE329191516',
   phone: '+49 156 79784095',
   phoneHref: 'tel:+4915679784095',
-  email: 'kontakt@lucabakan.de',
-  emailHref: 'mailto:kontakt@lucabakan.de',
+  email: 'hello@flonny.app',
+  emailHref: 'mailto:hello@flonny.app',
   appName: 'Mashed Personal Dashboard',
   privacyUpdated: 'August 14, 2026',
 } as const

@@ -272,7 +272,6 @@ async function runCron(supabase: SupabaseClient) {
   const [
     { data: streaks, error: streaksError },
     { data: todos, error: todosError },
-    { data: tsSessions, error: tsError },
     { data: todoTimers, error: ttError },
   ] = await Promise.all([
     supabase
@@ -290,11 +289,6 @@ async function runCron(supabase: SupabaseClient) {
       .eq('archived', false)
       .not('due_date', 'is', null),
     supabase
-      .from('timesheet_sessions')
-      .select('id, user_id, workspace_id, running_since, topic')
-      .in('user_id', activeIds)
-      .not('running_since', 'is', null),
-    supabase
       .from('todo_timers')
       .select('id, user_id, todo_id, running_since')
       .in('user_id', activeIds)
@@ -303,7 +297,6 @@ async function runCron(supabase: SupabaseClient) {
 
   if (streaksError) throw streaksError
   if (todosError) throw todosError
-  if (tsError) throw tsError
   if (ttError) throw ttError
 
   // Prefetch streak entries for relevant date ranges (this week per user timezone).
@@ -337,15 +330,9 @@ async function runCron(supabase: SupabaseClient) {
     entriesByStreak.set(e.streak_id, list)
   }
 
-  // Workspace / todo names for timer labels
-  const workspaceIds = [...new Set(((tsSessions ?? []) as { workspace_id: string }[]).map((s) => s.workspace_id))]
+  // Todo names for timer labels
   const todoIds = [...new Set(((todoTimers ?? []) as { todo_id: string }[]).map((t) => t.todo_id))]
-  const workspaceName = new Map<string, string>()
   const todoTitle = new Map<string, string>()
-  if (workspaceIds.length > 0) {
-    const { data } = await supabase.from('timesheet_workspaces').select('id, name, emoji').in('id', workspaceIds)
-    for (const w of data ?? []) workspaceName.set(w.id, `${w.emoji} ${w.name}`)
-  }
   if (todoIds.length > 0) {
     const { data } = await supabase.from('todos').select('id, title').in('id', todoIds)
     for (const t of data ?? []) todoTitle.set(t.id, t.title)
@@ -418,24 +405,15 @@ async function runCron(supabase: SupabaseClient) {
     removed += result.removed
   }
 
-  const timers: TimerRow[] = [
-    ...((tsSessions ?? []) as { id: string; user_id: string; workspace_id: string; running_since: string }[]).map(
-      (s) => ({
-        id: s.id,
-        user_id: s.user_id,
-        running_since: s.running_since,
-        label: workspaceName.get(s.workspace_id) ?? 'Timesheet timer',
-        url: `/timesheet/${s.workspace_id}`,
-      }),
-    ),
-    ...((todoTimers ?? []) as { id: string; user_id: string; todo_id: string; running_since: string }[]).map((t) => ({
-      id: t.id,
-      user_id: t.user_id,
-      running_since: t.running_since,
-      label: todoTitle.get(t.todo_id) ?? 'Todo timer',
-      url: '/todos',
-    })),
-  ]
+  const timers: TimerRow[] = (
+    (todoTimers ?? []) as { id: string; user_id: string; todo_id: string; running_since: string }[]
+  ).map((t) => ({
+    id: t.id,
+    user_id: t.user_id,
+    running_since: t.running_since,
+    label: todoTitle.get(t.todo_id) ?? 'Todo timer',
+    url: '/todos',
+  }))
 
   for (const timer of timers) {
     const tz = tzByUser.get(timer.user_id) ?? 'UTC'

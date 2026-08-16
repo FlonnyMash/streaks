@@ -38,12 +38,6 @@ function localActionLabel(payload: OutboxPayload): string {
       return payload.done ? 'Marked a todo done' : 'Reopened a todo'
     case 'todo_swap':
       return 'Reordered todos'
-    case 'timesheet_entry_create':
-      return `Added a ${payload.input.minutes}-minute time entry`
-    case 'timesheet_entry_update':
-      return 'Updated a time entry'
-    case 'timesheet_entry_delete':
-      return 'Deleted a time entry'
   }
 }
 

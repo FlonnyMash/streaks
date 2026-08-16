@@ -11,8 +11,6 @@ import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { StreakDetailPage } from '@/pages/StreakDetailPage'
 import { TodosPage } from '@/pages/TodosPage'
-import { TimesheetPage } from '@/pages/TimesheetPage'
-import { TimesheetWorkspacePage } from '@/pages/TimesheetWorkspacePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage'
 import { LegalPage } from '@/pages/LegalPage'
@@ -64,8 +62,6 @@ export function App() {
         <Route path="/streaks" element={<DashboardPage />} />
         <Route path="/streaks/:id" element={<StreakDetailPage />} />
         <Route path="/todos" element={<TodosPage />} />
-        <Route path="/timesheet" element={<TimesheetPage />} />
-        <Route path="/timesheet/:id" element={<TimesheetWorkspacePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

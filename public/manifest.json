@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/web-manifest-combined.json",
-  "id": "https://mashedstreaks.pages.dev/",
+  "id": "https://flonny.app/",
   "name": "Mashed Personal Dashboard",
   "short_name": "Mashed Plan",
-  "description": "Seamlessly connect your habits, to-dos, and time tracking in one powerful app.",
+  "description": "Seamlessly connect your habits and to-dos in one powerful app.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
@@ -59,13 +59,6 @@
       "short_name": "Todos",
       "description": "Open your to-do list",
       "url": "/todos",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
-    },
-    {
-      "name": "Timesheet",
-      "short_name": "Time",
-      "description": "Log time and review workspaces",
-      "url": "/timesheet",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],

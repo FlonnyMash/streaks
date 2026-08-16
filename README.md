@@ -4,8 +4,12 @@ A personal dashboard with a clean, Apple-inspired, glassmorphic interface — op
 mobile and desktop. It's organized as a hub of sections:
 
 - **Streaks** — habit and custom streak tracking, with optional time-based goals
-- **Todos** — a lightweight checklist for one-off tasks
-- **Timesheet** — per-project time logging with its own calendar, plus a combined summary view
+- **Todos** — a lightweight checklist for one-off tasks, each with its own play/pause timer
+
+> The former **Timesheet** feature (per-project time logging) has been archived to
+> [`_archived_timesheet_feature/`](_archived_timesheet_feature/) to keep this app focused on
+> Streaks and Todos. See that folder's `REUSE_GUIDE.md` if you want to build it into a
+> standalone app later.
 
 Built with React, TypeScript, Vite, and Tailwind CSS, backed by [Supabase](https://supabase.com)
 for auth and data storage, and deployed as a static site to Cloudflare Pages.
@@ -26,13 +30,7 @@ for auth and data storage, and deployed as a static site to Cloudflare Pages.
 - Quick-add bar plus a per-task edit modal for notes and due dates
 - Automatically grouped into Overdue, Today, Upcoming, and No date sections
 - Manual reordering within a section, and a collapsible Completed section
-
-### Timesheet
-
-- Separate workspaces (projects/clients/jobs), each with its own emoji, color, and month calendar
-- Log any number of time blocks per day, each with an optional topic and note
-- Today / this week / this month / total stats per workspace
-- A combined summary calendar across all workspaces, with a per-workspace breakdown on tap
+- Optional topics work like tags, and each task has its own play/pause timer
 
 ### Platform
 
@@ -70,13 +68,13 @@ src/
     layout/      # Glass navbar (desktop) + glass tab bar (mobile) + shared empty states
     streaks/     # Streak card, calendar, stats, create/edit modal
     todos/       # Todo list item, create/edit modal
-    timesheet/   # Workspace card, per-workspace + summary calendars, day entry modals
     ui/          # Shared buttons, inputs, modal primitives
-  hooks/         # useAuth, useStreaks/useStreakEntries, useTodos, useTimesheet* (Supabase + React Query)
-  lib/           # Supabase client, streak/todo/timesheet math, types, accent colors
-  pages/         # Route-level pages (Streaks, Todos, Timesheet, Settings, auth)
+  hooks/         # useAuth, useStreaks/useStreakEntries, useTodos, useTodoTimer (Supabase + React Query)
+  lib/           # Supabase client, streak/todo math, types, accent colors
+  pages/         # Route-level pages (Streaks, Todos, Settings, auth)
 supabase/
   migrations/    # SQL schema + RLS policies
+_archived_timesheet_feature/  # Former Timesheet feature, kept for future reuse (see its REUSE_GUIDE.md)
 ```
 
 ## Deployment

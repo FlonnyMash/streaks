@@ -31,12 +31,6 @@ function labelFor(item: PendingMutation): string {
       return p.done ? `Complete todo` : `Reopen todo`
     case 'todo_swap':
       return `Reorder todos`
-    case 'timesheet_entry_create':
-      return `Add ${p.input.minutes}m time entry`
-    case 'timesheet_entry_update':
-      return `Update time entry`
-    case 'timesheet_entry_delete':
-      return `Delete time entry`
   }
 }
 
@@ -156,8 +150,9 @@ export function SyncStatusButton({ size = 'md', className }: SyncStatusButtonPro
           aria-label="Sync status"
           className={cn(
             'absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 max-w-[calc(100vw-1.5rem)]',
-            'rounded-2xl glass-panel border border-black/8 dark:border-white/10',
-            'shadow-[0_16px_40px_-18px_rgba(0,0,0,0.45)] overflow-hidden',
+            'rounded-2xl border border-black/10 dark:border-white/12 overflow-hidden',
+            'bg-[#f2f2f7]/95 dark:bg-zinc-900/95 backdrop-blur-xl',
+            'shadow-[0_16px_40px_-12px_rgba(0,0,0,0.55)]',
           )}
         >
           <div className="px-3 py-2.5 flex items-center gap-2 border-b border-black/5 dark:border-white/10">

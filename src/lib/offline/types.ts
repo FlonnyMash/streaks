@@ -1,10 +1,9 @@
-import type { Mood, StreakInput, TodoInput, TimesheetEntryInput } from '@/lib/types'
+import type { Mood, StreakInput, TodoInput } from '@/lib/types'
 
 export type OutboxEntity =
   | 'streak'
   | 'streak_entry'
   | 'todo'
-  | 'timesheet_entry'
 
 export type OutboxOp =
   | 'create'
@@ -77,19 +76,6 @@ export type OutboxPayload =
       aPosition: number
       bPosition: number
     }
-  | {
-      kind: 'timesheet_entry_create'
-      workspaceId: string
-      input: TimesheetEntryInput
-      clientId: string
-    }
-  | {
-      kind: 'timesheet_entry_update'
-      workspaceId: string
-      id: string
-      input: Partial<TimesheetEntryInput>
-    }
-  | { kind: 'timesheet_entry_delete'; workspaceId: string; id: string }
 
 export interface PendingMutation {
   id: string
@@ -130,11 +116,6 @@ export function entityKeyFromPayload(payload: OutboxPayload): string {
       return `todo:${payload.id}`
     case 'todo_swap':
       return `todo_swap:${[payload.aId, payload.bId].sort().join(':')}`
-    case 'timesheet_entry_create':
-      return `timesheet_entry:${payload.clientId}`
-    case 'timesheet_entry_update':
-    case 'timesheet_entry_delete':
-      return `timesheet_entry:${payload.id}`
   }
 }
 
@@ -166,11 +147,5 @@ export function metaFromPayload(payload: OutboxPayload): {
       return { entity: 'todo', op: 'toggle' }
     case 'todo_swap':
       return { entity: 'todo', op: 'swap_positions' }
-    case 'timesheet_entry_create':
-      return { entity: 'timesheet_entry', op: 'create' }
-    case 'timesheet_entry_update':
-      return { entity: 'timesheet_entry', op: 'update' }
-    case 'timesheet_entry_delete':
-      return { entity: 'timesheet_entry', op: 'delete' }
   }
 }

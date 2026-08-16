@@ -3,10 +3,7 @@ import { Check, ChevronDown, ChevronUp, Pause, Pencil, Play, Trash2 } from 'luci
 import { format, isToday, isTomorrow } from 'date-fns'
 import { ImportanceMeter } from '@/components/todos/ImportanceMeter'
 import { useTodoTimer } from '@/hooks/useTodoTimer'
-import { useTimesheetWorkspaces } from '@/hooks/useTimesheetWorkspaces'
-import { ACCENT_COLOR_MAP } from '@/lib/accentColors'
-import { formatElapsedClock } from '@/lib/timesheetLogic'
-import { minutesFromSeconds } from '@/lib/todoTimerLogic'
+import { formatElapsedClock, minutesFromSeconds } from '@/lib/todoTimerLogic'
 import type { Todo } from '@/lib/types'
 import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
 
@@ -35,16 +32,12 @@ function dueLabel(dueDate: string): { text: string; overdue: boolean } {
 export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: TodoItemProps) {
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
-  const { data: workspaces } = useTimesheetWorkspaces()
   const { requestStart, pause, elapsedMsFor, storedSecondsFor, timerFor } = useTodoTimer()
 
-  const workspace = todo.workspace_id
-    ? (workspaces ?? []).find((w) => w.id === todo.workspace_id) ?? null
-    : null
   const timer = timerFor(todo.id)
   const running = Boolean(timer?.runningSince)
   const storedSeconds = storedSecondsFor(todo.id)
-  const showTimer = Boolean(workspace && !todo.done)
+  const showTimer = !todo.done
   const elapsedMs = elapsedMsFor(todo.id)
 
   return (
@@ -87,7 +80,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             {todo.title}
           </p>
         </div>
-        {(due || notesPreview || (todo.topics ?? []).length > 0 || workspace || (todo.done && todo.tracked_minutes)) && (
+        {(due || notesPreview || (todo.topics ?? []).length > 0 || (todo.done && todo.tracked_minutes)) && (
           <div className="mt-0.5 min-w-0">
             {due && (
               <p
@@ -114,20 +107,8 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
                 {notesPreview}
               </p>
             )}
-            {(workspace || (todo.topics ?? []).length > 0) && (
+            {(todo.topics ?? []).length > 0 && (
               <div className={cn('flex flex-wrap gap-1 mt-1', todo.done && 'opacity-50')}>
-                {workspace && (
-                  <span
-                    className="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-medium truncate max-w-[9rem]"
-                    style={{
-                      backgroundColor: `${ACCENT_COLOR_MAP[workspace.color].hex}22`,
-                      color: ACCENT_COLOR_MAP[workspace.color].hex,
-                    }}
-                  >
-                    <span className="shrink-0">{workspace.emoji}</span>
-                    <span className="truncate">{workspace.name}</span>
-                  </span>
-                )}
                 {(todo.topics ?? []).slice(0, 4).map((topic) => (
                   <span
                     key={topic.id}
@@ -168,7 +149,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             <Pause className="size-3.5 fill-current" />
           </button>
         )}
-        {showTimer && workspace && !running && (
+        {showTimer && !running && (
           <button
             type="button"
             onClick={() => void requestStart(todo.id)}

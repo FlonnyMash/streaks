@@ -42,7 +42,6 @@ function mapTodo(row: TodoRow): Todo {
     completed_at: row.completed_at,
     created_at: row.created_at,
     updated_at: row.updated_at ?? row.created_at,
-    workspace_id: row.workspace_id ?? null,
     tracked_minutes: row.tracked_minutes ?? null,
     notify_enabled: Boolean(row.notify_enabled),
     topics,
@@ -120,7 +119,6 @@ export function useCreateTodo() {
         completed_at: null,
         created_at: now,
         updated_at: now,
-        workspace_id: fields.workspace_id ?? null,
         tracked_minutes: null,
         notify_enabled: Boolean(fields.notify_enabled),
         topics: (topicNames ?? []).map((name) => ({
