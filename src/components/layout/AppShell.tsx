@@ -14,7 +14,7 @@ import { ReplacePausedTimerModal } from '@/components/timesheet/ReplacePausedTim
 import { StopTimerModal } from '@/components/timesheet/StopTimerModal'
 import { TodoTimePromptModal } from '@/components/todos/TodoTimePromptModal'
 import { TodoTimerSwitchModal } from '@/components/todos/TodoTimerSwitchModal'
-import { SyncStatusBar } from '@/components/sync/SyncStatusBar'
+import { ConflictResolveModal } from '@/components/sync/ConflictResolveModal'
 
 export function AppShell() {
   useSyncPushWithDevice()
@@ -29,7 +29,6 @@ export function AppShell() {
               <PushSetupPrompt />
               <GlassNavbar />
               <MobileTopBar />
-              <SyncStatusBar />
               <main className="flex-1 mx-auto w-full max-w-5xl safe-x [--safe-x-pad:1rem] app-desktop:[--safe-x-pad:1.5rem] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] [@media(min-width:640px)_and_(orientation:portrait)]:pt-[calc(6.5rem+env(safe-area-inset-top,0px))] landscape:pt-[calc(4.75rem+env(safe-area-inset-top,0px))] pb-[calc(5.5rem+var(--safe-area-bottom,env(safe-area-inset-bottom,0px)))] app-desktop:pb-8">
                 <Outlet />
                 <footer className="hidden app-desktop:block mt-12 pt-6 border-t border-black/8 dark:border-white/10">
@@ -41,6 +40,7 @@ export function AppShell() {
               <ReplacePausedTimerModal />
               <TodoTimerSwitchModal />
               <TodoTimePromptModal />
+              <ConflictResolveModal />
             </div>
           </TodoTimePromptProvider>
         </TodoTimerProvider>

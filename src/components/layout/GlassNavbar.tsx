@@ -4,6 +4,7 @@ import { CalendarClock, Flame, LayoutDashboard, ListTodo } from 'lucide-react'
 import { BrandIcon } from '@/components/BrandIcon'
 import { cn } from '@/lib/utils'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
+import { SyncStatusButton } from '@/components/sync/SyncStatusButton'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: false },
@@ -64,15 +65,18 @@ export function GlassNavbar() {
             </nav>
           </div>
         </div>
-        <div className="relative size-14 landscape:size-12 shrink-0">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-white/35 to-transparent dark:from-white/16" />
-          </div>
-          <div className="relative z-10 size-full flex items-center justify-center">
-            <ProfileAvatarButton size="md" />
+        <div className="flex items-center gap-2.5 shrink-0">
+          <SyncStatusButton size="md" />
+          <div className="relative size-14 landscape:size-12">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-full glass-surface [--glass-blur:80px]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/35 to-transparent dark:from-white/16" />
+            </div>
+            <div className="relative z-10 size-full flex items-center justify-center">
+              <ProfileAvatarButton size="md" />
+            </div>
           </div>
         </div>
       </div>

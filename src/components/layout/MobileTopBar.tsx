@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { BrandIcon } from '@/components/BrandIcon'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
+import { SyncStatusButton } from '@/components/sync/SyncStatusButton'
 
-/** Mobile-only top bar: brand on the left, profile/avatar on the right. Stays fixed while content scrolls. */
+/** Mobile-only top bar: brand on the left, sync + profile on the right. Stays fixed while content scrolls. */
 export function MobileTopBar() {
   return (
     <header className="app-desktop:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
@@ -16,8 +17,11 @@ export function MobileTopBar() {
             Mashed Personal Dashboard
           </h1>
         </Link>
-        <div className="glass-surface rounded-full size-9 flex items-center justify-center shrink-0 shadow-[0_8px_20px_-10px_rgba(0,0,0,0.3)]">
-          <ProfileAvatarButton size="sm" />
+        <div className="flex items-center gap-2 shrink-0">
+          <SyncStatusButton size="sm" />
+          <div className="glass-surface rounded-full size-9 flex items-center justify-center shadow-[0_8px_20px_-10px_rgba(0,0,0,0.3)]">
+            <ProfileAvatarButton size="sm" />
+          </div>
         </div>
       </div>
     </header>
