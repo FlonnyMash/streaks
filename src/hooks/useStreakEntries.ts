@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { supabase } from '@/lib/supabaseClient'
 import type { Mood, StreakEntry } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
-import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { runOrEnqueue, isOutboxQueuedError, isOutboxQueuedResult } from '@/lib/offline/runOrEnqueue'
 import { isOnline } from '@/lib/offline/network'
+import { stashExpectedUpdatedAt, readExpectedUpdatedAt } from '@/lib/offline/expectedUpdatedAt'
 
 function entriesKey(streakId: string) {
   return ['streak-entries', streakId] as const
@@ -11,6 +12,11 @@ function entriesKey(streakId: string) {
 
 const ALL_ENTRIES_KEY = { queryKey: ['streak-entries', 'all'], exact: false } as const
 
+function shouldInvalidateAfterMutation(data: unknown, error: unknown): boolean {
+  if (!isOnline()) return false
+  if (isOutboxQueuedError(error) || isOutboxQueuedResult(data)) return false
+  return true
+}
 export function useStreakEntries(streakId: string | undefined) {
   return useQuery({
     queryKey: entriesKey(streakId ?? ''),
@@ -111,6 +117,7 @@ export function useToggleStreakEntry(streakId: string) {
       if (!user) throw new Error('Not signed in')
       const existing = findEntry(queryClient, streakId, dateKey)
       const id = clientId ?? existing?.id ?? crypto.randomUUID()
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`)
 
       return runOrEnqueue({
         userId: user.id,
@@ -121,7 +128,7 @@ export function useToggleStreakEntry(streakId: string) {
           completed,
           clientId: completed ? id : undefined,
         },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           if (completed) {
             const { error } = await supabase.from('streak_entries').upsert(
@@ -155,6 +162,7 @@ export function useToggleStreakEntry(streakId: string) {
       const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
       const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
       const existing = findEntry(queryClient, streakId, dateKey)
+      stashExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`, existing?.updated_at)
       const clientId = vars.clientId ?? existing?.id ?? crypto.randomUUID()
       vars.clientId = clientId
 
@@ -175,8 +183,8 @@ export function useToggleStreakEntry(streakId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -246,6 +254,7 @@ export function useLogMinutes(streakId: string) {
       if (!user) throw new Error('Not signed in')
       const existing = findEntry(queryClient, streakId, dateKey)
       const id = clientId ?? existing?.id ?? crypto.randomUUID()
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`)
 
       return runOrEnqueue({
         userId: user.id,
@@ -257,7 +266,7 @@ export function useLogMinutes(streakId: string) {
           completed,
           clientId: id,
         },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           const { error } = await supabase.from('streak_entries').upsert(
             {
@@ -283,6 +292,7 @@ export function useLogMinutes(streakId: string) {
       const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
       const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
       const existing = findEntry(queryClient, streakId, dateKey)
+      stashExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`, existing?.updated_at)
       const clientId = vars.clientId ?? existing?.id ?? crypto.randomUUID()
       vars.clientId = clientId
 
@@ -303,8 +313,8 @@ export function useLogMinutes(streakId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -337,11 +347,11 @@ export function useUpdateEntryDetails(streakId: string) {
     networkMode: 'always',
     mutationFn: async ({ dateKey, note, mood }: { dateKey: string; note: string | null; mood: Mood | null }) => {
       if (!user) throw new Error('Not signed in')
-      const existing = findEntry(queryClient, streakId, dateKey)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`)
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'streak_entry_details', streakId, dateKey, note, mood },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           const { error } = await supabase
             .from('streak_entries')
@@ -358,6 +368,8 @@ export function useUpdateEntryDetails(streakId: string) {
 
       const previousDetail = queryClient.getQueryData<StreakEntry[]>(entriesKey(streakId))
       const previousAll = queryClient.getQueriesData<StreakEntry[]>(ALL_ENTRIES_KEY)
+      const existing = findEntry(queryClient, streakId, dateKey)
+      stashExpectedUpdatedAt(`streak_entry:${streakId}:${dateKey}`, existing?.updated_at)
 
       queryClient.setQueryData<StreakEntry[]>(entriesKey(streakId), (old) =>
         old ? patchDetails(old, streakId, dateKey, note, mood) : old,
@@ -376,8 +388,8 @@ export function useUpdateEntryDetails(streakId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(streakId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },

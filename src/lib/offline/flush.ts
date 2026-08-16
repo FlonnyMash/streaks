@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { syncTodoTopics } from '@/lib/todoTopics'
 import {
   listOutbox,
-  markOutboxConflict,
   markOutboxFailed,
   removeOutboxItem,
   updateOutboxItem,
@@ -41,25 +40,6 @@ async function fetchUpdatedAt(
     row,
     updatedAt: row && typeof row.updated_at === 'string' ? row.updated_at : null,
   }
-}
-
-async function assertNoConflict(
-  item: PendingMutation,
-  table: 'streaks' | 'streak_entries' | 'todos' | 'timesheet_entries',
-  match: Record<string, string>,
-): Promise<'ok' | 'conflict' | 'missing'> {
-  if (item.expectedUpdatedAt === undefined) return 'ok'
-  const { row, updatedAt } = await fetchUpdatedAt(table, match)
-  if (!row) return 'missing'
-  if (item.expectedUpdatedAt === null) {
-    // Local create that later became an update path shouldn't hit this often.
-    return 'ok'
-  }
-  if (updatedAt !== item.expectedUpdatedAt) {
-    await markOutboxConflict(item.id, row)
-    return 'conflict'
-  }
-  return 'ok'
 }
 
 async function applyPayload(userId: string, payload: OutboxPayload): Promise<void> {
@@ -137,20 +117,28 @@ async function applyPayload(userId: string, payload: OutboxPayload): Promise<voi
     }
     case 'todo_create': {
       const { topicNames, ...fields } = payload.input
-      const { error } = await supabase.from('todos').insert({
+      const row: Record<string, unknown> = {
         ...fields,
         id: payload.clientId,
         user_id: userId,
         position: payload.position,
-      })
+      }
+      if (payload.done !== undefined) row.done = payload.done
+      if (payload.completed_at !== undefined) row.completed_at = payload.completed_at
+      if (payload.tracked_minutes !== undefined) row.tracked_minutes = payload.tracked_minutes
+      const { error } = await supabase.from('todos').insert(row)
       if (error) throw error
       await syncTodoTopics(userId, payload.clientId, topicNames ?? [])
       return
     }
     case 'todo_update': {
       const { topicNames, ...fields } = payload.input
-      if (Object.keys(fields).length > 0) {
-        const { error } = await supabase.from('todos').update(fields).eq('id', payload.id)
+      const body: Record<string, unknown> = { ...fields }
+      if (payload.done !== undefined) body.done = payload.done
+      if (payload.completed_at !== undefined) body.completed_at = payload.completed_at
+      if (payload.tracked_minutes !== undefined) body.tracked_minutes = payload.tracked_minutes
+      if (Object.keys(body).length > 0) {
+        const { error } = await supabase.from('todos').update(body).eq('id', payload.id)
         if (error) throw error
       }
       if (topicNames !== undefined) {
@@ -213,118 +201,103 @@ async function applyPayload(userId: string, payload: OutboxPayload): Promise<voi
   }
 }
 
-async function checkConflict(item: PendingMutation): Promise<'ok' | 'conflict' | 'skip'> {
+async function checkConflict(item: PendingMutation): Promise<'ok' | 'skip' | 'missing'> {
   const p = item.payload
   switch (p.kind) {
     case 'streak_create':
     case 'todo_create':
     case 'timesheet_entry_create':
+    case 'todo_swap':
+    case 'streak_entry_minutes':
       return 'ok'
-    case 'streak_update':
-    case 'streak_archive': {
-      const r = await assertNoConflict(item, 'streaks', { id: p.id })
-      if (r === 'missing' && p.kind === 'streak_archive') return 'skip'
-      return r === 'missing' ? 'conflict' : r
-    }
-    case 'streak_delete': {
-      const { row } = await fetchUpdatedAt('streaks', { id: p.id })
-      if (!row) return 'skip'
-      if (item.expectedUpdatedAt && row.updated_at !== item.expectedUpdatedAt) {
-        await markOutboxConflict(item.id, row)
-        return 'conflict'
-      }
-      return 'ok'
-    }
-    case 'streak_entry_toggle':
-    case 'streak_entry_minutes': {
-      if (p.kind === 'streak_entry_toggle' && !p.completed) {
+    case 'streak_entry_toggle': {
+      if (!p.completed) {
         const { row } = await fetchUpdatedAt('streak_entries', {
           streak_id: p.streakId,
           entry_date: p.dateKey,
         })
         if (!row) return 'skip'
-        if (item.expectedUpdatedAt && row.updated_at !== item.expectedUpdatedAt) {
-          await markOutboxConflict(item.id, row)
-          return 'conflict'
-        }
-        return 'ok'
-      }
-      const { row, updatedAt } = await fetchUpdatedAt('streak_entries', {
-        streak_id: p.streakId,
-        entry_date: p.dateKey,
-      })
-      if (!row) return 'ok' // upsert insert
-      if (item.expectedUpdatedAt && updatedAt !== item.expectedUpdatedAt) {
-        await markOutboxConflict(item.id, row)
-        return 'conflict'
       }
       return 'ok'
     }
     case 'streak_entry_details': {
-      const r = await assertNoConflict(item, 'streak_entries', {
+      const { row } = await fetchUpdatedAt('streak_entries', {
         streak_id: p.streakId,
         entry_date: p.dateKey,
       })
-      return r === 'missing' ? 'skip' : r
+      return row ? 'ok' : 'skip'
+    }
+    case 'streak_update': {
+      const { row } = await fetchUpdatedAt('streaks', { id: p.id })
+      return row ? 'ok' : 'missing'
+    }
+    case 'streak_archive': {
+      const { row } = await fetchUpdatedAt('streaks', { id: p.id })
+      return row ? 'ok' : 'skip'
+    }
+    case 'streak_delete': {
+      const { row } = await fetchUpdatedAt('streaks', { id: p.id })
+      return row ? 'ok' : 'skip'
     }
     case 'todo_update':
     case 'todo_toggle': {
-      const r = await assertNoConflict(item, 'todos', { id: p.id })
-      return r === 'missing' ? 'conflict' : r
+      const { row } = await fetchUpdatedAt('todos', { id: p.id })
+      return row ? 'ok' : 'missing'
     }
     case 'todo_delete': {
       const { row } = await fetchUpdatedAt('todos', { id: p.id })
-      if (!row) return 'skip'
-      if (item.expectedUpdatedAt && row.updated_at !== item.expectedUpdatedAt) {
-        await markOutboxConflict(item.id, row)
-        return 'conflict'
-      }
-      return 'ok'
-    }
-    case 'todo_swap': {
-      // Position swaps are last-write; skip strict updated_at conflict.
-      return 'ok'
+      return row ? 'ok' : 'skip'
     }
     case 'timesheet_entry_update': {
-      const r = await assertNoConflict(item, 'timesheet_entries', { id: p.id })
-      return r === 'missing' ? 'conflict' : r
+      const { row } = await fetchUpdatedAt('timesheet_entries', { id: p.id })
+      return row ? 'ok' : 'missing'
     }
     case 'timesheet_entry_delete': {
       const { row } = await fetchUpdatedAt('timesheet_entries', { id: p.id })
-      if (!row) return 'skip'
-      if (item.expectedUpdatedAt && row.updated_at !== item.expectedUpdatedAt) {
-        await markOutboxConflict(item.id, row)
-        return 'conflict'
-      }
-      return 'ok'
+      return row ? 'ok' : 'skip'
     }
   }
 }
 
 async function flushOnce(userId: string, queryClient: QueryClient): Promise<FlushResult> {
   const items = await listOutbox(userId)
-  const openConflict = items.find((i) => i.status === 'conflict')
-  if (openConflict) {
-    return { status: 'paused_conflict', item: openConflict }
-  }
-
-  const pending = items.filter((i) => i.status === 'pending' || i.status === 'failed')
+  // Include prior conflicts so a reconnect can clear a stuck queue without
+  // forcing the user through Sync now + conflict UI for offline edits.
+  const pending = items.filter(
+    (i) => i.status === 'pending' || i.status === 'failed' || i.status === 'conflict',
+  )
   if (pending.length === 0) return { status: 'idle' }
 
   let flushed = 0
+
   for (const item of pending) {
     try {
-      const conflict = await checkConflict(item)
-      if (conflict === 'conflict') {
-        const latest = (await listOutbox(userId)).find((i) => i.id === item.id)
-        return {
-          status: 'paused_conflict',
-          item: latest ?? item,
+      if (item.status === 'conflict') {
+        // Stuck conflict from an earlier failed sync — keep local when possible.
+        const existence = await checkConflict(item)
+        if (existence === 'missing') {
+          await markOutboxFailed(item.id, 'Item no longer exists on server')
+          continue
         }
+        if (existence === 'skip') {
+          await removeOutboxItem(item.id)
+          flushed++
+          continue
+        }
+        await applyPayload(userId, item.payload)
+        await removeOutboxItem(item.id)
+        flushed++
+        continue
       }
+
+      const conflict = await checkConflict(item)
       if (conflict === 'skip') {
         await removeOutboxItem(item.id)
         flushed++
+        continue
+      }
+      if (conflict === 'missing') {
+        await markOutboxFailed(item.id, 'Item no longer exists on server')
         continue
       }
       await applyPayload(userId, item.payload)
@@ -333,6 +306,7 @@ async function flushOnce(userId: string, queryClient: QueryClient): Promise<Flus
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       await markOutboxFailed(item.id, message)
+      if (flushed > 0) invalidateDomain(queryClient)
       return { status: 'error', error: message }
     }
   }

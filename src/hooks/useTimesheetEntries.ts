@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { supabase } from '@/lib/supabaseClient'
 import type { TimesheetEntry, TimesheetEntryInput } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
-import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { runOrEnqueue, isOutboxQueuedError, isOutboxQueuedResult } from '@/lib/offline/runOrEnqueue'
 import { isOnline } from '@/lib/offline/network'
+import { stashExpectedUpdatedAt, readExpectedUpdatedAt } from '@/lib/offline/expectedUpdatedAt'
 
 function entriesKey(workspaceId: string) {
   return ['timesheet-entries', workspaceId] as const
@@ -11,6 +12,11 @@ function entriesKey(workspaceId: string) {
 
 const ALL_ENTRIES_KEY = { queryKey: ['timesheet-entries', 'all'], exact: false } as const
 
+function shouldInvalidateAfterMutation(data: unknown, error: unknown): boolean {
+  if (!isOnline()) return false
+  if (isOutboxQueuedError(error) || isOutboxQueuedResult(data)) return false
+  return true
+}
 export function useTimesheetEntries(workspaceId: string | undefined) {
   return useQuery({
     queryKey: entriesKey(workspaceId ?? ''),
@@ -140,8 +146,8 @@ export function useCreateTimesheetEntry(workspaceId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -156,14 +162,12 @@ export function useUpdateTimesheetEntry(workspaceId: string) {
     networkMode: 'always',
     mutationFn: async ({ id, input }: { id: string; input: Partial<TimesheetEntryInput> }) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient
-        .getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
-        ?.find((e) => e.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`timesheet_entry:${id}`)
 
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'timesheet_entry_update', workspaceId, id, input },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           const { error } = await supabase.from('timesheet_entries').update(input).eq('id', id)
           if (error) throw error
@@ -175,6 +179,10 @@ export function useUpdateTimesheetEntry(workspaceId: string) {
       await queryClient.cancelQueries(ALL_ENTRIES_KEY)
       const previousDetail = queryClient.getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
       const previousAll = queryClient.getQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY)
+      stashExpectedUpdatedAt(
+        `timesheet_entry:${id}`,
+        previousDetail?.find((e) => e.id === id)?.updated_at,
+      )
       const now = new Date().toISOString()
       queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) =>
         old?.map((e) => (e.id === id ? { ...e, ...input, updated_at: now } : e)),
@@ -192,8 +200,8 @@ export function useUpdateTimesheetEntry(workspaceId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },
@@ -208,14 +216,12 @@ export function useDeleteTimesheetEntry(workspaceId: string) {
     networkMode: 'always',
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient
-        .getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
-        ?.find((e) => e.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`timesheet_entry:${id}`)
 
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'timesheet_entry_delete', workspaceId, id },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           const { error } = await supabase.from('timesheet_entries').delete().eq('id', id)
           if (error) throw error
@@ -228,6 +234,10 @@ export function useDeleteTimesheetEntry(workspaceId: string) {
 
       const previousDetail = queryClient.getQueryData<TimesheetEntry[]>(entriesKey(workspaceId))
       const previousAll = queryClient.getQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY)
+      stashExpectedUpdatedAt(
+        `timesheet_entry:${id}`,
+        previousDetail?.find((e) => e.id === id)?.updated_at,
+      )
 
       queryClient.setQueryData<TimesheetEntry[]>(entriesKey(workspaceId), (old) => old?.filter((e) => e.id !== id))
       queryClient.setQueriesData<TimesheetEntry[]>(ALL_ENTRIES_KEY, (old) => old?.filter((e) => e.id !== id))
@@ -242,8 +252,8 @@ export function useDeleteTimesheetEntry(workspaceId: string) {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: entriesKey(workspaceId) })
       queryClient.invalidateQueries(ALL_ENTRIES_KEY)
     },

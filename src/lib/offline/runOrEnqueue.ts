@@ -2,6 +2,8 @@ import { enqueueMutation } from '@/lib/offline/outbox'
 import { isLikelyNetworkError, isOnline, registerOutboxSync } from '@/lib/offline/network'
 import type { OutboxPayload } from '@/lib/offline/types'
 
+const OUTBOX_QUEUED = Symbol('outboxQueued')
+
 export class OutboxQueuedError extends Error {
   readonly queued = true as const
   constructor(message = 'Saved offline — will sync when online') {
@@ -12,6 +14,18 @@ export class OutboxQueuedError extends Error {
 
 export function isOutboxQueuedError(error: unknown): error is OutboxQueuedError {
   return error instanceof OutboxQueuedError || (error as { queued?: boolean })?.queued === true
+}
+
+/** True when `runOrEnqueue` returned an optimistic result after enqueueing (e.g. create). */
+export function isOutboxQueuedResult(value: unknown): boolean {
+  return Boolean(value && typeof value === 'object' && OUTBOX_QUEUED in (value as object))
+}
+
+function markQueuedResult<T>(value: T): T {
+  if (value !== null && typeof value === 'object') {
+    Object.defineProperty(value, OUTBOX_QUEUED, { value: true, enumerable: false })
+  }
+  return value
 }
 
 /**
@@ -38,7 +52,7 @@ export async function runOrEnqueue<T>(options: {
 
   if (!isOnline()) {
     await enqueue()
-    if (options.offlineResult !== undefined) return options.offlineResult
+    if (options.offlineResult !== undefined) return markQueuedResult(options.offlineResult)
     throw new OutboxQueuedError()
   }
 
@@ -47,7 +61,7 @@ export async function runOrEnqueue<T>(options: {
   } catch (error) {
     if (isLikelyNetworkError(error)) {
       await enqueue()
-      if (options.offlineResult !== undefined) return options.offlineResult
+      if (options.offlineResult !== undefined) return markQueuedResult(options.offlineResult)
       throw new OutboxQueuedError()
     }
     throw error

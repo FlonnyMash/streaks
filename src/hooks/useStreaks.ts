@@ -2,10 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Streak, StreakInput } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
-import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { runOrEnqueue, isOutboxQueuedError, isOutboxQueuedResult } from '@/lib/offline/runOrEnqueue'
 import { isOnline } from '@/lib/offline/network'
+import { stashExpectedUpdatedAt, readExpectedUpdatedAt } from '@/lib/offline/expectedUpdatedAt'
 
 const STREAKS_KEY = ['streaks'] as const
+
+function shouldInvalidateAfterMutation(data: unknown, error: unknown): boolean {
+  if (!isOnline()) return false
+  if (isOutboxQueuedError(error) || isOutboxQueuedResult(data)) return false
+  return true
+}
 
 export function useStreaks() {
   const { user } = useAuth()
@@ -69,8 +76,8 @@ export function useCreateStreak() {
         return [...old, streak]
       })
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -85,11 +92,11 @@ export function useUpdateStreak() {
     networkMode: 'always',
     mutationFn: async ({ id, input }: { id: string; input: Partial<StreakInput> }) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Streak[]>(key)?.find((s) => s.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak:${id}`)
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'streak_update', id, input },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         run: async () => {
           const { data, error } = await supabase.from('streaks').update(input).eq('id', id).select().single()
           if (error) throw error
@@ -100,6 +107,7 @@ export function useUpdateStreak() {
     onMutate: async ({ id, input }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Streak[]>(key)
+      stashExpectedUpdatedAt(`streak:${id}`, previous?.find((s) => s.id === id)?.updated_at)
       queryClient.setQueryData<Streak[]>(key, (old) =>
         old?.map((s) =>
           s.id === id ? { ...s, ...input, updated_at: new Date().toISOString() } : s,
@@ -111,8 +119,8 @@ export function useUpdateStreak() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -127,11 +135,11 @@ export function useDeleteStreak() {
     networkMode: 'always',
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Streak[]>(key)?.find((s) => s.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak:${id}`)
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'streak_delete', id },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         offlineResult: undefined as void,
         run: async () => {
           const { error } = await supabase.from('streaks').delete().eq('id', id)
@@ -142,6 +150,7 @@ export function useDeleteStreak() {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Streak[]>(key)
+      stashExpectedUpdatedAt(`streak:${id}`, previous?.find((s) => s.id === id)?.updated_at)
       queryClient.setQueryData<Streak[]>(key, (old) => old?.filter((s) => s.id !== id))
       return { previous }
     },
@@ -149,8 +158,8 @@ export function useDeleteStreak() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -165,11 +174,11 @@ export function useArchiveStreak() {
     networkMode: 'always',
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Streak[]>(key)?.find((s) => s.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`streak:${id}`)
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'streak_archive', id },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         offlineResult: undefined as void,
         run: async () => {
           const { error } = await supabase.from('streaks').update({ archived: true }).eq('id', id)
@@ -180,6 +189,7 @@ export function useArchiveStreak() {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Streak[]>(key)
+      stashExpectedUpdatedAt(`streak:${id}`, previous?.find((s) => s.id === id)?.updated_at)
       queryClient.setQueryData<Streak[]>(key, (old) => old?.filter((s) => s.id !== id))
       return { previous }
     },
@@ -187,8 +197,8 @@ export function useArchiveStreak() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })

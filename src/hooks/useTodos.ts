@@ -3,8 +3,9 @@ import { supabase } from '@/lib/supabaseClient'
 import type { Todo, TodoInput, TodoTopic } from '@/lib/types'
 import { useAuth } from '@/hooks/useAuth'
 import { syncTodoTopics } from '@/lib/todoTopics'
-import { runOrEnqueue, isOutboxQueuedError } from '@/lib/offline/runOrEnqueue'
+import { runOrEnqueue, isOutboxQueuedError, isOutboxQueuedResult } from '@/lib/offline/runOrEnqueue'
 import { isOnline } from '@/lib/offline/network'
+import { stashExpectedUpdatedAt, readExpectedUpdatedAt } from '@/lib/offline/expectedUpdatedAt'
 
 const TODOS_KEY = ['todos'] as const
 const TODO_TOPICS_KEY = ['todo_topics'] as const
@@ -46,6 +47,12 @@ function mapTodo(row: TodoRow): Todo {
     notify_enabled: Boolean(row.notify_enabled),
     topics,
   }
+}
+
+function shouldInvalidateAfterMutation(data: unknown, error: unknown): boolean {
+  if (!isOnline()) return false
+  if (isOutboxQueuedError(error) || isOutboxQueuedResult(data)) return false
+  return true
 }
 
 export function useTodos() {
@@ -161,8 +168,8 @@ export function useCreateTodo() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: [...TODO_TOPICS_KEY, user?.id] })
     },
@@ -178,13 +185,13 @@ export function useUpdateTodo() {
     networkMode: 'always',
     mutationFn: async ({ id, input }: { id: string; input: Partial<TodoInput> }) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`todo:${id}`)
       const { topicNames, ...fields } = input
 
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'todo_update', id, input },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         offlineResult: undefined as void,
         run: async () => {
           if (Object.keys(fields).length > 0) {
@@ -200,6 +207,7 @@ export function useUpdateTodo() {
     onMutate: async ({ id, input }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Todo[]>(key)
+      stashExpectedUpdatedAt(`todo:${id}`, previous?.find((t) => t.id === id)?.updated_at)
       const { topicNames, ...fields } = input
       queryClient.setQueryData<Todo[]>(key, (old) =>
         old?.map((t) => {
@@ -226,8 +234,8 @@ export function useUpdateTodo() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: [...TODO_TOPICS_KEY, user?.id] })
     },
@@ -243,11 +251,11 @@ export function useDeleteTodo() {
     networkMode: 'always',
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`todo:${id}`)
       return runOrEnqueue({
         userId: user.id,
         payload: { kind: 'todo_delete', id },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         offlineResult: undefined as void,
         run: async () => {
           const { error } = await supabase.from('todos').delete().eq('id', id)
@@ -258,6 +266,7 @@ export function useDeleteTodo() {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Todo[]>(key)
+      stashExpectedUpdatedAt(`todo:${id}`, previous?.find((t) => t.id === id)?.updated_at)
       queryClient.setQueryData<Todo[]>(key, (old) => old?.filter((t) => t.id !== id))
       return { previous }
     },
@@ -265,8 +274,8 @@ export function useDeleteTodo() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -293,7 +302,7 @@ export function useToggleTodo() {
       tracked_minutes?: number | null
     }) => {
       if (!user) throw new Error('Not signed in')
-      const existing = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id)
+      const expectedUpdatedAt = readExpectedUpdatedAt(`todo:${id}`)
       const completed_at = done ? new Date().toISOString() : null
       const payload: {
         done: boolean
@@ -315,7 +324,7 @@ export function useToggleTodo() {
           tracked_minutes: payload.tracked_minutes,
           completed_at,
         },
-        expectedUpdatedAt: existing?.updated_at ?? null,
+        expectedUpdatedAt,
         offlineResult: undefined as void,
         run: async () => {
           const { error } = await supabase.from('todos').update(payload).eq('id', id)
@@ -326,6 +335,7 @@ export function useToggleTodo() {
     onMutate: async ({ id, done, tracked_minutes }): Promise<ToggleContext> => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Todo[]>(key)
+      stashExpectedUpdatedAt(`todo:${id}`, previous?.find((t) => t.id === id)?.updated_at)
       queryClient.setQueryData<Todo[]>(key, (old) =>
         old?.map((t) => {
           if (t.id !== id) return t
@@ -346,8 +356,8 @@ export function useToggleTodo() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })
@@ -400,8 +410,8 @@ export function useSwapTodoPositions() {
       if (isOutboxQueuedError(err)) return
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
-    onSettled: () => {
-      if (!isOnline()) return
+    onSettled: (data, error) => {
+      if (!shouldInvalidateAfterMutation(data, error)) return
       queryClient.invalidateQueries({ queryKey: key })
     },
   })

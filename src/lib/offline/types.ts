@@ -48,8 +48,20 @@ export type OutboxPayload =
       input: TodoInput
       clientId: string
       position: number
+      /** Merged from a later offline toggle before the create was flushed. */
+      done?: boolean
+      completed_at?: string | null
+      tracked_minutes?: number | null
     }
-  | { kind: 'todo_update'; id: string; input: Partial<TodoInput> }
+  | {
+      kind: 'todo_update'
+      id: string
+      input: Partial<TodoInput>
+      /** Merged from a later offline toggle before the update was flushed. */
+      done?: boolean
+      completed_at?: string | null
+      tracked_minutes?: number | null
+    }
   | { kind: 'todo_delete'; id: string }
   | {
       kind: 'todo_toggle'

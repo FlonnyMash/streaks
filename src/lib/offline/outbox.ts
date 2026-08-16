@@ -60,6 +60,143 @@ export async function getOutboxItem(id: string): Promise<PendingMutation | undef
   return db.get('mutations', id)
 }
 
+function isDeletePayload(payload: OutboxPayload): boolean {
+  return (
+    payload.kind === 'streak_delete' ||
+    payload.kind === 'todo_delete' ||
+    payload.kind === 'timesheet_entry_delete'
+  )
+}
+
+/**
+ * Merge successive mutations on the same entity into one outbox payload.
+ * Critical: create + later update/toggle must stay a create, otherwise flush
+ * tries to update a row that was never inserted.
+ */
+function mergePayloads(existing: OutboxPayload, incoming: OutboxPayload): OutboxPayload | 'cancel' {
+  if (existing.kind.endsWith('_create') && isDeletePayload(incoming)) {
+    return 'cancel'
+  }
+
+  // --- todos ---
+  if (existing.kind === 'todo_create') {
+    if (incoming.kind === 'todo_update' && incoming.id === existing.clientId) {
+      return {
+        ...existing,
+        input: { ...existing.input, ...incoming.input },
+        done: incoming.done ?? existing.done,
+        completed_at: incoming.completed_at !== undefined ? incoming.completed_at : existing.completed_at,
+        tracked_minutes:
+          incoming.tracked_minutes !== undefined ? incoming.tracked_minutes : existing.tracked_minutes,
+      }
+    }
+    if (incoming.kind === 'todo_toggle' && incoming.id === existing.clientId) {
+      return {
+        ...existing,
+        done: incoming.done,
+        completed_at: incoming.completed_at,
+        tracked_minutes:
+          incoming.tracked_minutes !== undefined ? incoming.tracked_minutes : existing.tracked_minutes,
+      }
+    }
+  }
+
+  if (existing.kind === 'todo_update') {
+    if (incoming.kind === 'todo_update' && incoming.id === existing.id) {
+      return {
+        ...existing,
+        input: { ...existing.input, ...incoming.input },
+        done: incoming.done ?? existing.done,
+        completed_at: incoming.completed_at !== undefined ? incoming.completed_at : existing.completed_at,
+        tracked_minutes:
+          incoming.tracked_minutes !== undefined ? incoming.tracked_minutes : existing.tracked_minutes,
+      }
+    }
+    if (incoming.kind === 'todo_toggle' && incoming.id === existing.id) {
+      return {
+        ...existing,
+        done: incoming.done,
+        completed_at: incoming.completed_at,
+        tracked_minutes:
+          incoming.tracked_minutes !== undefined ? incoming.tracked_minutes : existing.tracked_minutes,
+      }
+    }
+  }
+
+  if (existing.kind === 'todo_toggle' && incoming.kind === 'todo_update' && incoming.id === existing.id) {
+    return {
+      kind: 'todo_update',
+      id: existing.id,
+      input: incoming.input,
+      done: existing.done,
+      completed_at: existing.completed_at,
+      tracked_minutes: existing.tracked_minutes,
+    }
+  }
+
+  if (existing.kind === 'todo_toggle' && incoming.kind === 'todo_toggle' && incoming.id === existing.id) {
+    return incoming
+  }
+
+  // --- streaks ---
+  if (existing.kind === 'streak_create' && incoming.kind === 'streak_update' && incoming.id === existing.clientId) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (existing.kind === 'streak_update' && incoming.kind === 'streak_update' && incoming.id === existing.id) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (existing.kind === 'streak_create' && incoming.kind === 'streak_archive' && incoming.id === existing.clientId) {
+    // Creating then archiving before sync → net no-op for the server.
+    return 'cancel'
+  }
+
+  // --- timesheet ---
+  if (
+    existing.kind === 'timesheet_entry_create' &&
+    incoming.kind === 'timesheet_entry_update' &&
+    incoming.id === existing.clientId
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (
+    existing.kind === 'timesheet_entry_update' &&
+    incoming.kind === 'timesheet_entry_update' &&
+    incoming.id === existing.id
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  // --- streak entries: last write wins (toggle / minutes / details share coalesce key) ---
+  if (
+    (existing.kind === 'streak_entry_toggle' ||
+      existing.kind === 'streak_entry_minutes' ||
+      existing.kind === 'streak_entry_details') &&
+    (incoming.kind === 'streak_entry_toggle' ||
+      incoming.kind === 'streak_entry_minutes' ||
+      incoming.kind === 'streak_entry_details')
+  ) {
+    return incoming
+  }
+
+  // Default: replace with the latest mutation (keeps expectedUpdatedAt from first base).
+  return incoming
+}
+
 export async function enqueueMutation(input: {
   userId: string
   payload: OutboxPayload
@@ -73,24 +210,19 @@ export async function enqueueMutation(input: {
   const coalescible = existing.find((m) => m.status === 'pending' || m.status === 'failed')
 
   if (coalescible) {
-    // Create then delete → drop both (net no-op) if same client create id.
-    if (
-      coalescible.op === 'create' &&
-      op === 'delete' &&
-      (input.payload.kind === 'streak_delete' ||
-        input.payload.kind === 'todo_delete' ||
-        input.payload.kind === 'timesheet_entry_delete')
-    ) {
+    const merged = mergePayloads(coalescible.payload, input.payload)
+    if (merged === 'cancel') {
       await db.delete('mutations', coalescible.id)
       notify()
       return coalescible
     }
 
+    const meta = metaFromPayload(merged)
     const updated: PendingMutation = {
       ...coalescible,
-      payload: input.payload,
-      entity,
-      op,
+      payload: merged,
+      entity: meta.entity,
+      op: meta.op,
       // Keep original expectedUpdatedAt so conflict detection stays vs first base.
       expectedUpdatedAt: coalescible.expectedUpdatedAt ?? input.expectedUpdatedAt,
       status: 'pending',
