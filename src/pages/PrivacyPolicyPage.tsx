@@ -36,10 +36,12 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="2. About this app">
         <p>
-          {LEGAL.appName} (“the App”) is a personal web application for managing habits (streaks) and
-          tasks (todos). The App is provided as a Progressive Web App (PWA) and stores your content in
-          a database and object storage operated by our processor Supabase. There are no payments,
-          analytics, advertising, or marketing tools in the App.
+          {LEGAL.appName} (“the App”) is a personal web application for managing habits (streaks),
+          tasks (todos), and calendar routines. The App is provided as a Progressive Web App (PWA)
+          and stores your content in a database and object storage operated by our processor
+          Supabase. There are no payments, advertising, marketing tools, or third-party analytics /
+          tracking SDKs in the user-facing App. We operate a separate, access-restricted admin
+          dashboard for support and first-party operational statistics (see sections 5 and 8).
           Optional profile photo uploads are the only file uploads supported.
         </p>
       </LegalSection>
@@ -72,20 +74,26 @@ export function PrivacyPolicyPage() {
             'OAuth (optional): identity / profile data provided by GitHub or Google, especially email and, where available, first name and provider profile picture URL (used as a fallback avatar when you have not uploaded your own)',
             'Passkeys (optional): WebAuthn credentials including display name and created / last-used timestamps',
             'Content you create: streaks (name, emoji, color, frequency, archived status, time goals, optional reminder time), daily streak entries (completion, notes, mood, minutes), todos (title, notes, due date, importance, topics, completion timestamps, optional due reminders), todo timers (which todo is running and since when), and per-day todo timer totals (work date and seconds spent)',
-            'Push notifications (optional): browser / device notification permission, a Web Push subscription (endpoint URL and encryption keys for this device), your current device timezone (refreshed when you open the App, used for local reminder scheduling), and whether at least one device is subscribed; used only to deliver reminders you opt into',
+            'Calendar routines (optional): routine schedules and items, date-specific overrides, and completion logs you create in the calendar feature',
+            'Support tickets (optional): subject and message you submit for help, plus status, priority, and any internal admin note added while handling your request',
+            'Push notifications (optional): browser / device notification permission, a Web Push subscription (endpoint URL and encryption keys for this device), a truncated browser user-agent string for that subscription, your current device timezone (refreshed when you open the App, used for local reminder scheduling), and whether at least one device is subscribed; used to deliver reminders you opt into and, where applicable, occasional service messages from authorized operators',
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
-            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the push-notification setup prompt was dismissed or completed (keyed to your user ID), and whether the “Add to Home Screen” tip was dismissed',
+            'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the push-notification setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and similar one-time UI prompt flags (for example weekend-routine prompts)',
+            'Offline / performance caches on your device (IndexedDB): a short-lived copy of recently loaded app data for faster relaunch, an offline change outbox so edits can sync when you reconnect, and a local cache of your profile photo for display',
           ]}
         />
         <p>
-          We do not set cookies for tracking, advertising, or analytics. No analytics or marketing
-          tools are integrated into the App. The App does not request camera, microphone, or location
-          permissions. Push-notification permission is requested by the browser/OS when you allow
-          notifications (for example from the first-sign-in reminder prompt, Settings, or when enabling
-          “Notify me”). The App reads the
-          current device permission rather than keeping a separate on/off preference. Installing the
-          App as a PWA does not collect additional personal data beyond the preferences described above.
+          We do not set cookies for tracking, advertising, or analytics, and we do not integrate
+          third-party analytics or marketing tools into the user-facing App. Operational statistics
+          shown to administrators are computed from data already stored for providing the service
+          (for example account counts and signup trends); they are not collected via tracking pixels
+          or advertising identifiers on your device. The App does not request camera, microphone, or
+          location permissions. Push-notification permission is requested by the browser/OS when you
+          allow notifications (for example from the first-sign-in reminder prompt, Settings, or when
+          enabling “Notify me”). The App reads the current device permission rather than keeping a
+          separate on/off preference. Installing the App as a PWA does not collect additional personal
+          data beyond the preferences described above.
         </p>
       </LegalSection>
 
@@ -95,12 +103,16 @@ export function PrivacyPolicyPage() {
           items={[
             'Providing and operating your user account and sign-in (Art. 6(1)(b) GDPR)',
             'Verifying you meet the minimum age of 16 to use the App (Art. 6(1)(c) GDPR)',
-            'Storing and syncing your personal app content, including todo timers (Art. 6(1)(b) GDPR)',
+            'Storing and syncing your personal app content, including todo timers and calendar routines (Art. 6(1)(b) GDPR)',
             'Displaying your optional profile photo in the App (Art. 6(1)(b) GDPR)',
             'Securing authentication (sessions, passkeys, password reset, email change) (Art. 6(1)(b) and (f) GDPR)',
             'Optional sign-in via GitHub, Google, or passkeys at your request (Art. 6(1)(b) GDPR)',
             'Optional push notifications for streak / todo reminders and long-running timer nudges you enable (Art. 6(1)(b) and (a) GDPR)',
-            'Storing theme, passkey-prompt, install-tip, and active-timer-cache preferences for a comfortable display (Art. 6(1)(f) GDPR)',
+            'Handling support tickets you submit and related follow-up (Art. 6(1)(b) and (f) GDPR)',
+            'Operating and securing the service, including limited access by authorized administrators to user accounts and content for support, abuse prevention, and reliability (Art. 6(1)(f) GDPR)',
+            'First-party operational analytics in our access-restricted admin dashboard (for example aggregate user / content / push / ticket counts, signup trends, and searchable user lists for support), using data already stored to provide the App — not third-party tracking of your browsing (Art. 6(1)(f) GDPR)',
+            'Sending occasional service or broadcast push messages by authorized administrators (for example maintenance or product notices), only to devices that have an active push subscription (Art. 6(1)(f) GDPR; where required, also Art. 6(1)(a) GDPR via the notification permission you grant)',
+            'Storing theme, UI-prompt, install-tip, and offline / performance cache data for a working and comfortable App experience (Art. 6(1)(f) GDPR)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
           ]}
         />
@@ -108,37 +120,47 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="6. Retention">
         <p>
-          Account data, app content (including todo timers and per-day todo timer totals), push
-          subscription records, and any uploaded profile photo are stored for as long as your account
-          exists or until you delete individual records, turn off push notifications (which removes
-          stored device subscriptions), stop, discard, or clear a timer, replace or clear your photo,
-          or delete the entire account. Clearing or replacing a profile photo updates the URL used by
+          Account data, app content (including todo timers, per-day todo timer totals, and calendar
+          routines), support tickets, push subscription records, and any uploaded profile photo are
+          stored for as long as your account exists or until you delete individual records, turn off
+          push notifications (which removes stored device subscriptions), stop, discard, or clear a
+          timer, replace or clear your photo, resolve or close tickets according to our handling, or
+          delete the entire account. Clearing or replacing a profile photo updates the URL used by
           the App; older photo files under your user ID may remain in storage until you delete your
           account. The auth session remains until you sign out or the tokens expire. Theme,
-          passkey-prompt, and install-tip preferences remain in local storage until you change them or
-          you clear browser storage. Server and access logs of hosting / auth providers may be
-          retained briefly according to their own retention policies.
+          UI-prompt, and install-tip preferences remain in local storage until you change them or
+          you clear browser storage. IndexedDB caches remain until cleared by the App, you clear
+          site data, or you uninstall / wipe the PWA. Server and access logs of hosting / auth
+          providers may be retained briefly according to their own retention policies.
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Storage on your device (local storage)">
+      <LegalSection title="7. Storage on your device (local storage and IndexedDB)">
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
-          the theme preference, the passkey setup prompt status, the push-notification setup prompt
-          status, and the “Add to Home Screen” tip dismissal. Todo timers are stored on the server (not
-          in local storage). These local items are not tracking cookies. Without storing the session,
-          persistent sign-in would not be possible.
+          the theme preference, passkey / push setup prompt status, the “Add to Home Screen” tip
+          dismissal, and similar one-time UI prompt flags. It also uses IndexedDB for a React Query
+          data cache, an offline sync outbox, and a local avatar cache. Todo timers and calendar
+          content themselves are stored on the server (not only on the device). These local items are
+          not tracking cookies. Without storing the session, persistent sign-in would not be
+          possible; without the offline / performance caches, relaunch and offline editing would be
+          less reliable.
         </p>
       </LegalSection>
 
       <LegalSection title="8. Recipients and international transfers">
         <p>
           Recipients are the processors listed in section 3 and — if you use GitHub or Google login —
-          the respective identity provider. Uploaded profile photos are stored with a publicly
-          accessible URL so the App can load them; only your account can upload or replace photos
-          under your user ID, and only you can clear the photo URL on your profile. Where personal
-          data is transferred outside the EEA, this is based on appropriate safeguards (in particular
-          EU Standard Contractual Clauses) of the respective providers.
+          the respective identity provider. Authorized administrators of the App (a small set of
+          operator accounts) may access account, profile, content, push-subscription, and support-ticket
+          data, and may view first-party operational analytics derived from that data, as needed to
+          operate the service, provide support, and send service messages. Admin access is limited to
+          designated operator accounts; the admin dashboard is not part of the public user App.
+          Uploaded profile photos are stored with a publicly accessible URL so the App can load them;
+          only your account can upload or replace photos under your user ID, and only you can clear the
+          photo URL on your profile. Where personal data is transferred outside the EEA, this is based
+          on appropriate safeguards (in particular EU Standard Contractual Clauses) of the respective
+          providers.
         </p>
       </LegalSection>
 
@@ -171,7 +193,7 @@ export function PrivacyPolicyPage() {
           Using the App requires an email address, a first name, and a date of birth, plus — depending
           on the sign-in method — a password, passkey, or a GitHub or Google account. Without this
           information, an account cannot be provided. Your date of birth cannot be changed once saved.
-          A profile photo is optional.
+          A profile photo, calendar routines, support tickets, and push notifications are optional.
         </p>
       </LegalSection>
 
