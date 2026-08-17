@@ -8,7 +8,21 @@ import {
   updateOutboxItem,
 } from '@/lib/offline/outbox'
 import type { OutboxPayload, PendingMutation } from '@/lib/offline/types'
-import type { Streak, StreakInput, Todo, TodoInput } from '@/lib/types'
+import type {
+  CalendarRoutine,
+  CalendarRoutineInput,
+  CalendarRoutineItem,
+  CalendarRoutineItemInput,
+  Streak,
+  StreakInput,
+  Todo,
+  TodoInput,
+} from '@/lib/types'
+import {
+  deleteOverlappingCalendarRoutineOverrides,
+  fetchCalendarRoutineOverrideForDate,
+  setCalendarRoutineSchedule,
+} from '@/lib/calendarRoutinePacks'
 
 export type FlushResult =
   | { status: 'idle' }
@@ -23,6 +37,10 @@ function invalidateDomain(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ['streak-entries'] })
   void queryClient.invalidateQueries({ queryKey: ['todos'] })
   void queryClient.invalidateQueries({ queryKey: ['todo_topics'] })
+  void queryClient.invalidateQueries({ queryKey: ['calendar-routines'] })
+  void queryClient.invalidateQueries({ queryKey: ['calendar-routine-items'] })
+  void queryClient.invalidateQueries({ queryKey: ['calendar-routine-logs'] })
+  void queryClient.invalidateQueries({ queryKey: ['calendar-routine-override'] })
 }
 
 function formatError(err: unknown): string {
@@ -40,7 +58,14 @@ function isDuplicateKey(err: unknown): boolean {
 }
 
 async function fetchRow(
-  table: 'streaks' | 'streak_entries' | 'todos',
+  table:
+    | 'streaks'
+    | 'streak_entries'
+    | 'todos'
+    | 'calendar_routines'
+    | 'calendar_routine_items'
+    | 'calendar_routine_logs'
+    | 'calendar_routine_overrides',
   match: Record<string, string>,
 ): Promise<Record<string, unknown> | null> {
   let q = supabase.from(table).select('*')
@@ -186,6 +211,107 @@ async function applyPayload(userId: string, payload: OutboxPayload): Promise<voi
       if (errB) throw errB
       return
     }
+    case 'calendar_routine_pack_create': {
+      const row = {
+        ...payload.input,
+        id: payload.clientId,
+        user_id: userId,
+        position: payload.position,
+      }
+      const { error } = await supabase.from('calendar_routines').upsert(row, { onConflict: 'id' })
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_pack_update': {
+      const { error } = await supabase.from('calendar_routines').update(payload.input).eq('id', payload.id)
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_pack_archive': {
+      const { error } = await supabase
+        .from('calendar_routines')
+        .update({ archived: true })
+        .eq('id', payload.id)
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_schedule_set': {
+      await setCalendarRoutineSchedule(payload.routineId, payload.days)
+      return
+    }
+    case 'calendar_routine_create': {
+      const row = {
+        ...payload.input,
+        id: payload.clientId,
+        user_id: userId,
+        position: payload.position,
+      }
+      const { error } = await supabase.from('calendar_routine_items').upsert(row, { onConflict: 'id' })
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_item_update': {
+      const { error } = await supabase
+        .from('calendar_routine_items')
+        .update(payload.input)
+        .eq('id', payload.id)
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_item_archive': {
+      const { error } = await supabase
+        .from('calendar_routine_items')
+        .update({ archived: true })
+        .eq('id', payload.id)
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_toggle': {
+      if (payload.completed) {
+        const row: Record<string, unknown> = {
+          item_id: payload.itemId,
+          user_id: userId,
+          entry_date: payload.dateKey,
+          completed: true,
+        }
+        if (payload.clientId) row.id = payload.clientId
+        const { error } = await supabase
+          .from('calendar_routine_logs')
+          .upsert(row, { onConflict: 'item_id,entry_date' })
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('calendar_routine_logs')
+          .delete()
+          .eq('item_id', payload.itemId)
+          .eq('entry_date', payload.dateKey)
+        if (error) throw error
+      }
+      return
+    }
+    case 'calendar_routine_override_set': {
+      await deleteOverlappingCalendarRoutineOverrides(userId, payload.startDate, payload.endDate)
+      const row: Record<string, unknown> = {
+        id: payload.clientId,
+        user_id: userId,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        routine_id: payload.routineId,
+      }
+      const { error } = await supabase.from('calendar_routine_overrides').insert(row)
+      if (error) throw error
+      return
+    }
+    case 'calendar_routine_override_clear': {
+      const { error } = await supabase
+        .from('calendar_routine_overrides')
+        .delete()
+        .eq('user_id', userId)
+        .lte('start_date', payload.dateKey)
+        .or(`end_date.is.null,end_date.gte.${payload.dateKey}`)
+      if (error) throw error
+      return
+    }
   }
 }
 
@@ -211,6 +337,8 @@ async function recoverMissingFromCache(
       due_date: local.due_date,
       importance: local.importance,
       notify_enabled: local.notify_enabled,
+      routine: local.routine,
+      estimated_minutes: local.estimated_minutes,
       topicNames: local.topics.map((t) => t.name),
     }
     if (p.kind === 'todo_update') {
@@ -231,6 +359,41 @@ async function recoverMissingFromCache(
         p.kind === 'todo_toggle'
           ? p.tracked_minutes
           : (p.tracked_minutes !== undefined ? p.tracked_minutes : local.tracked_minutes),
+    })
+    return true
+  }
+
+  if (p.kind === 'calendar_routine_pack_update') {
+    const packs = queryClient.getQueryData<CalendarRoutine[]>(['calendar-routines', userId])
+    const local = packs?.find((r) => r.id === p.id)
+    if (!local) return false
+    const input: CalendarRoutineInput = {
+      name: local.name,
+      emoji: local.emoji,
+      auto_apply_days: local.auto_apply_days,
+      ...p.input,
+    }
+    await applyPayload(userId, { kind: 'calendar_routine_pack_create', clientId: local.id, position: local.position, input })
+    return true
+  }
+
+  if (p.kind === 'calendar_routine_item_update') {
+    const items = queryClient.getQueryData<CalendarRoutineItem[]>(['calendar-routine-items', userId])
+    const local = items?.find((i) => i.id === p.id)
+    if (!local) return false
+    const input: CalendarRoutineItemInput = {
+      routine_id: local.routine_id,
+      title: local.title,
+      emoji: local.emoji,
+      block: local.block,
+      estimated_minutes: local.estimated_minutes,
+      ...p.input,
+    }
+    await applyPayload(userId, {
+      kind: 'calendar_routine_create',
+      clientId: local.id,
+      position: local.position,
+      input,
     })
     return true
   }
@@ -267,7 +430,41 @@ async function checkConflict(item: PendingMutation): Promise<'ok' | 'skip' | 'mi
     case 'todo_create':
     case 'todo_swap':
     case 'streak_entry_minutes':
+    case 'calendar_routine_pack_create':
+    case 'calendar_routine_create':
+    case 'calendar_routine_override_set':
+    case 'calendar_routine_schedule_set':
       return 'ok'
+    case 'calendar_routine_pack_update': {
+      const row = await fetchRow('calendar_routines', { id: p.id })
+      return row ? 'ok' : 'missing'
+    }
+    case 'calendar_routine_pack_archive': {
+      const row = await fetchRow('calendar_routines', { id: p.id })
+      return row ? 'ok' : 'skip'
+    }
+    case 'calendar_routine_item_update': {
+      const row = await fetchRow('calendar_routine_items', { id: p.id })
+      return row ? 'ok' : 'missing'
+    }
+    case 'calendar_routine_item_archive': {
+      const row = await fetchRow('calendar_routine_items', { id: p.id })
+      return row ? 'ok' : 'skip'
+    }
+    case 'calendar_routine_override_clear': {
+      const row = await fetchCalendarRoutineOverrideForDate(p.dateKey)
+      return row ? 'ok' : 'skip'
+    }
+    case 'calendar_routine_toggle': {
+      if (!p.completed) {
+        const row = await fetchRow('calendar_routine_logs', {
+          item_id: p.itemId,
+          entry_date: p.dateKey,
+        })
+        if (!row) return 'skip'
+      }
+      return 'ok'
+    }
     case 'streak_entry_toggle': {
       if (!p.completed) {
         const row = await fetchRow('streak_entries', {

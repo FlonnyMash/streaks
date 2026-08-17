@@ -46,6 +46,16 @@ export function isValidPastDate(dateOfBirth: string, at: Date = new Date()): boo
   return true
 }
 
+/**
+ * Tour-complete for routing. A missing flag on cached profiles (pre-migration
+ * persist) must not force grandfathered users through `/onboarding`.
+ */
+export function isOnboardingTourCompleted(
+  profile: { onboarding_tour_completed?: boolean } | null | undefined,
+): boolean {
+  return profile?.onboarding_tour_completed !== false
+}
+
 /** Best-effort first-name guess from OAuth provider metadata (Google/GitHub). */
 export function guessFirstNameFromUser(user: User | null): string {
   if (!user) return ''

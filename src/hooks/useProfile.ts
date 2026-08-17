@@ -187,3 +187,30 @@ export function useCompleteOnboarding() {
     },
   })
 }
+
+/** Marks the guided onboarding tour (routine pickers, sample task, notification primer) as done. */
+export function useCompleteOnboardingTour() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    networkMode: 'always',
+    mutationFn: async () => {
+      if (!user) throw new Error('Not signed in')
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(
+          { user_id: user.id, onboarding_tour_completed: true },
+          { onConflict: 'user_id' },
+        )
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData([...PROFILE_KEY, user?.id], data)
+      queryClient.invalidateQueries({ queryKey: [...PROFILE_KEY, user?.id] })
+    },
+  })
+}

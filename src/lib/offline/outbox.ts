@@ -61,7 +61,12 @@ export async function getOutboxItem(id: string): Promise<PendingMutation | undef
 }
 
 function isDeletePayload(payload: OutboxPayload): boolean {
-  return payload.kind === 'streak_delete' || payload.kind === 'todo_delete'
+  return (
+    payload.kind === 'streak_delete' ||
+    payload.kind === 'todo_delete' ||
+    payload.kind === 'calendar_routine_pack_archive' ||
+    payload.kind === 'calendar_routine_item_archive'
+  )
 }
 
 /**
@@ -152,6 +157,56 @@ function mergePayloads(existing: OutboxPayload, incoming: OutboxPayload): Outbox
   if (existing.kind === 'streak_create' && incoming.kind === 'streak_archive' && incoming.id === existing.clientId) {
     // Creating then archiving before sync → net no-op for the server.
     return 'cancel'
+  }
+
+  // --- calendar routine packs ---
+  if (
+    existing.kind === 'calendar_routine_pack_create' &&
+    incoming.kind === 'calendar_routine_pack_update' &&
+    incoming.id === existing.clientId
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (
+    existing.kind === 'calendar_routine_pack_update' &&
+    incoming.kind === 'calendar_routine_pack_update' &&
+    incoming.id === existing.id
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (existing.kind === 'calendar_routine_schedule_set' && incoming.kind === 'calendar_routine_schedule_set') {
+    return incoming
+  }
+
+  // --- calendar routine items ---
+  if (
+    existing.kind === 'calendar_routine_create' &&
+    incoming.kind === 'calendar_routine_item_update' &&
+    incoming.id === existing.clientId
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
+  }
+
+  if (
+    existing.kind === 'calendar_routine_item_update' &&
+    incoming.kind === 'calendar_routine_item_update' &&
+    incoming.id === existing.id
+  ) {
+    return {
+      ...existing,
+      input: { ...existing.input, ...incoming.input },
+    }
   }
 
   // --- streak entries: last write wins (toggle / minutes / details share coalesce key) ---

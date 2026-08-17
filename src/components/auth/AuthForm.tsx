@@ -5,7 +5,7 @@ import { BrandIcon } from '@/components/BrandIcon'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
-import { LegalFooterLinks } from '@/components/legal/LegalShared'
+import { GuestPageLayout } from '@/components/layout/GuestPageLayout'
 import { isSupabaseConfigured } from '@/lib/supabaseClient'
 import { MIN_AGE_YEARS, isOldEnough, isValidPastDate } from '@/lib/profile'
 import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, validatePasswordStrength } from '@/lib/password'
@@ -135,7 +135,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center px-5 py-10 safe-top safe-bottom">
+    <GuestPageLayout>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="size-16 rounded-[22px] bg-black/5 dark:bg-white/10 flex items-center justify-center mb-4 ring-1 ring-black/8 dark:ring-white/12">
@@ -288,8 +288,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           Secured by Supabase Auth
         </p>
 
-        <LegalFooterLinks className="sm:hidden mt-4" />
       </div>
-    </div>
+    </GuestPageLayout>
   )
 }

@@ -13,7 +13,8 @@ import { useTodoTimer } from '@/hooks/useTodoTimer'
 import { formatElapsedClock, minutesFromSeconds } from '@/lib/todoTimerLogic'
 import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
-import type { Todo, TodoImportance } from '@/lib/types'
+import { DURATION_PRESETS, ROUTINE_ICONS, ROUTINE_LABELS, ROUTINE_ORDER } from '@/lib/routineLogic'
+import type { RoutineBlock, Todo, TodoImportance } from '@/lib/types'
 
 export type TodoModalMode = 'create' | 'view' | 'edit'
 
@@ -26,16 +27,20 @@ interface CreateTodoModalProps {
   mode?: TodoModalMode
   /** Prefills the title when opening a brand-new task (e.g. from the quick-add bar). */
   initialTitle?: string
+  /** Prefills the due date when opening a brand-new task (e.g. from the Calendar page). */
+  initialDueDate?: string
 }
 
-function defaultState(initialTitle = '') {
+function defaultState(initialTitle = '', initialDueDate = '') {
   return {
     title: initialTitle,
     notes: '',
-    dueDate: '',
+    dueDate: initialDueDate,
     importance: 2 as TodoImportance,
     topicNames: [] as string[],
     notifyEnabled: false,
+    routine: 'anytime' as RoutineBlock,
+    estimatedMinutes: null as number | null,
   }
 }
 
@@ -47,10 +52,10 @@ function formatDueDate(dueDate: string) {
   }
 }
 
-export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTitle }: CreateTodoModalProps) {
+export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTitle, initialDueDate }: CreateTodoModalProps) {
   const inferredMode: TodoModalMode = modeProp ?? (todo ? 'edit' : 'create')
   const [mode, setMode] = useState<TodoModalMode>(inferredMode)
-  const [state, setState] = useState(() => defaultState(initialTitle))
+  const [state, setState] = useState(() => defaultState(initialTitle, initialDueDate))
   const [error, setError] = useState<string | null>(null)
   const createTodo = useCreateTodo()
   const updateTodo = useUpdateTodo()
@@ -73,12 +78,14 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
         importance: todo.importance ?? 2,
         topicNames: (todo.topics ?? []).map((t) => t.name),
         notifyEnabled: Boolean(todo.notify_enabled),
+        routine: todo.routine ?? 'anytime',
+        estimatedMinutes: todo.estimated_minutes ?? null,
       })
     } else {
-      setState(defaultState(initialTitle ?? ''))
+      setState(defaultState(initialTitle ?? '', initialDueDate ?? ''))
     }
     setError(null)
-  }, [open, todo, initialTitle, modeProp])
+  }, [open, todo, initialTitle, initialDueDate, modeProp])
 
   const timer = todo ? timerFor(todo.id) : null
   const elapsedMs = todo ? elapsedMsFor(todo.id) : 0
@@ -122,6 +129,8 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
       due_date: state.dueDate || null,
       importance: state.importance,
       notify_enabled: state.notifyEnabled && Boolean(state.dueDate),
+      routine: state.routine,
+      estimated_minutes: state.estimatedMinutes,
       topicNames: state.topicNames,
     }
 
@@ -169,6 +178,16 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
                 <ImportanceMeter value={state.importance} size="sm" />
                 <span className="text-[15px] text-black/70 dark:text-white/70">{importanceLabel}</span>
               </div>
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Routine</p>
+              <p className="text-[15px] text-black/70 dark:text-white/70">{ROUTINE_LABELS[state.routine]}</p>
+            </div>
+            <div>
+              <p className="text-[13px] font-medium text-black/45 dark:text-white/45 mb-1">Estimated time</p>
+              <p className="text-[15px] text-black/70 dark:text-white/70">
+                {state.estimatedMinutes ? formatMinutes(state.estimatedMinutes) : 'None'}
+              </p>
             </div>
           </div>
 
@@ -259,6 +278,65 @@ export function CreateTodoModal({ open, onClose, todo, mode: modeProp, initialTi
               }
             />
             {state.notifyEnabled && <PushEnableHint />}
+          </div>
+
+          <div>
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Time of day</span>
+            <div className="grid grid-cols-4 gap-2 mt-1.5">
+              {ROUTINE_ORDER.map((block) => {
+                const Icon = ROUTINE_ICONS[block]
+                const selected = state.routine === block
+                return (
+                  <button
+                    key={block}
+                    type="button"
+                    onClick={() => setState((s) => ({ ...s, routine: block }))}
+                    className={cn(
+                      'flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 transition-all',
+                      selected
+                        ? 'bg-accent-blue/12 ring-2 ring-accent-blue'
+                        : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                    )}
+                  >
+                    <Icon className={cn('size-4', selected ? 'text-accent-blue' : 'text-black/45 dark:text-white/45')} />
+                    <span className="text-[12px] font-semibold">{ROUTINE_LABELS[block]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <span className="text-[13px] font-medium text-black/60 dark:text-white/60 px-0.5">Estimated time</span>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {DURATION_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setState((s) => ({ ...s, estimatedMinutes: preset }))}
+                  className={cn(
+                    'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
+                    state.estimatedMinutes === preset
+                      ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
+                      : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                  )}
+                >
+                  {formatMinutes(preset)}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setState((s) => ({ ...s, estimatedMinutes: null }))}
+                className={cn(
+                  'h-8 px-3 rounded-full text-[12px] font-medium transition-all',
+                  state.estimatedMinutes === null
+                    ? 'bg-accent-blue/15 text-accent-blue ring-1 ring-accent-blue'
+                    : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/55 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]',
+                )}
+              >
+                No estimate
+              </button>
+            </div>
           </div>
 
           <TopicPicker

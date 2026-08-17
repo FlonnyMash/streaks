@@ -38,6 +38,33 @@ function localActionLabel(payload: OutboxPayload): string {
       return payload.done ? 'Marked a todo done' : 'Reopened a todo'
     case 'todo_swap':
       return 'Reordered todos'
+    case 'calendar_routine_pack_create':
+      return `Created routine pack “${payload.input.name}”`
+    case 'calendar_routine_pack_update':
+      return payload.input.name ? `Renamed routine pack to “${payload.input.name}”` : 'Updated a routine pack'
+    case 'calendar_routine_schedule_set':
+      return 'Updated a routine schedule'
+    case 'calendar_routine_pack_archive':
+      return 'Deleted a routine pack'
+    case 'calendar_routine_create':
+      return `Added routine “${payload.input.title}”`
+    case 'calendar_routine_item_update':
+      return payload.input.title ? `Renamed routine to “${payload.input.title}”` : 'Updated a routine'
+    case 'calendar_routine_item_archive':
+      return 'Removed a routine'
+    case 'calendar_routine_toggle':
+      return payload.completed ? 'Marked a routine done' : 'Unmarked a routine'
+    case 'calendar_routine_override_set':
+      if (!payload.routineId) {
+        return payload.endDate && payload.endDate !== payload.startDate
+          ? 'Hid routine for a date range'
+          : 'Hid routine for a day'
+      }
+      return payload.endDate && payload.endDate !== payload.startDate
+        ? 'Switched routine for a date range'
+        : 'Switched routine for a day'
+    case 'calendar_routine_override_clear':
+      return 'Cleared a routine override'
   }
 }
 

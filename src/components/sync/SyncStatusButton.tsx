@@ -31,6 +31,33 @@ function labelFor(item: PendingMutation): string {
       return p.done ? `Complete todo` : `Reopen todo`
     case 'todo_swap':
       return `Reorder todos`
+    case 'calendar_routine_pack_create':
+      return `Create routine pack “${p.input.name}”`
+    case 'calendar_routine_pack_update':
+      return `Update routine pack`
+    case 'calendar_routine_schedule_set':
+      return `Update routine schedule`
+    case 'calendar_routine_pack_archive':
+      return `Delete routine pack`
+    case 'calendar_routine_create':
+      return `Add routine “${p.input.title}”`
+    case 'calendar_routine_item_update':
+      return `Update routine`
+    case 'calendar_routine_item_archive':
+      return `Remove routine`
+    case 'calendar_routine_toggle':
+      return p.completed ? `Complete routine ${p.dateKey}` : `Uncomplete routine ${p.dateKey}`
+    case 'calendar_routine_override_set':
+      if (!p.routineId) {
+        return p.endDate && p.endDate !== p.startDate
+          ? `Hide routine ${p.startDate}–${p.endDate}`
+          : `Hide routine for ${p.startDate}`
+      }
+      return p.endDate && p.endDate !== p.startDate
+        ? `Switch routine ${p.startDate}–${p.endDate}`
+        : `Switch routine for ${p.startDate}`
+    case 'calendar_routine_override_clear':
+      return `Clear routine override ${p.dateKey}`
   }
 }
 

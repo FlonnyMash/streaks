@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/errors'
 import { isLikelyNetworkError } from '@/lib/offline/network'
 import { MIN_AGE_YEARS, guessFirstNameFromUser, isOldEnough, isValidPastDate } from '@/lib/profile'
 import { Button } from '@/components/ui/Button'
+import { GuestPageLayout } from '@/components/layout/GuestPageLayout'
 import { TextField } from '@/components/ui/TextField'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -79,7 +80,7 @@ export function CompleteProfilePage() {
 
   if (underage) {
     return (
-      <div className="min-h-full flex items-center justify-center px-5 safe-top safe-bottom">
+      <GuestPageLayout>
         <div className="w-full max-w-sm glass-panel rounded-[28px] p-6">
           <div className="flex flex-col items-center mb-4">
             <div className="size-12 rounded-2xl bg-accent-red/15 flex items-center justify-center mb-3">
@@ -113,12 +114,12 @@ export function CompleteProfilePage() {
             </Button>
           </div>
         </div>
-      </div>
+      </GuestPageLayout>
     )
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center px-5 py-10 safe-top safe-bottom">
+    <GuestPageLayout>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="size-16 rounded-[22px] bg-gradient-to-br from-accent-blue to-accent-indigo flex items-center justify-center shadow-[0_12px_30px_-8px_rgba(10,132,255,0.5)] mb-4">
@@ -162,6 +163,6 @@ export function CompleteProfilePage() {
           </form>
         </div>
       </div>
-    </div>
+    </GuestPageLayout>
   )
 }

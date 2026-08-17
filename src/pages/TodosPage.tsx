@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TodoItem } from '@/components/todos/TodoItem'
+import { RoutineTimeline } from '@/components/todos/RoutineTimeline'
 import { CreateTodoModal, type TodoModalMode } from '@/components/todos/CreateTodoModal'
 import {
   FeatureGetStartedButton,
@@ -15,7 +16,6 @@ import { useCreateTodo, useDeleteTodo, useSwapTodoPositions, useTodos } from '@/
 import { useCompleteTodoWithTime } from '@/hooks/useCompleteTodoWithTime'
 import {
   BUCKET_LABELS,
-  BUCKET_ORDER,
   groupActiveTodos,
   sortCompletedTodos,
   todoMatchesFilters,
@@ -23,6 +23,10 @@ import {
 } from '@/lib/todoLogic'
 import { cn } from '@/lib/utils'
 import type { Todo } from '@/lib/types'
+
+/** Buckets rendered as the routine timeline (today + undated) vs. plain due-date sections. */
+const TIMELINE_BUCKETS = ['today', 'noDate'] as const
+const SECONDARY_BUCKET_ORDER = ['overdue', 'upcoming'] as const
 
 export function TodosPage() {
   const { data: todos, isLoading } = useTodos()
@@ -66,9 +70,14 @@ export function TodosPage() {
     [completed, filters, hasFilter],
   )
   const grouped = useMemo(() => groupActiveTodos(filteredActive), [filteredActive])
-  const visibleBuckets = BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
+  const timelineTodos = useMemo(
+    () => TIMELINE_BUCKETS.flatMap((bucket) => grouped[bucket]),
+    [grouped],
+  )
+  const secondaryBuckets = SECONDARY_BUCKET_ORDER.filter((bucket) => grouped[bucket].length > 0)
   const isEmpty = !isLoading && active.length === 0 && completed.length === 0
   const showHelpIcon = !isEmpty && !isLoading
+  const noVisibleActive = timelineTodos.length === 0 && secondaryBuckets.length === 0
 
   function openCreate(prefillTitle = '') {
     setActiveTodo(null)
@@ -218,10 +227,24 @@ export function TodosPage() {
 
       {!isLoading && !isEmpty && (
         <div className="flex flex-col gap-6">
-          {hasFilter && visibleBuckets.length === 0 && (
+          {hasFilter && noVisibleActive && (
             <p className="text-[14px] text-black/45 dark:text-white/45 px-1">No active tasks match these filters.</p>
           )}
-          {visibleBuckets.map((bucket) => (
+
+          {timelineTodos.length > 0 && (
+            <RoutineTimeline
+              todos={timelineTodos}
+              onToggle={(_id, done) => {
+                const todo = timelineTodos.find((t) => t.id === _id)
+                if (todo) void completeTodo(todo, done)
+              }}
+              onView={openView}
+              onEdit={openEdit}
+              onDelete={(id) => deleteTodo.mutate(id)}
+            />
+          )}
+
+          {secondaryBuckets.map((bucket) => (
             <section key={bucket}>
               <h2 className="text-[13px] font-semibold text-black/45 dark:text-white/45 uppercase tracking-wide mb-2 px-1">
                 {BUCKET_LABELS[bucket]} · {grouped[bucket].length}

@@ -3,14 +3,17 @@ import { AppShell } from '@/components/layout/AppShell'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { GuestRoute } from '@/components/auth/GuestRoute'
 import { CompleteProfileRoute } from '@/components/auth/CompleteProfileRoute'
+import { OnboardingRoute } from '@/components/auth/OnboardingRoute'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { CompleteProfilePage } from '@/pages/CompleteProfilePage'
+import { OnboardingPage } from '@/pages/OnboardingPage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { StreakDetailPage } from '@/pages/StreakDetailPage'
 import { TodosPage } from '@/pages/TodosPage'
+import { CalendarPage } from '@/pages/CalendarPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage'
 import { LegalPage } from '@/pages/LegalPage'
@@ -43,6 +46,14 @@ export function App() {
           </CompleteProfileRoute>
         }
       />
+      <Route
+        path="/onboarding"
+        element={
+          <OnboardingRoute>
+            <OnboardingPage />
+          </OnboardingRoute>
+        }
+      />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/imprint" element={<LegalPage />} />
       <Route path="/legal" element={<Navigate to="/imprint" replace />} />
@@ -59,6 +70,7 @@ export function App() {
         }
       >
         <Route path="/dashboard" element={<HomePage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/streaks" element={<DashboardPage />} />
         <Route path="/streaks/:id" element={<StreakDetailPage />} />
         <Route path="/todos" element={<TodosPage />} />

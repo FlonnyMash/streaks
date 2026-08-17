@@ -44,6 +44,8 @@ function mapTodo(row: TodoRow): Todo {
     updated_at: row.updated_at ?? row.created_at,
     tracked_minutes: row.tracked_minutes ?? null,
     notify_enabled: Boolean(row.notify_enabled),
+    routine: row.routine ?? 'anytime',
+    estimated_minutes: row.estimated_minutes ?? null,
     topics,
   }
 }
@@ -121,6 +123,8 @@ export function useCreateTodo() {
         updated_at: now,
         tracked_minutes: null,
         notify_enabled: Boolean(fields.notify_enabled),
+        routine: fields.routine ?? 'anytime',
+        estimated_minutes: fields.estimated_minutes ?? null,
         topics: (topicNames ?? []).map((name) => ({
           id: `local-topic-${name}`,
           user_id: user.id,

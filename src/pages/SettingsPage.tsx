@@ -5,6 +5,7 @@ import {
   Camera,
   ChevronRight,
   Bell,
+  Compass,
   Fingerprint,
   KeyRound,
   LogOut,
@@ -760,6 +761,30 @@ export function SettingsPage() {
               title={infoTitle}
               body={infoBody}
             />
+          </div>
+
+          <div className="glass-panel rounded-[24px] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-12 rounded-2xl bg-accent-indigo/15 flex items-center justify-center shrink-0">
+                  <Compass className="size-5 text-accent-indigo" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium">Onboarding tour</p>
+                  <p className="text-[13px] text-black/45 dark:text-white/45">
+                    Revisit the routine setup and sample walkthrough.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                onClick={() => navigate('/onboarding?replay=1')}
+              >
+                Replay
+              </Button>
+            </div>
           </div>
 
           <div className="glass-panel rounded-[24px] p-5">

@@ -1,10 +1,18 @@
 import { Link } from 'react-router-dom'
 import { BrandIcon } from '@/components/BrandIcon'
+import { useAuth } from '@/hooks/useAuth'
+import { useProfile } from '@/hooks/useProfile'
+import { guessFirstNameFromUser } from '@/lib/profile'
 import { ProfileAvatarButton } from './ProfileAvatarButton'
 import { SyncStatusButton } from '@/components/sync/SyncStatusButton'
 
 /** Mobile-only top bar: brand on the left, sync + profile on the right. Stays fixed while content scrolls. */
 export function MobileTopBar() {
+  const { user } = useAuth()
+  const { data: profile } = useProfile()
+  const firstName = profile?.first_name?.trim() || guessFirstNameFromUser(user)
+  const title = firstName ? `${firstName}'s Personal Dashboard` : 'Personal Dashboard'
+
   return (
     <header className="app-desktop:hidden fixed inset-x-0 top-0 z-40 safe-top bg-[#f2f2f7]/90 dark:bg-black/90 backdrop-blur-xl">
       <div className="px-4 py-1.5 flex items-center justify-between gap-2.5">
@@ -14,7 +22,7 @@ export function MobileTopBar() {
         >
           <BrandIcon className="size-7 shrink-0" />
           <h1 className="text-[15px] font-bold tracking-tight leading-tight truncate">
-            Mashed Personal Dashboard
+            {title}
           </h1>
         </Link>
         <div className="flex items-center gap-2 shrink-0">

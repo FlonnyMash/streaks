@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, ChevronUp, Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { ImportanceMeter } from '@/components/todos/ImportanceMeter'
+import { ParticleBurst } from '@/components/streaks/ParticleBurst'
 import { useTodoTimer } from '@/hooks/useTodoTimer'
 import { formatElapsedClock, minutesFromSeconds } from '@/lib/todoTimerLogic'
+import { hapticTick, hapticUndo } from '@/lib/haptics'
+import { ROUTINE_ACCENT, ROUTINE_ICONS, ROUTINE_LABELS } from '@/lib/routineLogic'
 import type { Todo } from '@/lib/types'
 import { cn, formatMinutes, fromDateKey } from '@/lib/utils'
 
@@ -33,12 +37,27 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
   const due = todo.due_date ? dueLabel(todo.due_date) : null
   const notesPreview = todo.notes?.trim() || null
   const { requestStart, pause, elapsedMsFor, storedSecondsFor, timerFor } = useTodoTimer()
+  const [showBurst, setShowBurst] = useState(false)
+  const routine = todo.routine ?? 'anytime'
+  const RoutineIcon = ROUTINE_ICONS[routine]
+  const routineAccent = ROUTINE_ACCENT[routine]
 
   const timer = timerFor(todo.id)
   const running = Boolean(timer?.runningSince)
   const storedSeconds = storedSecondsFor(todo.id)
   const showTimer = !todo.done
   const elapsedMs = elapsedMsFor(todo.id)
+
+  function handleToggleClick() {
+    const nextDone = !todo.done
+    if (nextDone) {
+      hapticTick()
+      setShowBurst(true)
+    } else {
+      hapticUndo()
+    }
+    onToggle(todo.id, nextDone)
+  }
 
   return (
     <motion.div
@@ -50,10 +69,10 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
     >
       <button
         type="button"
-        onClick={() => onToggle(todo.id, !todo.done)}
+        onClick={handleToggleClick}
         aria-label={todo.done ? 'Mark as not done' : 'Mark as done'}
         className={cn(
-          'shrink-0 size-6 mt-0.5 rounded-full flex items-center justify-center transition-all active:scale-90 border-2',
+          'relative shrink-0 size-6 mt-0.5 rounded-full flex items-center justify-center transition-all active:scale-90 border-2',
           todo.done
             ? 'bg-accent-blue border-accent-blue text-white'
             : 'border-black/20 dark:border-white/25 hover:border-accent-blue',
@@ -66,6 +85,7 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             </motion.div>
           )}
         </AnimatePresence>
+        {showBurst && <ParticleBurst color={routineAccent.hex} onComplete={() => setShowBurst(false)} />}
       </button>
 
       <button type="button" onClick={() => onView(todo)} className="flex-1 min-w-0 text-left">
@@ -80,21 +100,51 @@ export function TodoItem({ todo, onToggle, onView, onEdit, onDelete, onMoveUp, o
             {todo.title}
           </p>
         </div>
-        {(due || notesPreview || (todo.topics ?? []).length > 0 || (todo.done && todo.tracked_minutes)) && (
+        {(due ||
+          notesPreview ||
+          (todo.topics ?? []).length > 0 ||
+          (todo.done && todo.tracked_minutes) ||
+          routine !== 'anytime' ||
+          todo.estimated_minutes) && (
           <div className="mt-0.5 min-w-0">
-            {due && (
-              <p
-                className={cn(
-                  'text-[11px] font-medium',
-                  todo.done
-                    ? 'text-black/30 dark:text-white/30'
-                    : due.overdue
-                      ? 'text-accent-red'
-                      : 'text-black/45 dark:text-white/45',
+            {(due || routine !== 'anytime' || todo.estimated_minutes) && (
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+                {due && (
+                  <p
+                    className={cn(
+                      'text-[11px] font-medium',
+                      todo.done
+                        ? 'text-black/30 dark:text-white/30'
+                        : due.overdue
+                          ? 'text-accent-red'
+                          : 'text-black/45 dark:text-white/45',
+                    )}
+                  >
+                    {due.text}
+                  </p>
                 )}
-              >
-                {due.text}
-              </p>
+                {routine !== 'anytime' && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[11px] font-medium',
+                      todo.done ? 'text-black/25 dark:text-white/25' : routineAccent.text,
+                    )}
+                  >
+                    <RoutineIcon className="size-3" />
+                    {ROUTINE_LABELS[routine]}
+                  </span>
+                )}
+                {todo.estimated_minutes != null && (
+                  <span
+                    className={cn(
+                      'text-[11px] font-medium',
+                      todo.done ? 'text-black/25 dark:text-white/25' : 'text-black/45 dark:text-white/45',
+                    )}
+                  >
+                    ~{formatMinutes(todo.estimated_minutes)}
+                  </span>
+                )}
+              </div>
             )}
             {notesPreview && (
               <p
