@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "id": "https://flonny.app/",
-  "name": "Mashed Personal Dashboard",
-  "short_name": "Mashed Plan",
+  "name": "Flonny App",
+  "short_name": "Flonny App",
   "description": "Seamlessly connect your habits and to-dos in one powerful app.",
   "lang": "en",
   "dir": "ltr",

@@ -5,6 +5,7 @@ import {
   type OutboxPayload,
   type PendingMutation,
 } from '@/lib/offline/types'
+import { ensureLegacyBrowserStorageMigrated, OUTBOX_DB_NAME } from '@/lib/legacyBrowserStorage'
 
 interface OutboxDb extends DBSchema {
   mutations: {
@@ -18,21 +19,23 @@ interface OutboxDb extends DBSchema {
   }
 }
 
-const DB_NAME = 'mashed-outbox'
 const DB_VERSION = 1
 
 let dbPromise: Promise<IDBPDatabase<OutboxDb>> | null = null
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<OutboxDb>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        const store = db.createObjectStore('mutations', { keyPath: 'id' })
-        store.createIndex('by-user', 'userId')
-        store.createIndex('by-user-status', ['userId', 'status'])
-        store.createIndex('by-coalesce', 'coalesceKey')
-      },
-    })
+    dbPromise = ensureLegacyBrowserStorageMigrated().then(() =>
+      openDB<OutboxDb>(OUTBOX_DB_NAME, DB_VERSION, {
+        upgrade(db) {
+          if (db.objectStoreNames.contains('mutations')) return
+          const store = db.createObjectStore('mutations', { keyPath: 'id' })
+          store.createIndex('by-user', 'userId')
+          store.createIndex('by-user-status', ['userId', 'status'])
+          store.createIndex('by-coalesce', 'coalesceKey')
+        },
+      }),
+    )
   }
   return dbPromise
 }

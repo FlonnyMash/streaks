@@ -266,7 +266,7 @@ function guideSteps(platform: InstallPlatform): GuideStep[] {
       },
       {
         title: 'Confirm',
-        body: 'Tap Install / Add. Mashed appears on your home screen.',
+        body: 'Tap Install / Add. Flonny appears on your home screen.',
         diagram: <ChromeConfirmDiagram />,
       },
     ]
@@ -285,7 +285,7 @@ function guideSteps(platform: InstallPlatform): GuideStep[] {
     },
     {
       title: 'Confirm',
-      body: 'Confirm the prompt — Mashed opens fullscreen like an app.',
+      body: 'Confirm the prompt — Flonny opens fullscreen like an app.',
       diagram: <ChromeConfirmDiagram />,
     },
   ]
@@ -340,11 +340,11 @@ function AddToHomeScreenModal({
         {canAutoInstall ? (
           <>
             <p className="text-[15px] leading-relaxed text-black/70 dark:text-white/70">
-              Your browser can install Mashed in one tap — no App Store needed.
+              Your browser can install Flonny in one tap — no App Store needed.
             </p>
             <Button loading={installing} onClick={handleInstall} className="w-full">
               <Smartphone className="size-4" />
-              Install Mashed
+              Install Flonny
             </Button>
             <p className="text-[13px] text-black/45 dark:text-white/45 text-center">
               Or follow the steps below if the button doesn’t work.
@@ -436,8 +436,8 @@ export function AddToHomeScreenTip() {
           <p className="font-medium text-[15px]">Add to Home Screen</p>
           <p className="text-[13px] text-black/45 dark:text-white/45">
             {nativeInstall && platform !== 'ios'
-              ? 'Tap to install Mashed in one step'
-              : 'Install Mashed for one-tap access'}
+              ? 'Tap to install Flonny in one step'
+              : 'Install Flonny for one-tap access'}
           </p>
         </div>
       </button>
@@ -479,8 +479,8 @@ export function AddToHomeScreenSettings() {
           <p className="font-medium">Add to Home Screen</p>
           <p className="text-[13px] text-black/45 dark:text-white/45">
             {nativeInstall && platform !== 'ios'
-              ? 'Install Mashed with one tap'
-              : 'Install Mashed for quick access'}
+              ? 'Install Flonny with one tap'
+              : 'Install Flonny for quick access'}
           </p>
         </div>
         <ChevronRight className="size-4 text-black/30 dark:text-white/30 shrink-0" />

@@ -385,7 +385,7 @@ export function OnboardingPage() {
                     {!isReplay && (
                       <p className="text-black/40 dark:text-white/40 text-[13px] mt-3 leading-relaxed">
                         Want a different plan for weekends or a holiday? Head to Calendar → Routines to
-                        add more packs — Mashed switches between them automatically.
+                        add more packs — Flonny switches between them automatically.
                       </p>
                     )}
                   </div>

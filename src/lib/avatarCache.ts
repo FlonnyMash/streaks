@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import { AVATAR_CACHE_DB_NAME, ensureLegacyBrowserStorageMigrated } from '@/lib/legacyBrowserStorage'
 
 interface AvatarCacheDb extends DBSchema {
   blobs: {
@@ -7,18 +8,20 @@ interface AvatarCacheDb extends DBSchema {
   }
 }
 
-const DB_NAME = 'mashed-avatar-cache'
 const DB_VERSION = 1
 
 let dbPromise: Promise<IDBPDatabase<AvatarCacheDb>> | null = null
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<AvatarCacheDb>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        db.createObjectStore('blobs', { keyPath: 'url' })
-      },
-    })
+    dbPromise = ensureLegacyBrowserStorageMigrated().then(() =>
+      openDB<AvatarCacheDb>(AVATAR_CACHE_DB_NAME, DB_VERSION, {
+        upgrade(db) {
+          if (db.objectStoreNames.contains('blobs')) return
+          db.createObjectStore('blobs', { keyPath: 'url' })
+        },
+      }),
+    )
   }
   return dbPromise
 }

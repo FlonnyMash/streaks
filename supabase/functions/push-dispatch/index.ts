@@ -1,5 +1,5 @@
 /**
- * push-dispatch — Web Push sender for Mashed Personal Dashboard.
+ * push-dispatch — Web Push sender for Flonny App.
  *
  * Auth: Authorization: Bearer <PUSH_DISPATCH_SECRET>
  *

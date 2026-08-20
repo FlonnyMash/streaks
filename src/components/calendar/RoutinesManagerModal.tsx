@@ -219,7 +219,7 @@ function RoutineList({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[13px] text-black/50 dark:text-white/50 -mt-1 leading-relaxed">
-        Keep more than one routine — a relaxed Weekend pack, a Holiday pack for time off — and Mashed
+        Keep more than one routine — a relaxed Weekend pack, a Holiday pack for time off — and Flonny
         switches between them automatically based on each pack's schedule. You can also temporarily
         pin any pack to a date range from its editor.
       </p>

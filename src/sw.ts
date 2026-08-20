@@ -74,7 +74,7 @@ registerRoute(
 // Use onpush/onsync (not addEventListener('push'|'sync')) so PWABuilder's
 // static analyzer still matches after Vite minifies string literals to backticks.
 self.onpush = (event) => {
-  let title = 'Mashed'
+  let title = 'Flonny'
   let body = 'You have a new reminder.'
   let url = '/'
 

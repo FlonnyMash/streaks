@@ -54,7 +54,7 @@ export function getNotificationBlockedGuidance(): NotificationBlockedGuidance {
         'iOS has blocked notifications for this installed app. Turn them back on in device Settings, then return here.',
       steps: [
         'Open the Settings app on your iPhone or iPad.',
-        'Scroll to Mashed (or this app’s name) and open it.',
+        'Scroll to Flonny (or this app’s name) and open it.',
         'Tap Notifications and turn Allow Notifications on.',
         'Come back to the app and tap Try again.',
       ],
@@ -72,7 +72,7 @@ export function getNotificationBlockedGuidance(): NotificationBlockedGuidance {
       summary:
         'Android has blocked notifications for this app. Enable them in device notification settings, then return here.',
       steps: [
-        'Open Android Settings → Apps → Mashed (or Chrome → Notifications if it opens as a site).',
+        'Open Android Settings → Apps → Flonny (or Chrome → Notifications if it opens as a site).',
         'Turn Notifications on for this app.',
         'Also check that the site isn’t blocked under Site settings → Notifications.',
         'Return here and tap Try again.',

@@ -1,4 +1,4 @@
-# Mashed Personal Dashboard — Setup Guide
+# Flonny App — Setup Guide
 
 This app is a static React SPA that talks directly to [Supabase](https://supabase.com) for
 authentication and data storage, and deploys as a static site to Cloudflare Pages. There is
@@ -122,7 +122,7 @@ Security notification emails only send if their toggles are enabled on that same
 
 1. Go to [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers) and click **New OAuth App** (this can be a personal account or an organization).
 2. Fill in:
-   - **Application name**: anything, e.g. `Mashed Personal Dashboard`
+   - **Application name**: anything, e.g. `Flonny App`
    - **Homepage URL**: your production URL (e.g. `https://streaks.pages.dev`), `http://localhost:5173` works fine while developing
    - **Authorization callback URL**: your Supabase callback URL:
      `https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback`

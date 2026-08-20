@@ -1,4 +1,4 @@
-# Mashed Personal Dashboard
+# Flonny App
 
 A personal dashboard with a clean, Apple-inspired, glassmorphic interface — optimized for both
 mobile and desktop. It's organized as a hub of sections:

@@ -10,6 +10,7 @@ import { App } from './App.tsx'
 import { AuthProvider } from '@/hooks/useAuth'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { initPwaInstallCapture } from '@/lib/pwa'
+import { ensureLegacyBrowserStorageMigrated, QUERY_PERSIST_KEY } from '@/lib/legacyBrowserStorage'
 
 initPwaInstallCapture()
 
@@ -45,31 +46,35 @@ const persister = createAsyncStoragePersister({
       await del(key)
     },
   },
-  key: 'mashed-react-query',
+  key: QUERY_PERSIST_KEY,
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister,
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        dehydrateOptions: {
-          shouldDehydrateQuery: (query) => {
-            const root = query.queryKey[0]
-            return typeof root === 'string' && DOMAIN_QUERY_ROOTS.has(root)
+function render() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: 1000 * 60 * 60 * 24 * 7,
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) => {
+              const root = query.queryKey[0]
+              return typeof root === 'string' && DOMAIN_QUERY_ROOTS.has(root)
+            },
           },
-        },
-      }}
-    >
-      <ThemeProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </PersistQueryClientProvider>
-  </StrictMode>,
-)
+        }}
+      >
+        <ThemeProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </PersistQueryClientProvider>
+    </StrictMode>,
+  )
+}
+
+void ensureLegacyBrowserStorageMigrated().then(render, render)
