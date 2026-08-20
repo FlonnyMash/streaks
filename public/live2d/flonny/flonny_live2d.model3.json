@@ -1,0 +1,29 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "flonny_live2d.moc3",
+		"Textures": [
+			"flonny_live2d.2048/texture_00.png"
+		],
+		"Motions": {
+			"Idle": [
+				{
+					"File": "idle_wink_twink.motion3.json"
+				}
+			]
+		},
+		"DisplayInfo": "flonny_live2d.cdi3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": ["ParamEyeLOpen", "ParamEyeROpen"]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	]
+}

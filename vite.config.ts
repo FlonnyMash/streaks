@@ -32,7 +32,7 @@ export default defineConfig({
         'screenshots/wide-1920x1080.png',
       ],
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json,webp}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json,webp,moc3}'],
       },
       devOptions: {
         enabled: true,

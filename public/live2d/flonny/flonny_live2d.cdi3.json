@@ -1,0 +1,191 @@
+{
+	"Version": 3,
+	"Parameters": [
+		{
+			"Id": "Param10",
+			"GroupId": "ParamGroup",
+			"Name": "ShadowVisible"
+		},
+		{
+			"Id": "ParamCheek",
+			"GroupId": "ParamGroup",
+			"Name": "CheekRed"
+		},
+		{
+			"Id": "Param6",
+			"GroupId": "ParamGroup",
+			"Name": "Celebration"
+		},
+		{
+			"Id": "Param",
+			"GroupId": "ParamGroup",
+			"Name": "RingGlow"
+		},
+		{
+			"Id": "Param8",
+			"GroupId": "ParamGroup",
+			"Name": "SleepingZZZ"
+		},
+		{
+			"Id": "Param7",
+			"GroupId": "ParamGroup",
+			"Name": "Thinking??"
+		},
+		{
+			"Id": "Param11",
+			"GroupId": "ParamGroup6",
+			"Name": "ArmR_Up"
+		},
+		{
+			"Id": "Param12",
+			"GroupId": "ParamGroup6",
+			"Name": "ArmL_Up"
+		},
+		{
+			"Id": "ParamEyeLOpen",
+			"GroupId": "ParamGroup2",
+			"Name": "EyeL Open"
+		},
+		{
+			"Id": "ParamEyeROpen",
+			"GroupId": "ParamGroup2",
+			"Name": "EyeR Open"
+		},
+		{
+			"Id": "ParamEyeBallX",
+			"GroupId": "ParamGroup2",
+			"Name": "Eyeball X"
+		},
+		{
+			"Id": "ParamEyeBallY",
+			"GroupId": "ParamGroup2",
+			"Name": "Eyeball Y"
+		},
+		{
+			"Id": "Param2",
+			"GroupId": "ParamGroup2",
+			"Name": "EyeL Form"
+		},
+		{
+			"Id": "Param3",
+			"GroupId": "ParamGroup2",
+			"Name": "EyeR Form"
+		},
+		{
+			"Id": "ParamMouthForm",
+			"GroupId": "ParamGroup3",
+			"Name": "Mouth Form"
+		},
+		{
+			"Id": "ParamBodyAngleZ",
+			"GroupId": "ParamGroup4",
+			"Name": "BodyRotation"
+		},
+		{
+			"Id": "Param9",
+			"GroupId": "ParamGroup4",
+			"Name": "ParamBreathX"
+		},
+		{
+			"Id": "Param13",
+			"GroupId": "ParamGroup4",
+			"Name": "BodyMoveYRotation"
+		},
+		{
+			"Id": "Param4",
+			"GroupId": "ParamGroup5",
+			"Name": "HeadRotation"
+		},
+		{
+			"Id": "Param5",
+			"GroupId": "ParamGroup5",
+			"Name": "HeadY"
+		}
+	],
+	"ParameterGroups": [
+		{
+			"Id": "ParamGroup",
+			"GroupId": "",
+			"Name": "Expressions"
+		},
+		{
+			"Id": "ParamGroup6",
+			"GroupId": "",
+			"Name": "Arms"
+		},
+		{
+			"Id": "ParamGroup2",
+			"GroupId": "",
+			"Name": "Eyes"
+		},
+		{
+			"Id": "ParamGroup3",
+			"GroupId": "",
+			"Name": "Mouth"
+		},
+		{
+			"Id": "ParamGroup4",
+			"GroupId": "",
+			"Name": "WholeBody"
+		},
+		{
+			"Id": "ParamGroup5",
+			"GroupId": "",
+			"Name": "Head"
+		}
+	],
+	"Parts": [
+		{
+			"Id": "Upper",
+			"Name": "Upper"
+		},
+		{
+			"Id": "arms",
+			"Name": "arms"
+		},
+		{
+			"Id": "body",
+			"Name": "body"
+		},
+		{
+			"Id": "shadow",
+			"Name": "shadow"
+		},
+		{
+			"Id": "Expressions",
+			"Name": "Expressions"
+		},
+		{
+			"Id": "face",
+			"Name": "face"
+		},
+		{
+			"Id": "Part2",
+			"Name": "extras (hidden helpers)"
+		},
+		{
+			"Id": "head",
+			"Name": "head"
+		},
+		{
+			"Id": "Part",
+			"Name": "?"
+		},
+		{
+			"Id": "Zz",
+			"Name": "Zz"
+		},
+		{
+			"Id": "eye_R",
+			"Name": "eye_R"
+		},
+		{
+			"Id": "eye_L",
+			"Name": "eye_L"
+		},
+		{
+			"Id": "mouth",
+			"Name": "mouth"
+		}
+	]
+}
