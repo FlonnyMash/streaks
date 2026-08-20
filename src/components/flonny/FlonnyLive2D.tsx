@@ -90,6 +90,9 @@ export function FlonnyLive2D({ mood, className }: FlonnyLive2DProps) {
         backgroundAlpha: 0,
         antialias: true,
         autoDensity: true,
+        // Cubism's renderer is WebGL. Pixi v8 prefers WebGPU, which Firefox often
+        // disables or breaks under fingerprinting / ETP — Safari already uses WebGL.
+        preference: 'webgl',
         resolution: Math.min(window.devicePixelRatio || 1, 2),
         resizeTo: hostRef.current,
       })

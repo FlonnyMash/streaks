@@ -9,6 +9,6 @@ export const LEGAL = {
   phoneHref: 'tel:+4915679784095',
   email: 'hello@flonny.app',
   emailHref: 'mailto:hello@flonny.app',
-  appName: 'Mashed Personal Dashboard',
-  privacyUpdated: 'August 17, 2026',
+  appName: 'Flonny App',
+  privacyUpdated: 'August 20, 2026',
 } as const

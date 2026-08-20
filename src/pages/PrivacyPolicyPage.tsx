@@ -37,12 +37,13 @@ export function PrivacyPolicyPage() {
       <LegalSection title="2. About this app">
         <p>
           {LEGAL.appName} (“the App”) is a personal web application for managing habits (streaks),
-          tasks (todos), and calendar routines. The App is provided as a Progressive Web App (PWA)
-          and stores your content in a database and object storage operated by our processor
-          Supabase. There are no payments, advertising, marketing tools, or third-party analytics /
-          tracking SDKs in the user-facing App. We operate a separate, access-restricted admin
-          dashboard for support and first-party operational statistics (see sections 5 and 8).
-          Optional profile photo uploads are the only file uploads supported.
+          tasks (todos), and calendar routines, including an optional on-device mascot character.
+          The App is provided as a Progressive Web App (PWA) and stores your content in a database
+          and object storage operated by our processor Supabase. There are no payments, advertising,
+          marketing tools, or third-party analytics / tracking SDKs in the user-facing App. We
+          operate a separate, access-restricted admin dashboard for support and first-party
+          operational statistics (see sections 5 and 8). Optional profile photo uploads are the only
+          file uploads supported.
         </p>
       </LegalSection>
 
@@ -60,7 +61,9 @@ export function PrivacyPolicyPage() {
           Where required, we rely on data processing agreements and/or the providers’ privacy terms
           and Standard Contractual Clauses for transfers outside the EEA. Our Supabase project is hosted
           in the EU (Ireland, region eu-west-1). Cloudflare and identity providers may process data in
-          other regions under the safeguards above.
+          other regions under the safeguards above. Cloudflare may set its own strictly necessary
+          cookies or similar identifiers for delivery, security, and bot protection; we do not use
+          Cloudflare Web Analytics or other Cloudflare marketing / tracking products in the App.
         </p>
       </LegalSection>
 
@@ -80,7 +83,9 @@ export function PrivacyPolicyPage() {
             'Technical session data: auth access / refresh tokens stored in the browser’s local storage',
             'Display preference: chosen theme (light / dark / system) in local storage',
             'UI preferences in local storage: whether the passkey setup prompt was dismissed or completed (keyed to your user ID), whether the push-notification setup prompt was dismissed or completed (keyed to your user ID), whether the “Add to Home Screen” tip was dismissed, and similar one-time UI prompt flags (for example weekend-routine prompts)',
+            'Onboarding progress (session storage): a short-lived copy of in-progress first-run setup, keyed to your user ID, discarded when onboarding finishes or the browser tab session ends',
             'Offline / performance caches on your device (IndexedDB): a short-lived copy of recently loaded app data for faster relaunch, an offline change outbox so edits can sync when you reconnect, and a local cache of your profile photo for display',
+            'Service worker caches on your device: copies of App pages and static assets, plus cached profile / OAuth avatar images, so the PWA can load faster and work offline',
           ]}
         />
         <p>
@@ -88,12 +93,13 @@ export function PrivacyPolicyPage() {
           third-party analytics or marketing tools into the user-facing App. Operational statistics
           shown to administrators are computed from data already stored for providing the service
           (for example account counts and signup trends); they are not collected via tracking pixels
-          or advertising identifiers on your device. The App does not request camera, microphone, or
-          location permissions. Push-notification permission is requested by the browser/OS when you
-          allow notifications (for example from the first-sign-in reminder prompt, Settings, or when
-          enabling “Notify me”). The App reads the current device permission rather than keeping a
-          separate on/off preference. Installing the App as a PWA does not collect additional personal
-          data beyond the preferences described above.
+          or advertising identifiers on your device. The optional mascot character is loaded from our
+          own static files on your device and does not send additional personal data. The App does
+          not request camera, microphone, or location permissions. Push-notification permission is
+          requested by the browser/OS when you allow notifications (for example from the first-sign-in
+          reminder prompt, Settings, or when enabling “Notify me”). The App reads the current device
+          permission rather than keeping a separate on/off preference. Installing the App as a PWA
+          does not collect additional personal data beyond the preferences described above.
         </p>
       </LegalSection>
 
@@ -112,7 +118,7 @@ export function PrivacyPolicyPage() {
             'Operating and securing the service, including limited access by authorized administrators to user accounts and content for support, abuse prevention, and reliability (Art. 6(1)(f) GDPR)',
             'First-party operational analytics in our access-restricted admin dashboard (for example aggregate user / content / push / ticket counts, signup trends, and searchable user lists for support), using data already stored to provide the App — not third-party tracking of your browsing (Art. 6(1)(f) GDPR)',
             'Sending occasional service or broadcast push messages by authorized administrators (for example maintenance or product notices), only to devices that have an active push subscription (Art. 6(1)(f) GDPR; where required, also Art. 6(1)(a) GDPR via the notification permission you grant)',
-            'Storing theme, UI-prompt, install-tip, and offline / performance cache data for a working and comfortable App experience (Art. 6(1)(f) GDPR)',
+            'Storing theme, UI-prompt, install-tip, onboarding-progress, offline / performance, and service-worker cache data for a working and comfortable App experience (Art. 6(1)(f) GDPR; where device storage is strictly necessary to provide the service you requested, also § 25(2) no. 2 TTDSG)',
             'Complying with legal obligations where applicable (Art. 6(1)(c) GDPR)',
           ]}
         />
@@ -129,22 +135,34 @@ export function PrivacyPolicyPage() {
           the App; older photo files under your user ID may remain in storage until you delete your
           account. The auth session remains until you sign out or the tokens expire. Theme,
           UI-prompt, and install-tip preferences remain in local storage until you change them or
-          you clear browser storage. IndexedDB caches remain until cleared by the App, you clear
-          site data, or you uninstall / wipe the PWA. Server and access logs of hosting / auth
-          providers may be retained briefly according to their own retention policies.
+          you clear browser storage. Onboarding progress in session storage lasts only for the
+          browser tab session (or until onboarding completes). IndexedDB and service-worker caches
+          remain until cleared by the App, you clear site data, or you uninstall / wipe the PWA.
+          Server and access logs of hosting / auth providers may be retained briefly according to
+          their own retention policies.
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Storage on your device (local storage and IndexedDB)">
+      <LegalSection title="7. Storage on your device (cookies, local storage, IndexedDB, service worker)">
         <p>
           The App uses your browser’s or installed PWA’s local storage for the auth session (Supabase),
           the theme preference, passkey / push setup prompt status, the “Add to Home Screen” tip
-          dismissal, and similar one-time UI prompt flags. It also uses IndexedDB for a React Query
-          data cache, an offline sync outbox, and a local avatar cache. Todo timers and calendar
-          content themselves are stored on the server (not only on the device). These local items are
-          not tracking cookies. Without storing the session, persistent sign-in would not be
+          dismissal, and similar one-time UI prompt flags. Session storage holds in-progress
+          onboarding until you finish setup or the tab session ends. IndexedDB holds a React Query
+          data cache, an offline sync outbox, and a local avatar cache. A service worker may cache App
+          pages, static assets, and avatar images for faster relaunch and offline use. Todo timers and
+          calendar content themselves are stored on the server (not only on the device). These local
+          items are not tracking cookies. Without storing the session, persistent sign-in would not be
           possible; without the offline / performance caches, relaunch and offline editing would be
           less reliable.
+        </p>
+        <p>
+          We do not use a cookie banner because we do not set optional tracking, advertising, or
+          analytics cookies. Strictly necessary storage (sign-in, security, and providing the App you
+          requested) does not require consent under § 25(2) TTDSG. Hosting cookies that Cloudflare may
+          set for CDN delivery or security fall into that necessary category; they are not used by us
+          to profile you. You can delete local storage, session storage, IndexedDB, and service-worker
+          caches by clearing site data in your browser or uninstalling the PWA.
         </p>
       </LegalSection>
 
