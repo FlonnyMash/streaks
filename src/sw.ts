@@ -33,10 +33,19 @@ registerRoute(
 )
 
 registerRoute(
-  ({ request }) =>
-    request.destination === 'style' ||
-    request.destination === 'script' ||
-    request.destination === 'worker',
+  ({ request, url }) => {
+    // Hashed Vite bundles belong in the precache. Runtime-caching them lets the SW intercept
+    // dynamic `import()` (Pixi FilterSystem, Cubism, …) and Firefox then fails the module load
+    // if Cloudflare returns a challenge HTML body instead of JS.
+    if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+      return false
+    }
+    return (
+      request.destination === 'style' ||
+      request.destination === 'script' ||
+      request.destination === 'worker'
+    )
+  },
   new StaleWhileRevalidate({
     cacheName: 'assets',
     plugins: [

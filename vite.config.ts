@@ -33,6 +33,9 @@ export default defineConfig({
       ],
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json,webp,moc3}'],
+        // Pixi + Cubism chunks exceed Workbox's 2 MiB default and would be skipped, so the SW
+        // intercepts them at runtime and Firefox fails the dynamic import.
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
       },
       devOptions: {
         enabled: true,
